@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { DrawTools } from '../components/DrawTools/DrawTools'
 import { MapView } from '../components/MapView/MapView'
 import { RoofEditor } from '../components/RoofEditor/RoofEditor'
@@ -10,6 +10,7 @@ import { computeRoofMetrics } from '../../geometry/solver/metrics'
 import { RoofSolverError } from '../../geometry/solver/errors'
 
 export function EditorScreen() {
+  const [orbitEnabled, setOrbitEnabled] = useState(false)
   const {
     state,
     startDrawing,
@@ -105,7 +106,10 @@ export function EditorScreen() {
           footprint={state.footprint}
           drawDraft={state.drawDraft}
           isDrawing={state.isDrawing}
+          orbitEnabled={orbitEnabled}
+          onToggleOrbit={() => setOrbitEnabled((enabled) => !enabled)}
           roofMesh={solved?.mesh ?? null}
+          showSolveHint={!solved?.solution}
           onMapClick={addDraftPoint}
         />
       </main>

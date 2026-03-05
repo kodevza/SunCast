@@ -7,7 +7,10 @@ interface MapViewProps {
   footprint: FootprintPolygon | null
   drawDraft: Array<[number, number]>
   isDrawing: boolean
+  orbitEnabled: boolean
+  onToggleOrbit: () => void
   roofMesh: RoofMeshData | null
+  showSolveHint: boolean
   onMapClick: (point: [number, number]) => void
 }
 
@@ -23,7 +26,39 @@ function toRing(vertices: Array<[number, number]>): Array<[number, number]> {
 
 type MapFeature = GeoJSON.Feature<GeoJSON.Point | GeoJSON.LineString | GeoJSON.Polygon>
 
-export function MapView({ footprint, drawDraft, isDrawing, roofMesh, onMapClick }: MapViewProps) {
+const ORBIT_PITCH_DEG = 60
+const ORBIT_BEARING_DEG = -20
+const MAX_ORBIT_PITCH_DEG = 85
+
+function toBounds(vertices: Array<[number, number]>): maplibregl.LngLatBoundsLike {
+  let minLon = vertices[0][0]
+  let minLat = vertices[0][1]
+  let maxLon = vertices[0][0]
+  let maxLat = vertices[0][1]
+
+  for (const [lon, lat] of vertices) {
+    minLon = Math.min(minLon, lon)
+    minLat = Math.min(minLat, lat)
+    maxLon = Math.max(maxLon, lon)
+    maxLat = Math.max(maxLat, lat)
+  }
+
+  return [
+    [minLon, minLat],
+    [maxLon, maxLat],
+  ]
+}
+
+export function MapView({
+  footprint,
+  drawDraft,
+  isDrawing,
+  orbitEnabled,
+  onToggleOrbit,
+  roofMesh,
+  showSolveHint,
+  onMapClick,
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const roofLayerRef = useRef<RoofMeshLayer | null>(null)
@@ -31,6 +66,7 @@ export function MapView({ footprint, drawDraft, isDrawing, roofMesh, onMapClick 
   const onClickRef = useRef(onMapClick)
   const footprintRef = useRef(footprint)
   const draftRef = useRef(drawDraft)
+  const roofMeshRef = useRef(roofMesh)
 
   useEffect(() => {
     drawingRef.current = isDrawing
@@ -49,12 +85,19 @@ export function MapView({ footprint, drawDraft, isDrawing, roofMesh, onMapClick 
   }, [drawDraft])
 
   useEffect(() => {
+    roofMeshRef.current = roofMesh
+  }, [roofMesh])
+
+  useEffect(() => {
     if (!containerRef.current || mapRef.current) {
       return
     }
 
     const map = new maplibregl.Map({
       container: containerRef.current,
+      canvasContextAttributes: {
+        antialias: true,
+      },
       style: {
         version: 8,
         sources: {
@@ -116,8 +159,9 @@ export function MapView({ footprint, drawDraft, isDrawing, roofMesh, onMapClick 
       },
       center: [-73.989, 40.733],
       zoom: 18,
-      pitch: 55,
-      bearing: -20,
+      pitch: 0,
+      bearing: 0,
+      maxPitch: MAX_ORBIT_PITCH_DEG,
     })
 
     map.addControl(new maplibregl.NavigationControl(), 'top-right')
@@ -170,7 +214,7 @@ export function MapView({ footprint, drawDraft, isDrawing, roofMesh, onMapClick 
         draftSource.setData({ type: 'FeatureCollection', features })
       }
 
-      roofLayer.setMesh(roofMesh)
+      roofLayer.setMesh(roofMeshRef.current)
     })
 
     map.on('click', (event) => {
@@ -187,7 +231,7 @@ export function MapView({ footprint, drawDraft, isDrawing, roofMesh, onMapClick 
       mapRef.current = null
       roofLayerRef.current = null
     }
-  }, [roofMesh])
+  }, [])
 
   useEffect(() => {
     const map = mapRef.current
@@ -265,5 +309,54 @@ export function MapView({ footprint, drawDraft, isDrawing, roofMesh, onMapClick 
     roofLayerRef.current?.setMesh(roofMesh)
   }, [roofMesh])
 
-  return <div ref={containerRef} className="map-root" />
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+
+    if (!orbitEnabled) {
+      map.dragRotate.disable()
+      map.touchZoomRotate.disableRotation()
+      map.easeTo({
+        pitch: 0,
+        bearing: 0,
+        duration: 350,
+      })
+      return
+    }
+
+    map.dragRotate.enable()
+    map.touchZoomRotate.enableRotation()
+
+    const hasFootprint = footprint && footprint.vertices.length >= 3
+    if (hasFootprint) {
+      map.fitBounds(toBounds(footprint.vertices), {
+        padding: 80,
+        duration: 500,
+        bearing: ORBIT_BEARING_DEG,
+        pitch: ORBIT_PITCH_DEG,
+        maxZoom: 20,
+      })
+      return
+    }
+
+    map.easeTo({
+      pitch: ORBIT_PITCH_DEG,
+      bearing: ORBIT_BEARING_DEG,
+      duration: 500,
+    })
+  }, [footprint, orbitEnabled])
+
+  return (
+    <div className="map-root-wrap">
+      <div ref={containerRef} className="map-root" />
+      <button type="button" className="map-orbit-toggle" onClick={onToggleOrbit}>
+        {orbitEnabled ? 'Exit orbit' : 'Orbit'}
+      </button>
+      {orbitEnabled && showSolveHint && footprint && (
+        <div className="map-hint">Add heights to solve plane</div>
+      )}
+    </div>
+  )
 }
