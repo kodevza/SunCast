@@ -8,6 +8,14 @@ import { solveRoofPlane } from '../../geometry/solver/solveRoofPlane'
 import { generateRoofMesh } from '../../geometry/mesh/generateRoofMesh'
 import { computeRoofMetrics } from '../../geometry/solver/metrics'
 import { RoofSolverError } from '../../geometry/solver/errors'
+import type { RoofMeshData, SolvedRoofPlane } from '../../types/geometry'
+
+interface SolvedEntry {
+  footprintId: string
+  solution: SolvedRoofPlane
+  mesh: RoofMeshData
+  metrics: ReturnType<typeof computeRoofMetrics>
+}
 
 export function EditorScreen() {
   const [orbitEnabled, setOrbitEnabled] = useState(false)
@@ -15,49 +23,87 @@ export function EditorScreen() {
   const [selectedEdgeIndex, setSelectedEdgeIndex] = useState<number | null>(null)
   const {
     state,
+    activeFootprint,
+    activeConstraints,
     startDrawing,
     cancelDrawing,
     addDraftPoint,
     undoDraftPoint,
     commitFootprint,
+    setActiveFootprint,
+    deleteFootprint,
     setVertexHeight,
     setEdgeHeight,
     clearVertexHeight,
     clearEdgeHeight,
   } = useProjectStore()
 
-  const footprintErrors = validateFootprint(state.footprint)
+  const footprintEntries = useMemo(() => Object.values(state.footprints), [state.footprints])
+  const footprints = useMemo(() => footprintEntries.map((entry) => entry.footprint), [footprintEntries])
 
-  const vertexCount = state.footprint?.vertices.length ?? 0
+  const activeFootprintErrors = validateFootprint(activeFootprint)
+
+  const vertexCount = activeFootprint?.vertices.length ?? 0
   const safeSelectedVertexIndex =
-    !state.footprint || state.isDrawing || selectedVertexIndex === null || selectedVertexIndex < 0 || selectedVertexIndex >= vertexCount
+    !activeFootprint ||
+    state.isDrawing ||
+    selectedVertexIndex === null ||
+    selectedVertexIndex < 0 ||
+    selectedVertexIndex >= vertexCount
       ? null
       : selectedVertexIndex
   const safeSelectedEdgeIndex =
-    !state.footprint || state.isDrawing || selectedEdgeIndex === null || selectedEdgeIndex < 0 || selectedEdgeIndex >= vertexCount
+    !activeFootprint || state.isDrawing || selectedEdgeIndex === null || selectedEdgeIndex < 0 || selectedEdgeIndex >= vertexCount
       ? null
       : selectedEdgeIndex
 
   const solved = useMemo(() => {
-    if (!state.footprint || footprintErrors.length > 0) {
-      return null
+    const solvedEntries: SolvedEntry[] = []
+    let activeError: string | null = null
+
+    for (const entry of footprintEntries) {
+      const errors = validateFootprint(entry.footprint)
+      if (errors.length > 0) {
+        if (entry.footprint.id === state.activeFootprintId) {
+          activeError = errors[0]
+        }
+        continue
+      }
+
+      try {
+        const solution = solveRoofPlane(entry.footprint, entry.constraints)
+        const mesh = generateRoofMesh(entry.footprint, solution.vertexHeightsM)
+        const metrics = computeRoofMetrics(solution.plane, mesh)
+        solvedEntries.push({
+          footprintId: entry.footprint.id,
+          solution,
+          mesh,
+          metrics,
+        })
+      } catch (error) {
+        if (entry.footprint.id !== state.activeFootprintId) {
+          continue
+        }
+
+        activeError =
+          error instanceof RoofSolverError
+            ? `${error.code}: ${error.message}`
+            : error instanceof Error
+              ? error.message
+              : 'Failed to solve roof plane'
+      }
     }
 
-    try {
-      const solution = solveRoofPlane(state.footprint, state.constraints)
-      const mesh = generateRoofMesh(state.footprint, solution.vertexHeightsM)
-      const metrics = computeRoofMetrics(solution.plane, mesh)
-      return { solution, mesh, metrics, error: null }
-    } catch (error) {
-      const message =
-        error instanceof RoofSolverError
-          ? `${error.code}: ${error.message}`
-          : error instanceof Error
-            ? error.message
-            : 'Failed to solve roof plane'
-      return { solution: null, mesh: null, metrics: null, error: message }
+    const activeSolved = state.activeFootprintId
+      ? solvedEntries.find((entry) => entry.footprintId === state.activeFootprintId) ?? null
+      : null
+
+    return {
+      entries: solvedEntries,
+      activeSolved,
+      activeError,
     }
-  }, [state.constraints, state.footprint, footprintErrors])
+  }, [footprintEntries, state.activeFootprintId])
 
   return (
     <div className="editor-layout">
@@ -86,9 +132,51 @@ export function EditorScreen() {
           }}
         />
 
+        <section className="panel-section">
+          <h3>Footprints</h3>
+          {footprints.length === 0 ? (
+            <p>No footprints yet.</p>
+          ) : (
+            <div className="footprint-list">
+              {footprints.map((footprint) => {
+                const isActive = footprint.id === state.activeFootprintId
+                return (
+                  <button
+                    key={footprint.id}
+                    type="button"
+                    className={`footprint-list-item${isActive ? ' footprint-list-item-active' : ''}`}
+                    onClick={() => {
+                      setActiveFootprint(footprint.id)
+                      setSelectedVertexIndex(null)
+                      setSelectedEdgeIndex(null)
+                    }}
+                  >
+                    {footprint.id}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          <button
+            type="button"
+            disabled={!state.activeFootprintId}
+            onClick={() => {
+              if (!state.activeFootprintId) {
+                return
+              }
+              deleteFootprint(state.activeFootprintId)
+              setSelectedVertexIndex(null)
+              setSelectedEdgeIndex(null)
+            }}
+          >
+            Delete Active Footprint
+          </button>
+        </section>
+
         <RoofEditor
-          footprint={state.footprint}
-          vertexConstraints={state.constraints.vertexHeights}
+          footprint={activeFootprint}
+          vertexConstraints={activeConstraints.vertexHeights}
           selectedVertexIndex={safeSelectedVertexIndex}
           selectedEdgeIndex={safeSelectedEdgeIndex}
           onSetVertex={setVertexHeight}
@@ -99,28 +187,29 @@ export function EditorScreen() {
 
         <section className="panel-section">
           <h3>Status</h3>
-          {footprintErrors.map((error) => (
+          {activeFootprintErrors.map((error) => (
             <p key={error} className="status-error">
               {error}
             </p>
           ))}
 
-          {solved?.error && <p className="status-error">{solved.error}</p>}
+          {solved.activeError && <p className="status-error">{solved.activeError}</p>}
 
-          {solved?.solution && (
+          {solved.activeSolved && (
             <>
-              {solved.solution.warnings.map((warning) => (
+              {solved.activeSolved.solution.warnings.map((warning) => (
                 <p key={`${warning.code}:${warning.message}`} className="status-warning">
                   {warning.code}: {warning.message}
                 </p>
               ))}
-              <p>Pitch: {solved.metrics!.pitchDeg.toFixed(2)} deg</p>
-              <p>Downslope azimuth: {solved.metrics!.azimuthDeg.toFixed(1)} deg</p>
-              <p>Roof area: {solved.metrics!.roofAreaM2.toFixed(2)} m2</p>
+              <p>Pitch: {solved.activeSolved.metrics.pitchDeg.toFixed(2)} deg</p>
+              <p>Downslope azimuth: {solved.activeSolved.metrics.azimuthDeg.toFixed(1)} deg</p>
+              <p>Roof area: {solved.activeSolved.metrics.roofAreaM2.toFixed(2)} m2</p>
               <p>
-                Height range: {solved.metrics!.minHeightM.toFixed(2)}m - {solved.metrics!.maxHeightM.toFixed(2)}m
+                Height range: {solved.activeSolved.metrics.minHeightM.toFixed(2)}m -{' '}
+                {solved.activeSolved.metrics.maxHeightM.toFixed(2)}m
               </p>
-              <p>Fit RMS error: {solved.solution.rmsErrorM.toFixed(3)} m</p>
+              <p>Fit RMS error: {solved.activeSolved.solution.rmsErrorM.toFixed(3)} m</p>
             </>
           )}
         </section>
@@ -128,13 +217,14 @@ export function EditorScreen() {
 
       <main className="editor-map-wrap">
         <MapView
-          footprint={state.footprint}
+          footprints={footprints}
+          activeFootprint={activeFootprint}
           drawDraft={state.drawDraft}
           isDrawing={state.isDrawing}
           orbitEnabled={orbitEnabled}
           onToggleOrbit={() => setOrbitEnabled((enabled) => !enabled)}
-          roofMesh={solved?.mesh ?? null}
-          vertexConstraints={state.constraints.vertexHeights}
+          roofMeshes={solved.entries.map((entry) => entry.mesh)}
+          vertexConstraints={activeConstraints.vertexHeights}
           selectedVertexIndex={safeSelectedVertexIndex}
           selectedEdgeIndex={safeSelectedEdgeIndex}
           onSelectVertex={(vertexIndex) => {
@@ -145,11 +235,16 @@ export function EditorScreen() {
             setSelectedEdgeIndex(edgeIndex)
             setSelectedVertexIndex(null)
           }}
+          onSelectFootprint={(footprintId) => {
+            setActiveFootprint(footprintId)
+            setSelectedVertexIndex(null)
+            setSelectedEdgeIndex(null)
+          }}
           onClearSelection={() => {
             setSelectedVertexIndex(null)
             setSelectedEdgeIndex(null)
           }}
-          showSolveHint={!solved?.solution}
+          showSolveHint={!solved.activeSolved}
           onMapClick={addDraftPoint}
         />
       </main>

@@ -1,17 +1,24 @@
-import { useEffect, useMemo, useReducer } from 'react'
+import { useEffect, useMemo, useReducer, useRef } from 'react'
 import type {
   FaceConstraints,
   FootprintPolygon,
   ProjectData,
+  StoredFootprint,
   VertexHeightConstraint,
 } from '../../types/geometry'
 
-const STORAGE_KEY = 'suncast.project.v1'
-const SOLVER_CONFIG_VERSION = 'uc2'
+const STORAGE_KEY = 'suncast_project'
+const LEGACY_STORAGE_KEY = 'suncast.project.v1'
+const SOLVER_CONFIG_VERSION = 'uc3'
+
+interface FootprintStateEntry {
+  footprint: FootprintPolygon
+  constraints: FaceConstraints
+}
 
 interface ProjectState {
-  footprint: FootprintPolygon | null
-  constraints: FaceConstraints
+  footprints: Record<string, FootprintStateEntry>
+  activeFootprintId: string | null
   drawDraft: Array<[number, number]>
   isDrawing: boolean
 }
@@ -22,18 +29,32 @@ type Action =
   | { type: 'ADD_DRAFT_POINT'; point: [number, number] }
   | { type: 'UNDO_DRAFT_POINT' }
   | { type: 'COMMIT_FOOTPRINT' }
-  | { type: 'SET_FOOTPRINT'; footprint: FootprintPolygon }
+  | { type: 'SET_ACTIVE_FOOTPRINT'; footprintId: string }
+  | { type: 'DELETE_FOOTPRINT'; footprintId: string }
   | { type: 'SET_VERTEX_HEIGHT'; payload: VertexHeightConstraint }
   | { type: 'SET_EDGE_HEIGHT'; payload: { edgeIndex: number; heightM: number } }
   | { type: 'CLEAR_VERTEX_HEIGHT'; vertexIndex: number }
   | { type: 'CLEAR_EDGE_HEIGHT'; edgeIndex: number }
-  | { type: 'LOAD'; payload: ProjectData }
+  | { type: 'LOAD'; payload: ProjectState }
+
+interface LegacyProjectData {
+  footprint: FootprintPolygon | null
+  constraints: FaceConstraints
+  solverConfigVersion?: string
+}
 
 const initialState: ProjectState = {
-  footprint: null,
-  constraints: { vertexHeights: [] },
+  footprints: {},
+  activeFootprintId: null,
   drawDraft: [],
   isDrawing: false,
+}
+
+function generateFootprintId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `fp-${crypto.randomUUID()}`
+  }
+  return `fp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 function setOrReplaceVertexConstraint(
@@ -53,16 +74,13 @@ function sanitizeVertexHeights(vertexHeights: VertexHeightConstraint[], vertexCo
     }
     byIndex.set(constraint.vertexIndex, constraint.heightM)
   }
+
   return Array.from(byIndex.entries())
     .map(([vertexIndex, heightM]) => ({ vertexIndex, heightM }))
     .sort((a, b) => a.vertexIndex - b.vertexIndex)
 }
 
-function migrateConstraints(constraints: FaceConstraints, footprint: FootprintPolygon | null): FaceConstraints {
-  if (!footprint) {
-    return { vertexHeights: [] }
-  }
-
+function migrateConstraints(constraints: FaceConstraints, footprint: FootprintPolygon): FaceConstraints {
   const vertexCount = footprint.vertices.length
   const byIndex = new Map<number, number>()
 
@@ -91,6 +109,109 @@ function migrateConstraints(constraints: FaceConstraints, footprint: FootprintPo
   }
 }
 
+function applyToActiveFootprint(
+  state: ProjectState,
+  updater: (entry: FootprintStateEntry) => FootprintStateEntry,
+): ProjectState {
+  if (!state.activeFootprintId) {
+    return state
+  }
+
+  const activeEntry = state.footprints[state.activeFootprintId]
+  if (!activeEntry) {
+    return state
+  }
+
+  return {
+    ...state,
+    footprints: {
+      ...state.footprints,
+      [state.activeFootprintId]: updater(activeEntry),
+    },
+  }
+}
+
+function removeFootprintAndPickActive(state: ProjectState, footprintId: string): ProjectState {
+  const nextFootprints = { ...state.footprints }
+  delete nextFootprints[footprintId]
+  const nextIds = Object.keys(nextFootprints)
+
+  return {
+    ...state,
+    footprints: nextFootprints,
+    activeFootprintId:
+      state.activeFootprintId === footprintId
+        ? (nextIds.at(-1) ?? null)
+        : (state.activeFootprintId && nextFootprints[state.activeFootprintId] ? state.activeFootprintId : nextIds.at(-1) ?? null),
+  }
+}
+
+function fromStoredFootprint(stored: StoredFootprint): FootprintStateEntry {
+  const footprint: FootprintPolygon = {
+    id: stored.id,
+    vertices: stored.polygon,
+  }
+
+  const vertexHeights = Object.entries(stored.vertexHeights)
+    .map(([vertexIndexRaw, heightM]) => ({
+      vertexIndex: Number(vertexIndexRaw),
+      heightM,
+    }))
+    .filter((c) => Number.isInteger(c.vertexIndex) && Number.isFinite(c.heightM))
+
+  return {
+    footprint,
+    constraints: {
+      vertexHeights: sanitizeVertexHeights(vertexHeights, footprint.vertices.length),
+    },
+  }
+}
+
+function toStoredFootprint(entry: FootprintStateEntry): StoredFootprint {
+  const vertexHeights: Record<string, number> = {}
+  for (const constraint of entry.constraints.vertexHeights) {
+    vertexHeights[String(constraint.vertexIndex)] = constraint.heightM
+  }
+
+  return {
+    id: entry.footprint.id,
+    polygon: entry.footprint.vertices,
+    vertexHeights,
+  }
+}
+
+function sanitizeLoadedState(state: ProjectState): ProjectState {
+  const sanitized: Record<string, FootprintStateEntry> = {}
+
+  for (const [footprintId, entry] of Object.entries(state.footprints)) {
+    if (!entry.footprint || !Array.isArray(entry.footprint.vertices)) {
+      continue
+    }
+
+    const footprint: FootprintPolygon = {
+      id: entry.footprint.id || footprintId,
+      vertices: entry.footprint.vertices,
+    }
+
+    sanitized[footprint.id] = {
+      footprint,
+      constraints: {
+        vertexHeights: sanitizeVertexHeights(entry.constraints.vertexHeights ?? [], footprint.vertices.length),
+      },
+    }
+  }
+
+  const ids = Object.keys(sanitized)
+  return {
+    ...state,
+    footprints: sanitized,
+    activeFootprintId:
+      state.activeFootprintId && sanitized[state.activeFootprintId]
+        ? state.activeFootprintId
+        : (ids.at(-1) ?? null),
+  }
+}
+
 function reducer(state: ProjectState, action: Action): ProjectState {
   switch (action.type) {
     case 'START_DRAW':
@@ -111,111 +232,158 @@ function reducer(state: ProjectState, action: Action): ProjectState {
       if (state.drawDraft.length < 3) {
         return state
       }
+
+      const footprintId = generateFootprintId()
       const footprint: FootprintPolygon = {
-        id: `fp-${Date.now()}`,
+        id: footprintId,
         vertices: state.drawDraft,
       }
+
       return {
         ...state,
-        footprint,
+        footprints: {
+          ...state.footprints,
+          [footprintId]: {
+            footprint,
+            constraints: { vertexHeights: [] },
+          },
+        },
+        activeFootprintId: footprintId,
         isDrawing: false,
         drawDraft: [],
-        constraints: { vertexHeights: [] },
       }
     }
-    case 'SET_FOOTPRINT':
+    case 'SET_ACTIVE_FOOTPRINT':
+      if (!state.footprints[action.footprintId]) {
+        return state
+      }
       return {
         ...state,
-        footprint: action.footprint,
+        activeFootprintId: action.footprintId,
       }
+    case 'DELETE_FOOTPRINT':
+      if (!state.footprints[action.footprintId]) {
+        return state
+      }
+      return removeFootprintAndPickActive(state, action.footprintId)
     case 'SET_VERTEX_HEIGHT':
-      if (!state.footprint) {
-        return state
-      }
-      return {
-        ...state,
+      return applyToActiveFootprint(state, (entry) => ({
+        ...entry,
         constraints: {
-          ...state.constraints,
+          ...entry.constraints,
           vertexHeights: sanitizeVertexHeights(
-            setOrReplaceVertexConstraint(state.constraints.vertexHeights, action.payload),
-            state.footprint.vertices.length,
+            setOrReplaceVertexConstraint(entry.constraints.vertexHeights, action.payload),
+            entry.footprint.vertices.length,
           ),
         },
-      }
-    case 'SET_EDGE_HEIGHT': {
-      if (!state.footprint) {
-        return state
-      }
-      const vertexCount = state.footprint.vertices.length
-      if (action.payload.edgeIndex < 0 || action.payload.edgeIndex >= vertexCount) {
-        return state
-      }
-      const start = action.payload.edgeIndex
-      const end = (action.payload.edgeIndex + 1) % vertexCount
-      let nextVertexHeights = setOrReplaceVertexConstraint(state.constraints.vertexHeights, {
-        vertexIndex: start,
-        heightM: action.payload.heightM,
+      }))
+    case 'SET_EDGE_HEIGHT':
+      return applyToActiveFootprint(state, (entry) => {
+        const vertexCount = entry.footprint.vertices.length
+        if (action.payload.edgeIndex < 0 || action.payload.edgeIndex >= vertexCount) {
+          return entry
+        }
+
+        const start = action.payload.edgeIndex
+        const end = (action.payload.edgeIndex + 1) % vertexCount
+        let nextVertexHeights = setOrReplaceVertexConstraint(entry.constraints.vertexHeights, {
+          vertexIndex: start,
+          heightM: action.payload.heightM,
+        })
+        nextVertexHeights = setOrReplaceVertexConstraint(nextVertexHeights, {
+          vertexIndex: end,
+          heightM: action.payload.heightM,
+        })
+
+        return {
+          ...entry,
+          constraints: {
+            ...entry.constraints,
+            vertexHeights: sanitizeVertexHeights(nextVertexHeights, vertexCount),
+          },
+        }
       })
-      nextVertexHeights = setOrReplaceVertexConstraint(nextVertexHeights, {
-        vertexIndex: end,
-        heightM: action.payload.heightM,
-      })
-      return {
-        ...state,
-        constraints: {
-          ...state.constraints,
-          vertexHeights: sanitizeVertexHeights(nextVertexHeights, vertexCount),
-        },
-      }
-    }
     case 'CLEAR_VERTEX_HEIGHT':
-      return {
-        ...state,
+      return applyToActiveFootprint(state, (entry) => ({
+        ...entry,
         constraints: {
-          ...state.constraints,
-          vertexHeights: state.constraints.vertexHeights.filter((c) => c.vertexIndex !== action.vertexIndex),
+          ...entry.constraints,
+          vertexHeights: entry.constraints.vertexHeights.filter((c) => c.vertexIndex !== action.vertexIndex),
         },
-      }
-    case 'CLEAR_EDGE_HEIGHT': {
-      if (!state.footprint) {
-        return state
-      }
-      const vertexCount = state.footprint.vertices.length
-      if (action.edgeIndex < 0 || action.edgeIndex >= vertexCount) {
-        return state
-      }
-      const start = action.edgeIndex
-      const end = (action.edgeIndex + 1) % vertexCount
-      return {
-        ...state,
-        constraints: {
-          ...state.constraints,
-          vertexHeights: state.constraints.vertexHeights.filter(
-            (c) => c.vertexIndex !== start && c.vertexIndex !== end,
-          ),
-        },
-      }
-    }
+      }))
+    case 'CLEAR_EDGE_HEIGHT':
+      return applyToActiveFootprint(state, (entry) => {
+        const vertexCount = entry.footprint.vertices.length
+        if (action.edgeIndex < 0 || action.edgeIndex >= vertexCount) {
+          return entry
+        }
+
+        const start = action.edgeIndex
+        const end = (action.edgeIndex + 1) % vertexCount
+
+        return {
+          ...entry,
+          constraints: {
+            ...entry.constraints,
+            vertexHeights: entry.constraints.vertexHeights.filter(
+              (c) => c.vertexIndex !== start && c.vertexIndex !== end,
+            ),
+          },
+        }
+      })
     case 'LOAD':
-      return {
-        ...state,
-        footprint: action.payload.footprint,
-        constraints: migrateConstraints(action.payload.constraints, action.payload.footprint),
-      }
+      return sanitizeLoadedState(action.payload)
     default:
       return state
   }
 }
 
-function readStorage(): ProjectData | null {
+function readStorage(): ProjectState | null {
   const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) {
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as ProjectData
+      const entries = Object.values(parsed.footprints ?? {})
+      const footprints = Object.fromEntries(entries.map((entry) => [entry.id, fromStoredFootprint(entry)]))
+
+      return {
+        footprints,
+        activeFootprintId: parsed.activeFootprintId ?? null,
+        drawDraft: [],
+        isDrawing: false,
+      }
+    } catch {
+      return null
+    }
+  }
+
+  const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY)
+  if (!legacyRaw) {
     return null
   }
 
   try {
-    const parsed = JSON.parse(raw) as ProjectData
-    return parsed
+    const legacy = JSON.parse(legacyRaw) as LegacyProjectData
+    if (!legacy.footprint) {
+      return {
+        ...initialState,
+      }
+    }
+
+    const footprint = legacy.footprint
+    const migratedEntry: FootprintStateEntry = {
+      footprint,
+      constraints: migrateConstraints(legacy.constraints ?? { vertexHeights: [] }, footprint),
+    }
+
+    return {
+      footprints: {
+        [footprint.id]: migratedEntry,
+      },
+      activeFootprintId: footprint.id,
+      drawDraft: [],
+      isDrawing: false,
+    }
   } catch {
     return null
   }
@@ -223,6 +391,8 @@ function readStorage(): ProjectData | null {
 
 export function useProjectStore() {
   const [state, dispatch] = useReducer(reducer, initialState)
+  const emptyConstraints = useMemo(() => ({ vertexHeights: [] }), [])
+  const hasSkippedInitialPersist = useRef(false)
 
   useEffect(() => {
     const stored = readStorage()
@@ -232,22 +402,40 @@ export function useProjectStore() {
   }, [])
 
   useEffect(() => {
+    if (!hasSkippedInitialPersist.current) {
+      hasSkippedInitialPersist.current = true
+      return
+    }
+
+    const footprints = Object.fromEntries(
+      Object.entries(state.footprints).map(([id, entry]) => [id, toStoredFootprint(entry)]),
+    )
+
     const data: ProjectData = {
-      footprint: state.footprint,
-      constraints: state.constraints,
+      footprints,
+      activeFootprintId: state.activeFootprintId,
       solverConfigVersion: SOLVER_CONFIG_VERSION,
     }
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  }, [state.footprint, state.constraints])
+  }, [state.activeFootprintId, state.footprints])
+
+  const activeEntry = state.activeFootprintId ? state.footprints[state.activeFootprintId] : null
+  const activeFootprint = activeEntry?.footprint ?? null
+  const activeConstraints = activeEntry?.constraints ?? emptyConstraints
 
   return useMemo(
     () => ({
       state,
+      activeFootprint,
+      activeConstraints,
       startDrawing: () => dispatch({ type: 'START_DRAW' }),
       cancelDrawing: () => dispatch({ type: 'CANCEL_DRAW' }),
       addDraftPoint: (point: [number, number]) => dispatch({ type: 'ADD_DRAFT_POINT', point }),
       undoDraftPoint: () => dispatch({ type: 'UNDO_DRAFT_POINT' }),
       commitFootprint: () => dispatch({ type: 'COMMIT_FOOTPRINT' }),
+      setActiveFootprint: (footprintId: string) => dispatch({ type: 'SET_ACTIVE_FOOTPRINT', footprintId }),
+      deleteFootprint: (footprintId: string) => dispatch({ type: 'DELETE_FOOTPRINT', footprintId }),
       setVertexHeight: (vertexIndex: number, heightM: number) =>
         dispatch({ type: 'SET_VERTEX_HEIGHT', payload: { vertexIndex, heightM } }),
       setEdgeHeight: (edgeIndex: number, heightM: number) =>
@@ -255,6 +443,6 @@ export function useProjectStore() {
       clearVertexHeight: (vertexIndex: number) => dispatch({ type: 'CLEAR_VERTEX_HEIGHT', vertexIndex }),
       clearEdgeHeight: (edgeIndex: number) => dispatch({ type: 'CLEAR_EDGE_HEIGHT', edgeIndex }),
     }),
-    [state],
+    [activeConstraints, activeFootprint, state],
   )
 }

@@ -88,7 +88,7 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
   type = 'custom' as const
   renderingMode = '3d' as const
 
-  private mesh: RoofMeshData | null = null
+  private meshes: RoofMeshData[] = []
   private map: maplibregl.Map | null = null
   private gl: (WebGLRenderingContext | WebGL2RenderingContext) | null = null
   private program: WebGLProgram | null = null
@@ -98,7 +98,7 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
   private vertexCount = 0
   private wallVertexCount = 0
   private topLineVertexCount = 0
-  private dropLineVertexCount = 0
+  private meshTopLineVertexCounts: number[] = []
   private aPosLocation = -1
   private aNormalLocation = -1
   private uMatrixLocation: WebGLUniformLocation | null = null
@@ -149,7 +149,7 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
     this.vertexCount = 0
     this.wallVertexCount = 0
     this.topLineVertexCount = 0
-    this.dropLineVertexCount = 0
+    this.meshTopLineVertexCounts = []
     this.aPosLocation = -1
     this.aNormalLocation = -1
     this.uMatrixLocation = null
@@ -158,8 +158,8 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
     this.uUnlitMixLocation = null
   }
 
-  setMesh(mesh: RoofMeshData | null): void {
-    this.mesh = mesh
+  setMeshes(meshes: RoofMeshData[]): void {
+    this.meshes = meshes
     this.uploadBuffer()
   }
 
@@ -236,14 +236,22 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
       gl.disableVertexAttribArray(this.aNormalLocation)
       gl.vertexAttrib3f(this.aNormalLocation, 0, 0, 1)
       gl.lineWidth(1)
-      gl.uniform4f(this.uColorLocation, 1.0, 0.93, 0.59, 1.0)
       if (this.uUnlitMixLocation) {
         gl.uniform1f(this.uUnlitMixLocation, 1)
       }
-      gl.drawArrays(gl.LINE_LOOP, 0, this.topLineVertexCount)
-      if (this.dropLineVertexCount > 0) {
-        gl.uniform4f(this.uColorLocation, 0.98, 0.8, 0.46, 0.92)
-        gl.drawArrays(gl.LINES, this.topLineVertexCount, this.dropLineVertexCount)
+
+      let offset = 0
+      for (const topCount of this.meshTopLineVertexCounts) {
+        gl.uniform4f(this.uColorLocation, 1.0, 0.93, 0.59, 1.0)
+        gl.drawArrays(gl.LINE_LOOP, offset, topCount)
+
+        const dropCount = topCount * 2
+        if (dropCount > 0) {
+          gl.uniform4f(this.uColorLocation, 0.98, 0.8, 0.46, 0.92)
+          gl.drawArrays(gl.LINES, offset + topCount, dropCount)
+        }
+
+        offset += topCount + dropCount
       }
     }
 
@@ -254,17 +262,12 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
     this.vertexCount = 0
     this.wallVertexCount = 0
     this.topLineVertexCount = 0
-    this.dropLineVertexCount = 0
+    this.meshTopLineVertexCounts = []
     this.map?.triggerRepaint()
   }
 
   private uploadBuffer(): void {
-    if (!this.map || !this.gl || !this.fillBuffer || !this.wallBuffer || !this.lineBuffer || !this.mesh) {
-      this.resetBuffers()
-      return
-    }
-
-    if (this.mesh.vertices.length < 3) {
+    if (!this.map || !this.gl || !this.fillBuffer || !this.wallBuffer || !this.lineBuffer || this.meshes.length === 0) {
       this.resetBuffers()
       return
     }
@@ -272,64 +275,75 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
     const fillLitCoords: number[] = []
     const wallLitCoords: number[] = []
     const lineCoords: number[] = []
-    const topWorldVertices: WorldPoint[] = this.mesh.vertices.map((vertex) => {
-      const merc = maplibregl.MercatorCoordinate.fromLngLat(
-        { lng: vertex.lon, lat: vertex.lat },
-        vertex.z + RENDER_EPSILON_M,
-      )
-      return { x: merc.x, y: merc.y, z: merc.z }
-    })
-    const baseWorldVertices: WorldPoint[] = this.mesh.vertices.map((vertex) => {
-      const merc = maplibregl.MercatorCoordinate.fromLngLat({ lng: vertex.lon, lat: vertex.lat }, 0)
-      return { x: merc.x, y: merc.y, z: merc.z }
-    })
+    const meshTopLineVertexCounts: number[] = []
+    let topLineVertexCount = 0
 
-    for (let i = 0; i < this.mesh.triangleIndices.length; i += 3) {
-      const idxA = this.mesh.triangleIndices[i]
-      const idxB = this.mesh.triangleIndices[i + 1]
-      const idxC = this.mesh.triangleIndices[i + 2]
-      if (idxA === undefined || idxB === undefined || idxC === undefined) {
+    for (const mesh of this.meshes) {
+      if (mesh.vertices.length < 3) {
         continue
       }
 
-      const a = topWorldVertices[idxA]
-      const b = topWorldVertices[idxB]
-      const c = topWorldVertices[idxC]
-      if (!a || !b || !c) {
-        continue
+      const topWorldVertices: WorldPoint[] = mesh.vertices.map((vertex) => {
+        const merc = maplibregl.MercatorCoordinate.fromLngLat(
+          { lng: vertex.lon, lat: vertex.lat },
+          vertex.z + RENDER_EPSILON_M,
+        )
+        return { x: merc.x, y: merc.y, z: merc.z }
+      })
+      const baseWorldVertices: WorldPoint[] = mesh.vertices.map((vertex) => {
+        const merc = maplibregl.MercatorCoordinate.fromLngLat({ lng: vertex.lon, lat: vertex.lat }, 0)
+        return { x: merc.x, y: merc.y, z: merc.z }
+      })
+
+      for (let i = 0; i < mesh.triangleIndices.length; i += 3) {
+        const idxA = mesh.triangleIndices[i]
+        const idxB = mesh.triangleIndices[i + 1]
+        const idxC = mesh.triangleIndices[i + 2]
+        if (idxA === undefined || idxB === undefined || idxC === undefined) {
+          continue
+        }
+
+        const a = topWorldVertices[idxA]
+        const b = topWorldVertices[idxB]
+        const c = topWorldVertices[idxC]
+        if (!a || !b || !c) {
+          continue
+        }
+
+        const normal = computeTriangleNormal(a, b, c)
+        pushLitVertex(fillLitCoords, a, normal)
+        pushLitVertex(fillLitCoords, b, normal)
+        pushLitVertex(fillLitCoords, c, normal)
       }
 
-      const normal = computeTriangleNormal(a, b, c)
-      pushLitVertex(fillLitCoords, a, normal)
-      pushLitVertex(fillLitCoords, b, normal)
-      pushLitVertex(fillLitCoords, c, normal)
-    }
+      for (let i = 0; i < mesh.vertices.length; i += 1) {
+        const topCurrent = topWorldVertices[i]
+        const topNext = topWorldVertices[(i + 1) % mesh.vertices.length]
+        const baseCurrent = baseWorldVertices[i]
+        const baseNext = baseWorldVertices[(i + 1) % mesh.vertices.length]
 
-    for (let i = 0; i < this.mesh.vertices.length; i += 1) {
-      const topCurrent = topWorldVertices[i]
-      const topNext = topWorldVertices[(i + 1) % this.mesh.vertices.length]
-      const baseCurrent = baseWorldVertices[i]
-      const baseNext = baseWorldVertices[(i + 1) % this.mesh.vertices.length]
+        const firstWallNormal = computeTriangleNormal(topCurrent, topNext, baseNext)
+        pushLitVertex(wallLitCoords, topCurrent, firstWallNormal)
+        pushLitVertex(wallLitCoords, topNext, firstWallNormal)
+        pushLitVertex(wallLitCoords, baseNext, firstWallNormal)
 
-      const firstWallNormal = computeTriangleNormal(topCurrent, topNext, baseNext)
-      pushLitVertex(wallLitCoords, topCurrent, firstWallNormal)
-      pushLitVertex(wallLitCoords, topNext, firstWallNormal)
-      pushLitVertex(wallLitCoords, baseNext, firstWallNormal)
+        const secondWallNormal = computeTriangleNormal(topCurrent, baseNext, baseCurrent)
+        pushLitVertex(wallLitCoords, topCurrent, secondWallNormal)
+        pushLitVertex(wallLitCoords, baseNext, secondWallNormal)
+        pushLitVertex(wallLitCoords, baseCurrent, secondWallNormal)
+      }
 
-      const secondWallNormal = computeTriangleNormal(topCurrent, baseNext, baseCurrent)
-      pushLitVertex(wallLitCoords, topCurrent, secondWallNormal)
-      pushLitVertex(wallLitCoords, baseNext, secondWallNormal)
-      pushLitVertex(wallLitCoords, baseCurrent, secondWallNormal)
-    }
-
-    for (const topVertex of topWorldVertices) {
-      lineCoords.push(topVertex.x, topVertex.y, topVertex.z)
-    }
-    for (let i = 0; i < topWorldVertices.length; i += 1) {
-      const topVertex = topWorldVertices[i]
-      const baseVertex = baseWorldVertices[i]
-      lineCoords.push(topVertex.x, topVertex.y, topVertex.z)
-      lineCoords.push(baseVertex.x, baseVertex.y, baseVertex.z)
+      topLineVertexCount += topWorldVertices.length
+      meshTopLineVertexCounts.push(topWorldVertices.length)
+      for (const topVertex of topWorldVertices) {
+        lineCoords.push(topVertex.x, topVertex.y, topVertex.z)
+      }
+      for (let i = 0; i < topWorldVertices.length; i += 1) {
+        const topVertex = topWorldVertices[i]
+        const baseVertex = baseWorldVertices[i]
+        lineCoords.push(topVertex.x, topVertex.y, topVertex.z)
+        lineCoords.push(baseVertex.x, baseVertex.y, baseVertex.z)
+      }
     }
 
     const fillData = new Float32Array(fillLitCoords)
@@ -345,8 +359,8 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
 
     this.vertexCount = fillLitCoords.length / FLOATS_PER_LIT_VERTEX
     this.wallVertexCount = wallLitCoords.length / FLOATS_PER_LIT_VERTEX
-    this.topLineVertexCount = topWorldVertices.length
-    this.dropLineVertexCount = topWorldVertices.length * 2
+    this.topLineVertexCount = topLineVertexCount
+    this.meshTopLineVertexCounts = meshTopLineVertexCounts
 
     this.map.triggerRepaint()
   }

@@ -52,9 +52,15 @@ export interface SolvedRoofPlane {
 }
 
 export interface ProjectData {
-  footprint: FootprintPolygon | null
-  constraints: FaceConstraints
+  footprints: Record<string, StoredFootprint>
+  activeFootprintId: string | null
   solverConfigVersion?: string
+}
+
+export interface StoredFootprint {
+  id: string
+  polygon: LngLat[]
+  vertexHeights: Record<string, number>
 }
 
 export interface RoofMeshData {

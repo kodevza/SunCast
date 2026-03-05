@@ -58,6 +58,21 @@ body {
   gap: 8px;
 }
 
+.footprint-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.footprint-list-item {
+  text-align: left;
+}
+
+.footprint-list-item-active {
+  border-color: #4ccde2;
+  background: rgba(76, 205, 226, 0.18);
+}
+
 .constraint-row {
   display: grid;
   grid-template-columns: 1fr 80px 54px 62px;
