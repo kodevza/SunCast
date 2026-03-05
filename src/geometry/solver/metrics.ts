@@ -1,12 +1,22 @@
 import type { RoofMeshData, RoofMetrics, RoofPlane } from '../../types/geometry'
 import { buildLocalOrigin, lonLatToLocalMeters } from '../projection/localMeters'
 
-function clampAzimuth(deg: number): number {
+export function clampAzimuth(deg: number): number {
   let normalized = deg % 360
   if (normalized < 0) {
     normalized += 360
   }
   return normalized
+}
+
+export function planeSlopeFromPitchAzimuth(pitchDeg: number, azimuthDeg: number): { p: number; q: number } {
+  const tanPitch = Math.tan((pitchDeg * Math.PI) / 180)
+  const azimuthRad = (clampAzimuth(azimuthDeg) * Math.PI) / 180
+  return {
+    // x axis is east, y axis is north
+    p: tanPitch * Math.sin(azimuthRad),
+    q: tanPitch * Math.cos(azimuthRad),
+  }
 }
 
 export function computeRoofMetrics(plane: RoofPlane, mesh: RoofMeshData): RoofMetrics {

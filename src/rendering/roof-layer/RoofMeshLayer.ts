@@ -1,5 +1,6 @@
 import maplibregl from 'maplibre-gl'
 import type { RoofMeshData } from '../../types/geometry'
+import { buildRoofWorldGeometry } from './roofWorldGeometry'
 
 const FLOATS_PER_LIT_VERTEX = 6
 const LIT_STRIDE_BYTES = FLOATS_PER_LIT_VERTEX * Float32Array.BYTES_PER_ELEMENT
@@ -94,11 +95,9 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
   private program: WebGLProgram | null = null
   private fillBuffer: WebGLBuffer | null = null
   private wallBuffer: WebGLBuffer | null = null
-  private lineBuffer: WebGLBuffer | null = null
   private vertexCount = 0
   private wallVertexCount = 0
-  private topLineVertexCount = 0
-  private meshTopLineVertexCounts: number[] = []
+  private zExaggeration = 1
   private aPosLocation = -1
   private aNormalLocation = -1
   private uMatrixLocation: WebGLUniformLocation | null = null
@@ -116,7 +115,6 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
     this.program = createProgram(gl)
     this.fillBuffer = gl.createBuffer()
     this.wallBuffer = gl.createBuffer()
-    this.lineBuffer = gl.createBuffer()
     this.aPosLocation = gl.getAttribLocation(this.program, 'a_pos')
     this.aNormalLocation = gl.getAttribLocation(this.program, 'a_normal')
     this.uMatrixLocation = gl.getUniformLocation(this.program, 'u_matrix')
@@ -133,23 +131,17 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
     if (this.gl && this.wallBuffer) {
       this.gl.deleteBuffer(this.wallBuffer)
     }
-    if (this.gl && this.lineBuffer) {
-      this.gl.deleteBuffer(this.lineBuffer)
-    }
     if (this.gl && this.program) {
       this.gl.deleteProgram(this.program)
     }
 
     this.fillBuffer = null
     this.wallBuffer = null
-    this.lineBuffer = null
     this.program = null
     this.gl = null
     this.map = null
     this.vertexCount = 0
     this.wallVertexCount = 0
-    this.topLineVertexCount = 0
-    this.meshTopLineVertexCounts = []
     this.aPosLocation = -1
     this.aNormalLocation = -1
     this.uMatrixLocation = null
@@ -160,6 +152,11 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
 
   setMeshes(meshes: RoofMeshData[]): void {
     this.meshes = meshes
+    this.uploadBuffer()
+  }
+
+  setZExaggeration(zExaggeration: number): void {
+    this.zExaggeration = Math.max(0.1, zExaggeration)
     this.uploadBuffer()
   }
 
@@ -199,12 +196,12 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
   }
 
   render(gl: WebGLRenderingContext | WebGL2RenderingContext, options: maplibregl.CustomRenderMethodInput): void {
+    const hasAnyGeometry = this.vertexCount > 0 || this.wallVertexCount > 0
     if (
       !this.program ||
       !this.fillBuffer ||
       !this.wallBuffer ||
-      !this.lineBuffer ||
-      this.vertexCount === 0 ||
+      !hasAnyGeometry ||
       !this.uMatrixLocation ||
       !this.uLightDirLocation
     ) {
@@ -212,93 +209,82 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
     }
 
     gl.useProgram(this.program)
-
     gl.uniformMatrix4fv(this.uMatrixLocation, false, options.modelViewProjectionMatrix)
     gl.uniform3f(this.uLightDirLocation, 0.35, -0.22, 0.91)
 
-    gl.enable(gl.BLEND)
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-    gl.enable(gl.DEPTH_TEST)
-    gl.disable(gl.CULL_FACE)
+    const prevDepthEnabled = gl.isEnabled(gl.DEPTH_TEST)
+    const prevCullEnabled = gl.isEnabled(gl.CULL_FACE)
+    const prevBlendEnabled = gl.isEnabled(gl.BLEND)
+    const prevDepthMask = gl.getParameter(gl.DEPTH_WRITEMASK) as boolean
+    const prevDepthFunc = gl.getParameter(gl.DEPTH_FUNC) as number
+    const prevBlendSrcRGB = gl.getParameter(gl.BLEND_SRC_RGB) as number
+    const prevBlendDstRGB = gl.getParameter(gl.BLEND_DST_RGB) as number
+    const prevBlendSrcAlpha = gl.getParameter(gl.BLEND_SRC_ALPHA) as number
+    const prevBlendDstAlpha = gl.getParameter(gl.BLEND_DST_ALPHA) as number
 
-    if (this.wallVertexCount > 0) {
-      gl.depthMask(true)
-      this.drawLitTriangles(gl, this.wallBuffer, this.wallVertexCount, [0.57, 0.15, 0.15], 0.82)
-    }
+    try {
+      gl.enable(gl.BLEND)
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+      gl.disable(gl.DEPTH_TEST)
+      gl.depthMask(false)
+      gl.disable(gl.CULL_FACE)
 
-    gl.depthMask(false)
-    this.drawLitTriangles(gl, this.fillBuffer, this.vertexCount, [0.95, 0.29, 0.23], 0.67)
-
-    if (this.topLineVertexCount > 0 && this.aPosLocation >= 0 && this.aNormalLocation >= 0 && this.uColorLocation) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.lineBuffer)
-      gl.enableVertexAttribArray(this.aPosLocation)
-      gl.vertexAttribPointer(this.aPosLocation, 3, gl.FLOAT, false, 0, 0)
-      gl.disableVertexAttribArray(this.aNormalLocation)
-      gl.vertexAttrib3f(this.aNormalLocation, 0, 0, 1)
-      gl.lineWidth(1)
-      if (this.uUnlitMixLocation) {
-        gl.uniform1f(this.uUnlitMixLocation, 1)
+      if (this.wallVertexCount > 0) {
+        this.drawLitTriangles(gl, this.wallBuffer, this.wallVertexCount, [0.9, 0.2, 0.2], 0.92)
       }
 
-      let offset = 0
-      for (const topCount of this.meshTopLineVertexCounts) {
-        gl.uniform4f(this.uColorLocation, 1.0, 0.93, 0.59, 1.0)
-        gl.drawArrays(gl.LINE_LOOP, offset, topCount)
-
-        const dropCount = topCount * 2
-        if (dropCount > 0) {
-          gl.uniform4f(this.uColorLocation, 0.98, 0.8, 0.46, 0.92)
-          gl.drawArrays(gl.LINES, offset + topCount, dropCount)
-        }
-
-        offset += topCount + dropCount
+      this.drawLitTriangles(gl, this.fillBuffer, this.vertexCount, [1, 0.38, 0.33], 0.8)
+    } finally {
+      gl.depthMask(prevDepthMask)
+      gl.depthFunc(prevDepthFunc)
+      gl.blendFuncSeparate(prevBlendSrcRGB, prevBlendDstRGB, prevBlendSrcAlpha, prevBlendDstAlpha)
+      if (prevDepthEnabled) {
+        gl.enable(gl.DEPTH_TEST)
+      } else {
+        gl.disable(gl.DEPTH_TEST)
+      }
+      if (prevCullEnabled) {
+        gl.enable(gl.CULL_FACE)
+      } else {
+        gl.disable(gl.CULL_FACE)
+      }
+      if (prevBlendEnabled) {
+        gl.enable(gl.BLEND)
+      } else {
+        gl.disable(gl.BLEND)
       }
     }
-
-    gl.depthMask(true)
   }
 
   private resetBuffers(): void {
     this.vertexCount = 0
     this.wallVertexCount = 0
-    this.topLineVertexCount = 0
-    this.meshTopLineVertexCounts = []
     this.map?.triggerRepaint()
   }
 
   private uploadBuffer(): void {
-    if (!this.map || !this.gl || !this.fillBuffer || !this.wallBuffer || !this.lineBuffer || this.meshes.length === 0) {
+    if (!this.map || !this.gl || !this.fillBuffer || !this.wallBuffer || this.meshes.length === 0) {
       this.resetBuffers()
       return
     }
 
     const fillLitCoords: number[] = []
     const wallLitCoords: number[] = []
-    const lineCoords: number[] = []
-    const meshTopLineVertexCounts: number[] = []
-    let topLineVertexCount = 0
 
     for (const mesh of this.meshes) {
-      if (mesh.vertices.length < 3) {
+      const worldGeometry = buildRoofWorldGeometry(mesh, this.zExaggeration)
+      if (!worldGeometry) {
         continue
       }
 
-      const topWorldVertices: WorldPoint[] = mesh.vertices.map((vertex) => {
-        const merc = maplibregl.MercatorCoordinate.fromLngLat(
-          { lng: vertex.lon, lat: vertex.lat },
-          vertex.z + RENDER_EPSILON_M,
-        )
-        return { x: merc.x, y: merc.y, z: merc.z }
-      })
-      const baseWorldVertices: WorldPoint[] = mesh.vertices.map((vertex) => {
-        const merc = maplibregl.MercatorCoordinate.fromLngLat({ lng: vertex.lon, lat: vertex.lat }, 0)
-        return { x: merc.x, y: merc.y, z: merc.z }
-      })
+      const renderEpsilon = RENDER_EPSILON_M * worldGeometry.unitsPerMeter
+      const topWorldVertices = worldGeometry.topVertices.map((vertex) => ({ ...vertex, z: vertex.z + renderEpsilon }))
+      const baseWorldVertices = worldGeometry.baseVertices
 
-      for (let i = 0; i < mesh.triangleIndices.length; i += 3) {
-        const idxA = mesh.triangleIndices[i]
-        const idxB = mesh.triangleIndices[i + 1]
-        const idxC = mesh.triangleIndices[i + 2]
+      for (let i = 0; i < worldGeometry.triangleIndices.length; i += 3) {
+        const idxA = worldGeometry.triangleIndices[i]
+        const idxB = worldGeometry.triangleIndices[i + 1]
+        const idxC = worldGeometry.triangleIndices[i + 2]
         if (idxA === undefined || idxB === undefined || idxC === undefined) {
           continue
         }
@@ -332,35 +318,18 @@ export class RoofMeshLayer implements maplibregl.CustomLayerInterface {
         pushLitVertex(wallLitCoords, baseNext, secondWallNormal)
         pushLitVertex(wallLitCoords, baseCurrent, secondWallNormal)
       }
-
-      topLineVertexCount += topWorldVertices.length
-      meshTopLineVertexCounts.push(topWorldVertices.length)
-      for (const topVertex of topWorldVertices) {
-        lineCoords.push(topVertex.x, topVertex.y, topVertex.z)
-      }
-      for (let i = 0; i < topWorldVertices.length; i += 1) {
-        const topVertex = topWorldVertices[i]
-        const baseVertex = baseWorldVertices[i]
-        lineCoords.push(topVertex.x, topVertex.y, topVertex.z)
-        lineCoords.push(baseVertex.x, baseVertex.y, baseVertex.z)
-      }
     }
 
     const fillData = new Float32Array(fillLitCoords)
     const wallData = new Float32Array(wallLitCoords)
-    const lineData = new Float32Array(lineCoords)
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.fillBuffer)
     this.gl.bufferData(this.gl.ARRAY_BUFFER, fillData, this.gl.DYNAMIC_DRAW)
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.wallBuffer)
     this.gl.bufferData(this.gl.ARRAY_BUFFER, wallData, this.gl.DYNAMIC_DRAW)
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.lineBuffer)
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, lineData, this.gl.DYNAMIC_DRAW)
 
     this.vertexCount = fillLitCoords.length / FLOATS_PER_LIT_VERTEX
     this.wallVertexCount = wallLitCoords.length / FLOATS_PER_LIT_VERTEX
-    this.topLineVertexCount = topLineVertexCount
-    this.meshTopLineVertexCounts = meshTopLineVertexCounts
 
     this.map.triggerRepaint()
   }

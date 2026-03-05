@@ -24,3 +24,9 @@ dist-ssr
 *.sw?
 
 .env*
+
+src.zip
+.playwright-cli
+test-results
+.nyc_output
+coverage

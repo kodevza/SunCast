@@ -59,35 +59,6 @@ export function RoofEditor({
     input.select()
   }, [selectedEdgeIndex])
 
-  useEffect(() => {
-    if (selectedVertexIndex === null) {
-      return
-    }
-    const current = vertexIndex.get(selectedVertexIndex)
-    if (current === undefined) {
-      return
-    }
-    setVertexInputs((prev) => ({
-      ...prev,
-      [selectedVertexIndex]: current.toFixed(2),
-    }))
-  }, [selectedVertexIndex, vertexIndex])
-
-  useEffect(() => {
-    if (selectedEdgeIndex === null || !footprint) {
-      return
-    }
-    const startHeight = vertexIndex.get(selectedEdgeIndex)
-    const endHeight = vertexIndex.get((selectedEdgeIndex + 1) % footprint.vertices.length)
-    if (startHeight === undefined || endHeight === undefined || startHeight !== endHeight) {
-      return
-    }
-    setEdgeInputs((prev) => ({
-      ...prev,
-      [selectedEdgeIndex]: startHeight.toFixed(2),
-    }))
-  }, [selectedEdgeIndex, vertexIndex, footprint])
-
   if (!footprint) {
     return (
       <section className="panel-section">
@@ -98,17 +69,57 @@ export function RoofEditor({
   }
 
   const vertexCount = footprint.vertices.length
+  const activeConstraints = vertexConstraints
+    .slice()
+    .sort((a, b) => a.vertexIndex - b.vertexIndex)
+    .map((constraint) => `V${constraint.vertexIndex}=${constraint.heightM.toFixed(2)}m`)
+
+  const applyVertexInput = (idx: number, textValue: string) => {
+    if (textValue.trim() === '') {
+      return
+    }
+    const value = Number(textValue)
+    if (!Number.isFinite(value)) {
+      return
+    }
+    const applied = onSetVertex(idx, value)
+    if (!applied) {
+      onConstraintLimitExceeded()
+      return
+    }
+    setVertexInputs((prev) => ({ ...prev, [idx]: '' }))
+  }
+
+  const applyEdgeInput = (idx: number, textValue: string) => {
+    if (textValue.trim() === '') {
+      return
+    }
+    const value = Number(textValue)
+    if (!Number.isFinite(value)) {
+      return
+    }
+    const applied = onSetEdge(idx, value)
+    if (!applied) {
+      onConstraintLimitExceeded()
+      return
+    }
+    setEdgeInputs((prev) => ({ ...prev, [idx]: '' }))
+  }
 
   return (
     <section className="panel-section">
       <h3>Constraints</h3>
-      <p>Set exactly 3 vertex heights in meters. Edge edit is a helper that sets both endpoint vertices.</p>
+      <p>Set at least 3 vertex heights in meters. Edge edit sets both endpoint vertices and can auto-seed a third point.</p>
+      <p>
+        Active constraints:{' '}
+        {activeConstraints.length > 0 ? activeConstraints.join(', ') : 'none'}
+      </p>
 
       <h4>Vertex Heights</h4>
       <div className="constraint-grid">
         {footprint.vertices.map((_, idx) => {
           const current = vertexIndex.get(idx)
-          const textValue = vertexInputs[idx] ?? ''
+          const textValue = vertexInputs[idx] ?? (selectedVertexIndex === idx && current !== undefined ? current.toFixed(2) : '')
           const isSelectedByEdge =
             selectedEdgeIndex !== null && (idx === selectedEdgeIndex || idx === (selectedEdgeIndex + 1) % vertexCount)
           const isSelected = selectedVertexIndex === idx || isSelectedByEdge
@@ -130,25 +141,29 @@ export function RoofEditor({
                     [idx]: event.target.value,
                   }))
                 }
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') {
+                    return
+                  }
+                  event.preventDefault()
+                  applyVertexInput(idx, textValue)
+                }}
+                onBlur={() => applyVertexInput(idx, textValue)}
+                data-testid={`vertex-height-input-${idx}`}
               />
               <button
                 type="button"
-                onClick={() => {
-                  const value = Number(textValue)
-                  if (!Number.isFinite(value)) {
-                    return
-                  }
-                  const applied = onSetVertex(idx, value)
-                  if (!applied) {
-                    onConstraintLimitExceeded()
-                    return
-                  }
-                  setVertexInputs((prev) => ({ ...prev, [idx]: '' }))
-                }}
+                data-testid={`vertex-height-set-${idx}`}
+                onClick={() => applyVertexInput(idx, textValue)}
               >
                 Set
               </button>
-              <button type="button" onClick={() => onClearVertex(idx)} disabled={current === undefined}>
+              <button
+                type="button"
+                onClick={() => onClearVertex(idx)}
+                disabled={current === undefined}
+                data-testid={`vertex-height-clear-${idx}`}
+              >
                 Clear
               </button>
             </div>
@@ -165,7 +180,8 @@ export function RoofEditor({
           const endHeight = vertexIndex.get(endVertex)
           const current =
             startHeight !== undefined && endHeight !== undefined && startHeight === endHeight ? startHeight : undefined
-          const textValue = edgeInputs[idx] ?? ''
+          const textValue =
+            edgeInputs[idx] ?? (selectedEdgeIndex === idx && current !== undefined ? current.toFixed(2) : '')
           const isSelected = selectedEdgeIndex === idx
 
           return (
@@ -187,21 +203,20 @@ export function RoofEditor({
                     [idx]: event.target.value,
                   }))
                 }
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') {
+                    return
+                  }
+                  event.preventDefault()
+                  applyEdgeInput(idx, textValue)
+                }}
+                onBlur={() => applyEdgeInput(idx, textValue)}
+                data-testid={`edge-height-input-${idx}`}
               />
               <button
                 type="button"
-                onClick={() => {
-                  const value = Number(textValue)
-                  if (!Number.isFinite(value)) {
-                    return
-                  }
-                  const applied = onSetEdge(idx, value)
-                  if (!applied) {
-                    onConstraintLimitExceeded()
-                    return
-                  }
-                  setEdgeInputs((prev) => ({ ...prev, [idx]: '' }))
-                }}
+                data-testid={`edge-height-set-${idx}`}
+                onClick={() => applyEdgeInput(idx, textValue)}
               >
                 Set
               </button>
@@ -209,6 +224,7 @@ export function RoofEditor({
                 type="button"
                 onClick={() => onClearEdge(idx)}
                 disabled={startHeight === undefined && endHeight === undefined}
+                data-testid={`edge-height-clear-${idx}`}
               >
                 Clear
               </button>

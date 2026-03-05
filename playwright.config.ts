@@ -1,0 +1,26 @@
+import { defineConfig } from '@playwright/test'
+
+const isCoverageRun = process.env.PW_COVERAGE === '1'
+
+export default defineConfig({
+  testDir: './e2e',
+  timeout: 120_000,
+  globalSetup: './e2e/global-setup.ts',
+  expect: {
+    timeout: 10_000,
+  },
+  fullyParallel: false,
+  workers: 1,
+  use: {
+    baseURL: 'http://127.0.0.1:4173',
+    headless: true,
+  },
+  webServer: {
+    command: isCoverageRun
+      ? 'npm run dev -- --mode coverage --host 127.0.0.1 --port 4173'
+      : 'npm run dev -- --host 127.0.0.1 --port 4173',
+    url: 'http://127.0.0.1:4173',
+    reuseExistingServer: true,
+    timeout: 120_000,
+  },
+})

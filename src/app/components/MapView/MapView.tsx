@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import type { FootprintPolygon, RoofMeshData, VertexHeightConstraint } from '../../../types/geometry'
+import { DebugOverlayLayer } from '../../../rendering/roof-layer/DebugOverlayLayer'
 import { RoofMeshLayer } from '../../../rendering/roof-layer/RoofMeshLayer'
 
 interface MapViewProps {
@@ -23,7 +24,16 @@ interface MapViewProps {
   onMoveRejected: () => void
   onAdjustHeight: (stepM: number) => void
   showSolveHint: boolean
+  diagnostics: {
+    constraintCount: number
+    minHeightM: number
+    maxHeightM: number
+    pitchDeg: number
+    triangleCount: number
+  } | null
   onMapClick: (point: [number, number]) => void
+  onBearingChange: (bearingDeg: number) => void
+  onPitchChange: (pitchDeg: number) => void
 }
 
 const SATELLITE_TILES =
@@ -48,6 +58,7 @@ const EDGE_HIT_LAYER_ID = 'active-footprint-edge-hit'
 const VERTEX_HIT_LAYER_ID = 'active-footprint-vertex-hit'
 const HEIGHT_STEP_M = 0.1
 const HEIGHT_STEP_SHIFT_M = 1.0
+const DEBUG_Z_EXAGGERATION = 40
 
 interface DragState {
   type: 'vertex' | 'edge'
@@ -238,11 +249,15 @@ export function MapView({
   onMoveRejected,
   onAdjustHeight,
   showSolveHint,
+  diagnostics,
   onMapClick,
+  onBearingChange,
+  onPitchChange,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const roofLayerRef = useRef<RoofMeshLayer | null>(null)
+  const debugOverlayLayerRef = useRef<DebugOverlayLayer | null>(null)
   const drawingRef = useRef(isDrawing)
   const onClickRef = useRef(onMapClick)
   const onSelectVertexRef = useRef(onSelectVertex)
@@ -253,6 +268,8 @@ export function MapView({
   const onMoveEdgeRef = useRef(onMoveEdge)
   const onMoveRejectedRef = useRef(onMoveRejected)
   const onAdjustHeightRef = useRef(onAdjustHeight)
+  const onBearingChangeRef = useRef(onBearingChange)
+  const onPitchChangeRef = useRef(onPitchChange)
   const footprintsRef = useRef(footprints)
   const activeFootprintRef = useRef(activeFootprint)
   const draftRef = useRef(drawDraft)
@@ -261,8 +278,25 @@ export function MapView({
   const selectedEdgeRef = useRef(selectedEdgeIndex)
   const vertexConstraintsRef = useRef(vertexConstraints)
   const orbitEnabledRef = useRef(orbitEnabled)
+  const [debugEnabled, setDebugEnabled] = useState(true)
+  const debugEnabledRef = useRef(debugEnabled)
   const dragStateRef = useRef<DragState | null>(null)
   const [gizmoScreenPos, setGizmoScreenPos] = useState<{ left: number; top: number } | null>(null)
+  const [mapZoom, setMapZoom] = useState(18)
+  const [mapPitch, setMapPitch] = useState(0)
+
+  const adjustOrbitCamera = (bearingDeltaDeg: number, pitchDeltaDeg: number) => {
+    const map = mapRef.current
+    if (!map) {
+      return
+    }
+    const nextPitch = Math.max(0, Math.min(MAX_ORBIT_PITCH_DEG, map.getPitch() + pitchDeltaDeg))
+    map.easeTo({
+      bearing: map.getBearing() + bearingDeltaDeg,
+      pitch: nextPitch,
+      duration: 220,
+    })
+  }
 
   useEffect(() => {
     drawingRef.current = isDrawing
@@ -305,6 +339,14 @@ export function MapView({
   }, [onAdjustHeight])
 
   useEffect(() => {
+    onBearingChangeRef.current = onBearingChange
+  }, [onBearingChange])
+
+  useEffect(() => {
+    onPitchChangeRef.current = onPitchChange
+  }, [onPitchChange])
+
+  useEffect(() => {
     footprintsRef.current = footprints
   }, [footprints])
 
@@ -335,6 +377,10 @@ export function MapView({
   useEffect(() => {
     orbitEnabledRef.current = orbitEnabled
   }, [orbitEnabled])
+
+  useEffect(() => {
+    debugEnabledRef.current = debugEnabled
+  }, [debugEnabled])
 
   const gizmoAnchor = useMemo(() => {
     if (!activeFootprint || activeFootprint.vertices.length < 3 || !orbitEnabled) {
@@ -502,11 +548,18 @@ export function MapView({
     })
 
     map.addControl(new maplibregl.NavigationControl(), 'top-right')
+    onBearingChangeRef.current(map.getBearing())
+    onPitchChangeRef.current(map.getPitch())
+    setMapZoom(map.getZoom())
+    setMapPitch(map.getPitch())
 
     map.on('load', () => {
       const roofLayer = new RoofMeshLayer('roof-mesh-layer')
+      const debugOverlayLayer = new DebugOverlayLayer('roof-debug-overlay-layer')
       roofLayerRef.current = roofLayer
+      debugOverlayLayerRef.current = debugOverlayLayer
       map.addLayer(roofLayer)
+      map.addLayer(debugOverlayLayer)
       updateInteractiveSources(
         map,
         footprintsRef.current,
@@ -542,7 +595,12 @@ export function MapView({
         draftSource.setData({ type: 'FeatureCollection', features })
       }
 
+      const zExaggeration = debugEnabledRef.current ? DEBUG_Z_EXAGGERATION : 1
       roofLayer.setMeshes(roofMeshesRef.current)
+      roofLayer.setZExaggeration(zExaggeration)
+      debugOverlayLayer.setMeshes(roofMeshesRef.current)
+      debugOverlayLayer.setZExaggeration(zExaggeration)
+      debugOverlayLayer.setVisible(debugEnabledRef.current)
     })
 
     map.on('click', (event) => {
@@ -704,12 +762,31 @@ export function MapView({
     map.on('mouseup', finishDrag)
     map.on('mouseout', finishDrag)
 
+    const emitBearing = () => {
+      onBearingChangeRef.current(map.getBearing())
+    }
+    const emitPitch = () => {
+      const nextPitch = map.getPitch()
+      onPitchChangeRef.current(nextPitch)
+      setMapPitch(nextPitch)
+    }
+    const emitZoom = () => {
+      setMapZoom(map.getZoom())
+    }
+    map.on('rotate', emitBearing)
+    map.on('pitch', emitPitch)
+    map.on('zoom', emitZoom)
+
     mapRef.current = map
 
     return () => {
+      map.off('rotate', emitBearing)
+      map.off('pitch', emitPitch)
+      map.off('zoom', emitZoom)
       map.remove()
       mapRef.current = null
       roofLayerRef.current = null
+      debugOverlayLayerRef.current = null
     }
   }, [])
 
@@ -765,7 +842,22 @@ export function MapView({
 
   useEffect(() => {
     roofLayerRef.current?.setMeshes(roofMeshes)
+    debugOverlayLayerRef.current?.setMeshes(roofMeshes)
   }, [roofMeshes])
+
+  useEffect(() => {
+    const roofLayer = roofLayerRef.current
+    const debugLayer = debugOverlayLayerRef.current
+    const map = mapRef.current
+    if (!roofLayer || !debugLayer || !map || !map.getLayer('roof-debug-overlay-layer')) {
+      return
+    }
+
+    const zExaggeration = debugEnabled ? DEBUG_Z_EXAGGERATION : 1
+    roofLayer.setZExaggeration(zExaggeration)
+    debugLayer.setZExaggeration(zExaggeration)
+    debugLayer.setVisible(debugEnabled)
+  }, [debugEnabled])
 
   useEffect(() => {
     const map = mapRef.current
@@ -776,6 +868,9 @@ export function MapView({
     if (!orbitEnabled) {
       map.dragRotate.disable()
       map.touchZoomRotate.disableRotation()
+      if (map.getLayer('footprints-fill')) {
+        map.setPaintProperty('footprints-fill', 'fill-opacity', ['case', ['==', ['get', 'active'], 1], 0.24, 0.12])
+      }
       map.easeTo({
         pitch: 0,
         bearing: 0,
@@ -786,6 +881,9 @@ export function MapView({
 
     map.dragRotate.enable()
     map.touchZoomRotate.enableRotation()
+    if (map.getLayer('footprints-fill')) {
+      map.setPaintProperty('footprints-fill', 'fill-opacity', 0)
+    }
 
     const focusFootprint = activeFootprint ?? footprints.find((candidate) => candidate.vertices.length >= 3) ?? null
     if (focusFootprint && focusFootprint.vertices.length >= 3) {
@@ -835,10 +933,74 @@ export function MapView({
 
   return (
     <div className="map-root-wrap">
-      <div ref={containerRef} className="map-root" />
-      <button type="button" className="map-orbit-toggle" onClick={onToggleOrbit}>
+      <div ref={containerRef} className="map-root" data-testid="map-canvas" />
+      <button type="button" className="map-orbit-toggle" onClick={onToggleOrbit} data-testid="orbit-toggle-button">
         {orbitEnabled ? 'Exit orbit' : 'Orbit'}
       </button>
+      <button
+        type="button"
+        className="map-debug-toggle"
+        onClick={() => setDebugEnabled((enabled) => !enabled)}
+        data-testid="debug-overlay-toggle-button"
+      >
+        {debugEnabled ? 'Hide debug' : 'Show debug'}
+      </button>
+      <div className="map-ground-label">Ground footprint</div>
+      {orbitEnabled && (
+        <div className="map-camera-controls">
+          <button
+            type="button"
+            data-testid="map-rotate-left-button"
+            onClick={() => adjustOrbitCamera(-15, 0)}
+            title="Rotate left"
+          >
+            ⟲
+          </button>
+          <button
+            type="button"
+            data-testid="map-rotate-right-button"
+            onClick={() => adjustOrbitCamera(15, 0)}
+            title="Rotate right"
+          >
+            ⟳
+          </button>
+          <button
+            type="button"
+            data-testid="map-pitch-up-button"
+            onClick={() => adjustOrbitCamera(0, 6)}
+            title="Pitch up"
+          >
+            ↥
+          </button>
+          <button
+            type="button"
+            data-testid="map-pitch-down-button"
+            onClick={() => adjustOrbitCamera(0, -6)}
+            title="Pitch down"
+          >
+            ↧
+          </button>
+        </div>
+      )}
+      {debugEnabled && diagnostics && (
+        <div className="map-debug-hud" data-testid="map-debug-hud">
+          <p>constraints: {diagnostics.constraintCount}</p>
+          <p>
+            min/max/span: {diagnostics.minHeightM.toFixed(2)}m / {diagnostics.maxHeightM.toFixed(2)}m /{' '}
+            {(diagnostics.maxHeightM - diagnostics.minHeightM).toFixed(2)}m
+          </p>
+          <p>pitch: {diagnostics.pitchDeg.toFixed(2)} deg</p>
+          <p>triangles: {diagnostics.triangleCount}</p>
+          <p>
+            map pitch/zoom: {mapPitch.toFixed(1)} deg / {mapZoom.toFixed(2)}
+          </p>
+        </div>
+      )}
+      {debugEnabled && roofMeshes.length === 0 && !isDrawing && (
+        <div className="map-debug-hint" data-testid="map-debug-hint">
+          Debug overlay needs a solved roof (set at least 3 constraints).
+        </div>
+      )}
       {!isDrawing && activeFootprint && <div className="map-selection-hint">Click a vertex or edge to edit its height</div>}
       {orbitEnabled && gizmoScreenPos && (
         <div className="height-gizmo" style={{ left: `${gizmoScreenPos.left}px`, top: `${gizmoScreenPos.top}px` }}>

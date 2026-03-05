@@ -138,6 +138,46 @@ button:disabled {
   background: rgba(17, 24, 25, 0.94);
 }
 
+.map-debug-toggle {
+  position: absolute;
+  top: 14px;
+  left: 96px;
+  z-index: 10;
+  border: 1px solid #4f7f5a;
+  background: rgba(17, 24, 25, 0.94);
+}
+
+.map-camera-controls {
+  position: absolute;
+  top: 14px;
+  left: 204px;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 6px;
+}
+
+.map-camera-controls button {
+  min-width: 38px;
+  padding: 6px 8px;
+  border: 1px solid #51666f;
+  background: rgba(17, 24, 25, 0.94);
+}
+
+.map-ground-label {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 10;
+  border: 1px solid #5f6970;
+  background: rgba(17, 24, 25, 0.92);
+  color: #d0d9de;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.76rem;
+  pointer-events: none;
+}
+
 .map-hint {
   position: absolute;
   left: 50%;
@@ -149,6 +189,42 @@ button:disabled {
   border-radius: 999px;
   padding: 8px 14px;
   font-size: 0.88rem;
+  pointer-events: none;
+}
+
+.map-debug-hud {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 12;
+  border: 1px solid #50745a;
+  background: rgba(14, 24, 18, 0.92);
+  color: #d4f6dc;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  min-width: 240px;
+}
+
+.map-debug-hud p {
+  margin: 0 0 4px;
+}
+
+.map-debug-hud p:last-child {
+  margin-bottom: 0;
+}
+
+.map-debug-hint {
+  position: absolute;
+  left: 14px;
+  top: 56px;
+  z-index: 11;
+  border: 1px solid #50745a;
+  background: rgba(14, 24, 18, 0.92);
+  color: #d4f6dc;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
   pointer-events: none;
 }
 

@@ -8,7 +8,6 @@ import type {
 } from '../../types/geometry'
 
 const STORAGE_KEY = 'suncast_project'
-const LEGACY_STORAGE_KEY = 'suncast.project.v1'
 const SOLVER_CONFIG_VERSION = 'uc3'
 
 interface FootprintStateEntry {
@@ -39,12 +38,6 @@ type Action =
   | { type: 'CLEAR_VERTEX_HEIGHT'; vertexIndex: number }
   | { type: 'CLEAR_EDGE_HEIGHT'; edgeIndex: number }
   | { type: 'LOAD'; payload: ProjectState }
-
-interface LegacyProjectData {
-  footprint: FootprintPolygon | null
-  constraints: FaceConstraints
-  solverConfigVersion?: string
-}
 
 const initialState: ProjectState = {
   footprints: {},
@@ -81,35 +74,6 @@ function sanitizeVertexHeights(vertexHeights: VertexHeightConstraint[], vertexCo
   return Array.from(byIndex.entries())
     .map(([vertexIndex, heightM]) => ({ vertexIndex, heightM }))
     .sort((a, b) => a.vertexIndex - b.vertexIndex)
-}
-
-function migrateConstraints(constraints: FaceConstraints, footprint: FootprintPolygon): FaceConstraints {
-  const vertexCount = footprint.vertices.length
-  const byIndex = new Map<number, number>()
-
-  for (const constraint of constraints.vertexHeights) {
-    if (constraint.vertexIndex < 0 || constraint.vertexIndex >= vertexCount) {
-      continue
-    }
-    byIndex.set(constraint.vertexIndex, constraint.heightM)
-  }
-
-  // Legacy support: old projects may still contain edge constraints.
-  for (const edgeConstraint of constraints.edgeHeights ?? []) {
-    if (edgeConstraint.edgeIndex < 0 || edgeConstraint.edgeIndex >= vertexCount) {
-      continue
-    }
-    const start = edgeConstraint.edgeIndex
-    const end = (edgeConstraint.edgeIndex + 1) % vertexCount
-    byIndex.set(start, edgeConstraint.heightM)
-    byIndex.set(end, edgeConstraint.heightM)
-  }
-
-  return {
-    vertexHeights: Array.from(byIndex.entries())
-      .map(([vertexIndex, heightM]) => ({ vertexIndex, heightM }))
-      .sort((a, b) => a.vertexIndex - b.vertexIndex),
-  }
 }
 
 function applyToActiveFootprint(
@@ -414,37 +378,7 @@ function readStorage(): ProjectState | null {
       return null
     }
   }
-
-  const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY)
-  if (!legacyRaw) {
-    return null
-  }
-
-  try {
-    const legacy = JSON.parse(legacyRaw) as LegacyProjectData
-    if (!legacy.footprint) {
-      return {
-        ...initialState,
-      }
-    }
-
-    const footprint = legacy.footprint
-    const migratedEntry: FootprintStateEntry = {
-      footprint,
-      constraints: migrateConstraints(legacy.constraints ?? { vertexHeights: [] }, footprint),
-    }
-
-    return {
-      footprints: {
-        [footprint.id]: migratedEntry,
-      },
-      activeFootprintId: footprint.id,
-      drawDraft: [],
-      isDrawing: false,
-    }
-  } catch {
-    return null
-  }
+  return null
 }
 
 export function useProjectStore() {
@@ -482,14 +416,6 @@ export function useProjectStore() {
   const activeFootprint = activeEntry?.footprint ?? null
   const activeConstraints = activeEntry?.constraints ?? emptyConstraints
 
-  const wouldExceedConstraintLimit = (targetVertexIndices: number[]): boolean => {
-    const existing = new Set(activeConstraints.vertexHeights.map((constraint) => constraint.vertexIndex))
-    const nextCount =
-      existing.size +
-      targetVertexIndices.reduce((added, vertexIndex) => (existing.has(vertexIndex) ? added : added + 1), 0)
-    return nextCount > 3
-  }
-
   return useMemo(
     () => ({
       state,
@@ -506,7 +432,7 @@ export function useProjectStore() {
         dispatch({ type: 'MOVE_VERTEX', payload: { vertexIndex, point } }),
       moveEdge: (edgeIndex: number, delta: [number, number]) => dispatch({ type: 'MOVE_EDGE', payload: { edgeIndex, delta } }),
       setVertexHeight: (vertexIndex: number, heightM: number) => {
-        if (wouldExceedConstraintLimit([vertexIndex])) {
+        if (!activeFootprint || vertexIndex < 0 || vertexIndex >= activeFootprint.vertices.length) {
           return false
         }
         dispatch({ type: 'SET_VERTEX_HEIGHT', payload: { vertexIndex, heightM } })
@@ -516,18 +442,17 @@ export function useProjectStore() {
         if (!activeFootprint || edgeIndex < 0 || edgeIndex >= activeFootprint.vertices.length) {
           return false
         }
-        const end = (edgeIndex + 1) % activeFootprint.vertices.length
-        if (wouldExceedConstraintLimit([edgeIndex, end])) {
-          return false
-        }
         dispatch({ type: 'SET_EDGE_HEIGHT', payload: { edgeIndex, heightM } })
         return true
       },
       setVertexHeights: (constraints: VertexHeightConstraint[]) => {
-        if (constraints.length === 0) {
+        if (!activeFootprint || constraints.length === 0) {
           return false
         }
-        if (wouldExceedConstraintLimit(constraints.map((constraint) => constraint.vertexIndex))) {
+        const hasInvalidIndex = constraints.some(
+          (constraint) => constraint.vertexIndex < 0 || constraint.vertexIndex >= activeFootprint.vertices.length,
+        )
+        if (hasInvalidIndex) {
           return false
         }
         dispatch({ type: 'SET_VERTEX_HEIGHTS', payload: constraints })

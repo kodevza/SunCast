@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DrawTools } from '../components/DrawTools/DrawTools'
 import { MapView } from '../components/MapView/MapView'
 import { RoofEditor } from '../components/RoofEditor/RoofEditor'
@@ -6,8 +6,9 @@ import { useProjectStore } from '../../state/project-store'
 import { validateFootprint } from '../../geometry/solver/validation'
 import { solveRoofPlane } from '../../geometry/solver/solveRoofPlane'
 import { generateRoofMesh } from '../../geometry/mesh/generateRoofMesh'
-import { computeRoofMetrics } from '../../geometry/solver/metrics'
+import { clampAzimuth, computeRoofMetrics, planeSlopeFromPitchAzimuth } from '../../geometry/solver/metrics'
 import { RoofSolverError } from '../../geometry/solver/errors'
+import { projectPointsToLocalMeters } from '../../geometry/projection/localMeters'
 import type { LngLat, RoofMeshData, SolvedRoofPlane } from '../../types/geometry'
 
 interface SolvedEntry {
@@ -17,11 +18,37 @@ interface SolvedEntry {
   metrics: ReturnType<typeof computeRoofMetrics>
 }
 
+function squaredDistancePointToSegment(
+  point: { x: number; y: number },
+  segmentStart: { x: number; y: number },
+  segmentEnd: { x: number; y: number },
+): number {
+  const vx = segmentEnd.x - segmentStart.x
+  const vy = segmentEnd.y - segmentStart.y
+  const wx = point.x - segmentStart.x
+  const wy = point.y - segmentStart.y
+  const vv = vx * vx + vy * vy
+  if (vv <= Number.EPSILON) {
+    const dx = point.x - segmentStart.x
+    const dy = point.y - segmentStart.y
+    return dx * dx + dy * dy
+  }
+  const t = Math.max(0, Math.min(1, (wx * vx + wy * vy) / vv))
+  const projX = segmentStart.x + t * vx
+  const projY = segmentStart.y + t * vy
+  const dx = point.x - projX
+  const dy = point.y - projY
+  return dx * dx + dy * dy
+}
+
 export function EditorScreen() {
   const [orbitEnabled, setOrbitEnabled] = useState(false)
+  const [mapBearingDeg, setMapBearingDeg] = useState(0)
+  const [mapPitchDeg, setMapPitchDeg] = useState(0)
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null)
   const [selectedEdgeIndex, setSelectedEdgeIndex] = useState<number | null>(null)
   const [interactionError, setInteractionError] = useState<string | null>(null)
+  const lastDebugSignatureRef = useRef<string>('')
   const {
     state,
     activeFootprint,
@@ -68,7 +95,7 @@ export function EditorScreen() {
   const applyVertexHeight = (vertexIndex: number, heightM: number): boolean => {
     const applied = setVertexHeight(vertexIndex, heightM)
     if (!applied) {
-      setInteractionError('Max 3 height points')
+      setInteractionError('Failed to apply vertex height')
       return false
     }
     setInteractionError(null)
@@ -76,11 +103,44 @@ export function EditorScreen() {
   }
 
   const applyEdgeHeight = (edgeIndex: number, heightM: number): boolean => {
-    const applied = setEdgeHeight(edgeIndex, heightM)
-    if (!applied) {
-      setInteractionError('Max 3 height points')
+    if (!activeFootprint || edgeIndex < 0 || edgeIndex >= activeFootprint.vertices.length) {
+      setInteractionError('Failed to apply edge height')
       return false
     }
+    const applied = setEdgeHeight(edgeIndex, heightM)
+    if (!applied) {
+      setInteractionError('Failed to apply edge height')
+      return false
+    }
+
+    const end = (edgeIndex + 1) % activeFootprint.vertices.length
+    const postEdgeIndices = new Set(activeConstraints.vertexHeights.map((constraint) => constraint.vertexIndex))
+    postEdgeIndices.add(edgeIndex)
+    postEdgeIndices.add(end)
+
+    if (postEdgeIndices.size === 2 && activeFootprint.vertices.length >= 3) {
+      const { points2d } = projectPointsToLocalMeters(activeFootprint.vertices)
+      const segmentStart = points2d[edgeIndex]
+      const segmentEnd = points2d[end]
+
+      let fallbackVertexIndex: number | null = null
+      let maxDistanceSq = -1
+      for (let idx = 0; idx < points2d.length; idx += 1) {
+        if (idx === edgeIndex || idx === end) {
+          continue
+        }
+        const distanceSq = squaredDistancePointToSegment(points2d[idx], segmentStart, segmentEnd)
+        if (distanceSq > maxDistanceSq) {
+          maxDistanceSq = distanceSq
+          fallbackVertexIndex = idx
+        }
+      }
+
+      if (fallbackVertexIndex !== null) {
+        setVertexHeight(fallbackVertexIndex, 0)
+      }
+    }
+
     setInteractionError(null)
     return true
   }
@@ -148,7 +208,7 @@ export function EditorScreen() {
         { vertexIndex: end, heightM: nextEnd },
       ])
       if (!applied) {
-        setInteractionError('Max 3 height points')
+        setInteractionError('Failed to adjust edge heights')
         return
       }
       setInteractionError(null)
@@ -169,8 +229,15 @@ export function EditorScreen() {
       }
 
       try {
+        console.log('[constraints]', entry.footprint.id, entry.constraints.vertexHeights)
         const solution = solveRoofPlane(entry.footprint, entry.constraints)
         const mesh = generateRoofMesh(entry.footprint, solution.vertexHeightsM)
+        console.log('[roof-mesh] triangles', {
+          footprintId: entry.footprint.id,
+          triangleIndexCount: mesh.triangleIndices.length,
+          triangleCount: mesh.triangleIndices.length / 3,
+          vertexCount: mesh.vertices.length,
+        })
         const metrics = computeRoofMetrics(solution.plane, mesh)
         solvedEntries.push({
           footprintId: entry.footprint.id,
@@ -202,6 +269,85 @@ export function EditorScreen() {
       activeError,
     }
   }, [footprintEntries, state.activeFootprintId])
+
+  const activeDiagnostics = useMemo(() => {
+    if (!solved.activeSolved) {
+      return null
+    }
+    const { mesh, metrics } = solved.activeSolved
+    return {
+      constraintCount: activeConstraints.vertexHeights.length,
+      minHeightM: metrics.minHeightM,
+      maxHeightM: metrics.maxHeightM,
+      pitchDeg: metrics.pitchDeg,
+      triangleCount: Math.floor(mesh.triangleIndices.length / 3),
+    }
+  }, [activeConstraints.vertexHeights.length, solved.activeSolved])
+
+  useEffect(() => {
+    if (!activeFootprint || !solved.activeSolved) {
+      return
+    }
+
+    const { solution, metrics } = solved.activeSolved
+    const userRotationDeg = clampAzimuth(mapBearingDeg)
+    const worldAzimuthDeg = clampAzimuth(metrics.azimuthDeg)
+    const mapRelativeAzimuthDeg = ((worldAzimuthDeg - userRotationDeg + 540) % 360) - 180
+    const reconstructed = planeSlopeFromPitchAzimuth(metrics.pitchDeg, worldAzimuthDeg)
+    const signature = [
+      activeFootprint.id,
+      metrics.pitchDeg.toFixed(4),
+      worldAzimuthDeg.toFixed(4),
+      userRotationDeg.toFixed(4),
+      mapPitchDeg.toFixed(4),
+      solution.plane.p.toFixed(6),
+      solution.plane.q.toFixed(6),
+      solution.plane.r.toFixed(6),
+    ].join('|')
+
+    if (lastDebugSignatureRef.current === signature) {
+      return
+    }
+    lastDebugSignatureRef.current = signature
+
+    const { points2d } = projectPointsToLocalMeters(activeFootprint.vertices)
+    const sampleRows = points2d.map((point, idx) => {
+      const solvedZ = solution.vertexHeightsM[idx]
+      const [lon, lat] = activeFootprint.vertices[idx]
+      const fromPitchRotationZ = reconstructed.p * point.x + reconstructed.q * point.y + solution.plane.r
+      return {
+        vertex: idx,
+        lon: Number(lon.toFixed(7)),
+        lat: Number(lat.toFixed(7)),
+        heightM: Number(solvedZ.toFixed(4)),
+        projectedXM: Number(point.x.toFixed(3)),
+        projectedYM: Number(point.y.toFixed(3)),
+        simulatedHeightM: Number(fromPitchRotationZ.toFixed(4)),
+        deltaM: Number((fromPitchRotationZ - solvedZ).toExponential(2)),
+      }
+    })
+
+    console.groupCollapsed(`[roof-debug] ${activeFootprint.id} pitch+rotation simulation`)
+    console.log({
+      pitchDeg: Number(metrics.pitchDeg.toFixed(4)),
+      rotateDeg: Number(userRotationDeg.toFixed(4)),
+      mapPitchDeg: Number(mapPitchDeg.toFixed(4)),
+      worldAzimuthDeg: Number(worldAzimuthDeg.toFixed(4)),
+      mapRelativeAzimuthDeg: Number(mapRelativeAzimuthDeg.toFixed(4)),
+      tanPitch: Number(Math.tan((metrics.pitchDeg * Math.PI) / 180).toFixed(6)),
+      solvedPlane: {
+        p: Number(solution.plane.p.toFixed(6)),
+        q: Number(solution.plane.q.toFixed(6)),
+        r: Number(solution.plane.r.toFixed(6)),
+      },
+      reconstructedFromPitchAzimuth: {
+        p: Number(reconstructed.p.toFixed(6)),
+        q: Number(reconstructed.q.toFixed(6)),
+      },
+    })
+    console.table(sampleRows)
+    console.groupEnd()
+  }, [activeFootprint, mapBearingDeg, mapPitchDeg, solved.activeSolved])
 
   return (
     <div className="editor-layout">
@@ -286,7 +432,7 @@ export function EditorScreen() {
           onSetEdge={applyEdgeHeight}
           onClearVertex={clearVertexHeight}
           onClearEdge={clearEdgeHeight}
-          onConstraintLimitExceeded={() => setInteractionError('Max 3 height points')}
+          onConstraintLimitExceeded={() => setInteractionError('Failed to apply height constraints')}
         />
 
         <section className="panel-section">
@@ -358,7 +504,10 @@ export function EditorScreen() {
           onMoveRejected={() => setInteractionError('Footprint cannot self-intersect')}
           onAdjustHeight={applyHeightStep}
           showSolveHint={!solved.activeSolved}
+          diagnostics={activeDiagnostics}
           onMapClick={addDraftPoint}
+          onBearingChange={setMapBearingDeg}
+          onPitchChange={setMapPitchDeg}
         />
       </main>
     </div>

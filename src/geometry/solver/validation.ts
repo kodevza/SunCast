@@ -1,6 +1,8 @@
 import type { FootprintPolygon } from '../../types/geometry'
+import { projectPointsToLocalMeters } from '../projection/localMeters'
 
 const COORD_EPS = 1e-12
+const EDGE_LENGTH_EPSILON_M = 0.01
 
 function segmentsIntersect(
   a1: [number, number],
@@ -59,6 +61,19 @@ export function validateFootprint(footprint: FootprintPolygon | null): string[] 
   if (uniqueCount < 3) {
     errors.push('Footprint must have at least 3 distinct vertices')
     return errors
+  }
+
+  const { points2d } = projectPointsToLocalMeters(vertices)
+  for (let i = 0; i < points2d.length; i += 1) {
+    const current = points2d[i]
+    const next = points2d[(i + 1) % points2d.length]
+    const dx = next.x - current.x
+    const dy = next.y - current.y
+    const edgeLen = Math.sqrt(dx * dx + dy * dy)
+    if (edgeLen < EDGE_LENGTH_EPSILON_M) {
+      errors.push('Footprint edges must be longer than 0.01 m')
+      return errors
+    }
   }
 
   for (let i = 0; i < vertices.length; i += 1) {

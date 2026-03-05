@@ -7,7 +7,31 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run --exclude \"**/e2e/**\"",
+    "test:e2e": "playwright test",
+    "test:e2e:coverage": "cross-env PW_COVERAGE=1 playwright test",
+    "coverage:e2e:report": "nyc report --reporter=html --reporter=text-summary --reporter=lcov",
+    "coverage:e2e": "npm run test:e2e:coverage && npm run coverage:e2e:report",
+    "coverage:legacy-audit": "node scripts/coverage-legacy-audit.mjs --lcov coverage/lcov.info",
+    "coverage:legacy-check": "node scripts/coverage-legacy-audit.mjs --lcov coverage/lcov.info --only-legacy --fail-on-legacy"
+  },
+  "nyc": {
+    "all": true,
+    "include": [
+      "src/**/*.{ts,tsx}"
+    ],
+    "exclude": [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "src/main.tsx"
+    ],
+    "report-dir": "coverage",
+    "temp-dir": ".nyc_output",
+    "extension": [
+      ".ts",
+      ".tsx"
+    ]
   },
   "dependencies": {
     "earcut": "^3.0.2",
@@ -17,17 +41,22 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.58.2",
     "@types/earcut": "^3.0.0",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "cross-env": "^10.1.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "nyc": "^18.0.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vite-plugin-istanbul": "^7.2.1",
+    "vitest": "^4.0.18"
   }
 }
