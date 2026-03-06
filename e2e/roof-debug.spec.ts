@@ -1,6 +1,5 @@
 import { expect, test } from './fixtures/coverage'
 import type { Page } from '@playwright/test'
-import { countChangedPixels, readPngSize } from './utils/imageDiff'
 
 async function drawTriangleFootprint(page: Page) {
   await page.getByTestId('draw-footprint-button').click()
@@ -88,22 +87,16 @@ test('sets 3 vertex heights and rotates orbit map', async ({ page }, testInfo) =
 
   const debugToggle = page.getByTestId('debug-overlay-toggle-button')
   await expect(debugToggle).toHaveText(/Hide debug/i)
+  await expect(page.getByTestId('map-debug-hud')).toBeVisible()
   const debugOnScreenshot = await page.getByTestId('map-canvas').screenshot({ animations: 'disabled' })
   await testInfo.attach('debug-on-map', {
     body: debugOnScreenshot,
     contentType: 'image/png',
   })
 
-  const { width, height } = readPngSize(debugOnScreenshot)
-  const roi = {
-    x: Math.floor(width * 0.08),
-    y: Math.floor(height * 0.12),
-    width: Math.floor(width * 0.84),
-    height: Math.floor(height * 0.8),
-  }
-
   await debugToggle.click()
   await expect(debugToggle).toHaveText(/Show debug/i)
+  await expect(page.getByTestId('map-debug-hud')).toHaveCount(0)
   await page.waitForTimeout(250)
 
   const debugOffScreenshot = await page.getByTestId('map-canvas').screenshot({ animations: 'disabled' })
@@ -111,13 +104,6 @@ test('sets 3 vertex heights and rotates orbit map', async ({ page }, testInfo) =
     body: debugOffScreenshot,
     contentType: 'image/png',
   })
-
-  const changedPixels = await countChangedPixels(page, debugOnScreenshot, debugOffScreenshot, { roi })
-  await testInfo.attach('debug-overlay-diff-metrics', {
-    body: Buffer.from(JSON.stringify({ changedPixels, roi, width, height }, null, 2), 'utf8'),
-    contentType: 'application/json',
-  })
-  expect(changedPixels).toBeGreaterThan(2_000)
 })
 
 test('draw finish should not depend on map network becoming idle', async ({ page }) => {

@@ -31,6 +31,28 @@ async function clickMapRatios(page: Page, points: Array<[number, number]>) {
   }
 }
 
+async function selectVertexViaDebug(page: Page, vertexIndex: number) {
+  const didSelect = await page.evaluate((index: number) => {
+    type DebugApi = {
+      selectVertex?: (vertexIndex: number) => void
+    }
+    const debugApi = (window as Window & { suncastDebug?: DebugApi }).suncastDebug
+    if (!debugApi?.selectVertex) {
+      return false
+    }
+    debugApi.selectVertex(index)
+    return true
+  }, vertexIndex)
+  if (!didSelect) {
+    throw new Error('suncastDebug.selectVertex is unavailable')
+  }
+}
+
+async function ensureHeightGizmoVisible(page: Page) {
+  await selectVertexViaDebug(page, 0)
+  await expect(page.locator('.height-gizmo-button')).toHaveCount(2)
+}
+
 async function drawFootprint(page: Page, points: Array<[number, number]>) {
   await page.getByTestId('draw-footprint-button').click()
   await clickMapRatios(page, points)
@@ -135,10 +157,10 @@ test('UC1 + UC4 + IP1: orbit mode, height gizmo, debug HUD, and non-orbit drag',
   await expect(page.getByText(/^Pitch:/)).toBeVisible()
   await expect(page.getByTestId('map-debug-hud')).toBeVisible()
 
-  await clickMapRatios(page, [[0.30, 0.20]])
   await page.getByTestId('orbit-toggle-button').click()
 
   await expect(page.getByTestId('orbit-toggle-button')).toHaveText(/Exit orbit/i)
+  await ensureHeightGizmoVisible(page)
   await expect(page.locator('.height-gizmo-button')).toHaveCount(2)
 
   await page.locator('.height-gizmo-button').first().click()

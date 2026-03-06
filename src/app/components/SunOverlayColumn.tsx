@@ -14,6 +14,8 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Line } from 'react-chartjs-2'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { planeSlopeFromPitchAzimuth } from '../../geometry/solver/metrics'
+import { getAnnualAggregatedDayProfile } from '../../geometry/sun/annualEstimation'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 
@@ -45,6 +47,15 @@ interface SunOverlayColumnProps {
 function extractDateIso(datetimeIso: string): string | null {
   const match = /^(\d{4}-\d{2}-\d{2})T/.exec(datetimeIso.trim())
   return match ? match[1] : null
+}
+
+function extractYear(datetimeIso: string): number | null {
+  const match = /^(\d{4})-\d{2}-\d{2}T/.exec(datetimeIso.trim())
+  if (!match) {
+    return null
+  }
+  const year = Number(match[1])
+  return Number.isInteger(year) ? year : null
 }
 
 function normalizeAzimuthDeg(deg: number): number {
@@ -90,6 +101,7 @@ export function SunOverlayColumn({
   const [forecastError, setForecastError] = useState<string | null>(null)
   const [forecastPoints, setForecastPoints] = useState<ForecastPoint[]>([])
   const selectedDateIso = useMemo(() => extractDateIso(datetimeIso), [datetimeIso])
+  const selectedYear = useMemo(() => extractYear(datetimeIso) ?? new Date().getFullYear(), [datetimeIso])
   const hasForecastInputs =
     selectedDateIso !== null &&
     latDeg !== null &&
@@ -237,6 +249,52 @@ export function SunOverlayColumn({
     return forecastPoints.reduce((peak, point) => (point.irradianceWm2 > peak.irradianceWm2 ? point : peak), forecastPoints[0])
   }, [forecastPoints])
 
+  const annualProfile = useMemo(() => {
+    if (latDeg === null || lonDeg === null || roofPitchDeg === null || roofAzimuthDeg === null) {
+      return null
+    }
+
+    const { p, q } = planeSlopeFromPitchAzimuth(roofPitchDeg, roofAzimuthDeg)
+    return getAnnualAggregatedDayProfile({
+      year: selectedYear,
+      timeZone,
+      latDeg,
+      lonDeg,
+      plane: { p, q, r: 0 },
+      stepMinutes: 15,
+    })
+  }, [latDeg, lonDeg, roofAzimuthDeg, roofPitchDeg, selectedYear, timeZone])
+
+  const annualChartData = useMemo<ChartData<'line'> | null>(() => {
+    if (!annualProfile) {
+      return null
+    }
+
+    return {
+      labels: annualProfile.points.map((point) => point.timeLabel),
+      datasets: [
+        {
+          label: 'Annual aggregated POA (W/m2-sum)',
+          data: annualProfile.points.map((point) => point.value),
+          borderColor: '#8fe287',
+          backgroundColor: 'rgba(143, 226, 135, 0.18)',
+          pointRadius: 1,
+          pointHoverRadius: 3,
+          borderWidth: 1.5,
+          fill: true,
+          tension: 0.2,
+        },
+      ],
+    }
+  }, [annualProfile])
+
+  const annualPeak = useMemo(() => {
+    if (!annualProfile || annualProfile.points.length === 0) {
+      return null
+    }
+    return annualProfile.points.reduce((peak, point) => (point.value > peak.value ? point : peak), annualProfile.points[0])
+  }, [annualProfile])
+
   return (
     <aside className={`sun-overlay-column${collapsed ? ' sun-overlay-column-collapsed' : ''}`}>
       <button
@@ -286,6 +344,27 @@ export function SunOverlayColumn({
                 <p data-testid="sun-forecast-date">Date: {selectedDateIso}</p>
                 <p data-testid="sun-forecast-power">
                   Estimated PV peak: {(capacityKwp * (forecastPeak.irradianceWm2 / 1000)).toFixed(2)} kW ({capacityKwp.toFixed(1)} kWp)
+                </p>
+              </>
+            )}
+          </section>
+          <section className="panel-section">
+            <h3>Annual Day Profile</h3>
+            {(latDeg === null || lonDeg === null || roofPitchDeg === null || roofAzimuthDeg === null) && (
+              <p>Solve a roof plane first to compute annual aggregation.</p>
+            )}
+            {annualProfile && annualChartData && annualPeak && (
+              <>
+                <p>Accumulated roof irradiance by time of day for {selectedYear}.</p>
+                <div className="sun-daily-chart" data-testid="sun-annual-chart">
+                  <Line data={annualChartData} options={forecastChartOptions} />
+                </div>
+                <p data-testid="sun-annual-peak">
+                  Peak: {annualPeak.value.toFixed(0)} W/m2-sum at {annualPeak.timeLabel}
+                </p>
+                <p data-testid="sun-annual-meta">
+                  Days: {annualProfile.meta.dayCount}, Sampled: {annualProfile.meta.sampledDayCount} (x{annualProfile.meta.sampleWindowDays}),
+                  Step: {annualProfile.meta.stepMinutes} min, Buckets: {annualProfile.meta.nonZeroBuckets}
                 </p>
               </>
             )}

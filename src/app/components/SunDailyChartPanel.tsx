@@ -15,7 +15,6 @@ import { Line } from 'react-chartjs-2'
 import type { RoofPlane } from '../../types/geometry'
 import {
   SUN_DAILY_SERIES_STEP_MINUTES,
-  expectedSeriesPointCount,
   formatTimestampHHmm,
   getDailyPoaSeries,
   getSunriseSunset,

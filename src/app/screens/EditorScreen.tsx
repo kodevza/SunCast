@@ -69,11 +69,32 @@ export function EditorScreen() {
     const debugWindow = window as Window & {
       suncastDebug?: {
         getPolygonsAndHeights: () => FootprintDebugEntry[]
+        selectVertex: (vertexIndex: number) => void
+        selectEdge: (edgeIndex: number) => void
+        clearSelection: () => void
       }
     }
 
     debugWindow.suncastDebug = {
       getPolygonsAndHeights: () => debugEntries,
+      selectVertex: (vertexIndex: number) => {
+        if (!Number.isInteger(vertexIndex)) {
+          return
+        }
+        setSelectedVertexIndex(vertexIndex)
+        setSelectedEdgeIndex(null)
+      },
+      selectEdge: (edgeIndex: number) => {
+        if (!Number.isInteger(edgeIndex)) {
+          return
+        }
+        setSelectedEdgeIndex(edgeIndex)
+        setSelectedVertexIndex(null)
+      },
+      clearSelection: () => {
+        setSelectedVertexIndex(null)
+        setSelectedEdgeIndex(null)
+      },
     }
   }, [footprintEntries])
 
