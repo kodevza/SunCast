@@ -3,7 +3,7 @@ import type { FaceConstraints, FootprintPolygon } from '../../types/geometry'
 import { solveRoofPlane } from './solveRoofPlane'
 
 describe('solveRoofPlane', () => {
-  it('accepts more than three constraints and uses least-squares fit', () => {
+  it('accepts more than three constraints and ignores extras after selecting 3 non-collinear points', () => {
     const footprint: FootprintPolygon = {
       id: 'lsq',
       vertices: [
@@ -23,7 +23,7 @@ describe('solveRoofPlane', () => {
     }
 
     const solved = solveRoofPlane(footprint, constraints)
-    expect(solved.usedLeastSquares).toBe(true)
+    expect(solved.usedLeastSquares).toBe(false)
     expect(solved.vertexHeightsM).toHaveLength(4)
     expect(solved.warnings.some((warning) => warning.code === 'CONSTRAINTS_OVERDETERMINED')).toBe(true)
   })

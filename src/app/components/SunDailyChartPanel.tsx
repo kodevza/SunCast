@@ -135,11 +135,7 @@ export function SunDailyChartPanel({ dateIso, timeZone, latDeg, lonDeg, plane }:
             Peak: {series.peakValue_Wm2.toFixed(0)} W/m2 at {series.peakTimeLabel}
           </p>
           <p data-testid="sun-daily-window">
-            Window: {formatTimestampHHmm(series.sunriseTs, timeZone)}-{formatTimestampHHmm(series.sunsetTs, timeZone)} ({series.labels.length}{' '}
-            points, {SUN_DAILY_SERIES_STEP_MINUTES} min)
-          </p>
-          <p>
-            Expected points: {expectedSeriesPointCount(series.sunriseTs, series.sunsetTs, SUN_DAILY_SERIES_STEP_MINUTES)}
+            Window: {formatTimestampHHmm(series.sunriseTs, timeZone)}-{formatTimestampHHmm(series.sunsetTs, timeZone)}
           </p>
         </>
       )}

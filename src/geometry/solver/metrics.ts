@@ -13,9 +13,9 @@ export function planeSlopeFromPitchAzimuth(pitchDeg: number, azimuthDeg: number)
   const tanPitch = Math.tan((pitchDeg * Math.PI) / 180)
   const azimuthRad = (clampAzimuth(azimuthDeg) * Math.PI) / 180
   return {
-    // x axis is east, y axis is north
-    p: tanPitch * Math.sin(azimuthRad),
-    q: tanPitch * Math.cos(azimuthRad),
+    // Input azimuth is downslope direction (x east, y north). Plane gradient (p, q) points upslope.
+    p: -tanPitch * Math.sin(azimuthRad),
+    q: -tanPitch * Math.cos(azimuthRad),
   }
 }
 
@@ -24,7 +24,7 @@ export function computeRoofMetrics(plane: RoofPlane, mesh: RoofMeshData): RoofMe
   const pitchDeg = Math.atan(slopeMagnitude) * (180 / Math.PI)
 
   // p and q are dz/dx and dz/dy where x points east and y points north.
-  const downslopeAzimuthDeg = clampAzimuth((Math.atan2(plane.p, plane.q) * 180) / Math.PI)
+  const downslopeAzimuthDeg = clampAzimuth((Math.atan2(-plane.p, -plane.q) * 180) / Math.PI)
 
   const heights = mesh.vertices.map((v) => v.z)
   const minHeightM = Math.min(...heights)

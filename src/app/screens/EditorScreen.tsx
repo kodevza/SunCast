@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DrawTools } from '../components/DrawTools/DrawTools'
 import { MapView } from '../components/MapView/MapView'
 import { RoofEditor } from '../components/RoofEditor/RoofEditor'
@@ -48,6 +48,34 @@ export function EditorScreen() {
   const footprintEntries = useMemo(() => Object.values(state.footprints), [state.footprints])
   const footprints = useMemo(() => footprintEntries.map((entry) => entry.footprint), [footprintEntries])
   const activeFootprintErrors = validateFootprint(activeFootprint)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    type FootprintDebugEntry = {
+      footprintId: string
+      polygon: Array<[number, number]>
+      vertexHeights: Array<{ vertexIndex: number; heightM: number }>
+    }
+
+    const debugEntries: FootprintDebugEntry[] = footprintEntries.map((entry) => ({
+      footprintId: entry.footprint.id,
+      polygon: entry.footprint.vertices,
+      vertexHeights: entry.constraints.vertexHeights,
+    }))
+
+    const debugWindow = window as Window & {
+      suncastDebug?: {
+        getPolygonsAndHeights: () => FootprintDebugEntry[]
+      }
+    }
+
+    debugWindow.suncastDebug = {
+      getPolygonsAndHeights: () => debugEntries,
+    }
+  }, [footprintEntries])
 
   const solved = useSolvedRoofEntries(footprintEntries, state.activeFootprintId)
 
@@ -226,6 +254,10 @@ export function EditorScreen() {
         <SunOverlayColumn
           datetimeIso={sunDatetimeRaw}
           timeZone={sunDailyTimeZone}
+          latDeg={activeFootprintCentroid ? activeFootprintCentroid[1] : null}
+          lonDeg={activeFootprintCentroid ? activeFootprintCentroid[0] : null}
+          roofPitchDeg={solved.activeSolved?.metrics.pitchDeg ?? null}
+          roofAzimuthDeg={solved.activeSolved?.metrics.azimuthDeg ?? null}
           onDatetimeInputChange={onSunDatetimeInputChange}
           expanded={Boolean(solved.activeSolved) && !state.isDrawing}
         >

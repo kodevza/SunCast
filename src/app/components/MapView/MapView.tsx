@@ -3,6 +3,7 @@ import maplibregl from 'maplibre-gl'
 import type { FootprintPolygon, RoofMeshData, VertexHeightConstraint } from '../../../types/geometry'
 import { DebugOverlayLayer } from '../../../rendering/roof-layer/DebugOverlayLayer'
 import { RoofMeshLayer } from '../../../rendering/roof-layer/RoofMeshLayer'
+import { projectPointsToLocalMeters } from '../../../geometry/projection/localMeters'
 
 interface MapViewProps {
   footprints: FootprintPolygon[]
@@ -66,6 +67,18 @@ interface DragState {
   index: number
   lastLngLat: [number, number]
   invalidAttempted: boolean
+}
+
+function edgeLengthMeters(vertices: Array<[number, number]>, edgeIndex: number): number | null {
+  if (edgeIndex < 0 || edgeIndex >= vertices.length) {
+    return null
+  }
+  const start = vertices[edgeIndex]
+  const end = vertices[(edgeIndex + 1) % vertices.length]
+  const { points2d } = projectPointsToLocalMeters([start, end])
+  const dx = points2d[1].x - points2d[0].x
+  const dy = points2d[1].y - points2d[0].y
+  return Math.sqrt(dx * dx + dy * dy)
 }
 
 function toBounds(vertices: Array<[number, number]>): maplibregl.LngLatBoundsLike {
@@ -287,6 +300,8 @@ export function MapView({
   const [mapZoom, setMapZoom] = useState(18)
   const [mapPitch, setMapPitch] = useState(0)
   const [mapLoaded, setMapLoaded] = useState(false)
+  const [hoveredEdgeLength, setHoveredEdgeLength] = useState<{ left: number; top: number; lengthM: number } | null>(null)
+  const hoveredEdgeLengthRef = useRef<{ left: number; top: number; lengthM: number } | null>(null)
 
   const adjustOrbitCamera = (bearingDeltaDeg: number, pitchDeltaDeg: number) => {
     const map = mapRef.current
@@ -384,6 +399,10 @@ export function MapView({
   useEffect(() => {
     debugEnabledRef.current = debugEnabled
   }, [debugEnabled])
+
+  useEffect(() => {
+    hoveredEdgeLengthRef.current = hoveredEdgeLength
+  }, [hoveredEdgeLength])
 
   const gizmoAnchor = useMemo(() => {
     if (!activeFootprint || activeFootprint.vertices.length < 3 || !orbitEnabled) {
@@ -719,6 +738,28 @@ export function MapView({
           (feature) => feature.layer.id === VERTEX_HIT_LAYER_ID || feature.layer.id === EDGE_HIT_LAYER_ID,
         )
         map.getCanvas().style.cursor = hasInteractiveHit ? 'grab' : ''
+
+        const edgeHit = hits.find((feature) => feature.layer.id === EDGE_HIT_LAYER_ID)
+        const rawEdgeIndex = edgeHit?.properties?.edgeIndex
+        const edgeIndex = typeof rawEdgeIndex === 'number' ? rawEdgeIndex : Number(rawEdgeIndex)
+        const active = activeFootprintRef.current
+        if (Number.isInteger(edgeIndex) && active && active.vertices.length >= 2) {
+          const lengthM = edgeLengthMeters(active.vertices, edgeIndex)
+          if (lengthM !== null) {
+            const start = active.vertices[edgeIndex]
+            const end = active.vertices[(edgeIndex + 1) % active.vertices.length]
+            const midLon = (start[0] + end[0]) / 2
+            const midLat = (start[1] + end[1]) / 2
+            const midScreen = map.project({ lng: midLon, lat: midLat })
+            setHoveredEdgeLength({ left: midScreen.x, top: midScreen.y, lengthM })
+          } else {
+            setHoveredEdgeLength(null)
+          }
+        } else {
+          setHoveredEdgeLength(null)
+        }
+      } else if (hoveredEdgeLengthRef.current !== null) {
+        setHoveredEdgeLength(null)
       }
 
       const dragState = dragStateRef.current
@@ -758,6 +799,7 @@ export function MapView({
       dragStateRef.current = null
       map.dragPan.enable()
       map.getCanvas().style.cursor = ''
+      setHoveredEdgeLength(null)
       if (dragState.invalidAttempted) {
         onMoveRejectedRef.current()
       }
@@ -791,6 +833,7 @@ export function MapView({
       mapRef.current = null
       roofLayerRef.current = null
       debugOverlayLayerRef.current = null
+      setHoveredEdgeLength(null)
     }
   }, [])
 
@@ -1025,6 +1068,15 @@ export function MapView({
         </div>
       )}
       {!isDrawing && activeFootprint && <div className="map-selection-hint">Click a vertex or edge to edit its height</div>}
+      {hoveredEdgeLength && !isDrawing && !orbitEnabled && (
+        <div
+          className="map-edge-hover-label"
+          style={{ left: `${hoveredEdgeLength.left}px`, top: `${hoveredEdgeLength.top}px` }}
+          data-testid="map-edge-hover-label"
+        >
+          {hoveredEdgeLength.lengthM.toFixed(2)} m
+        </div>
+      )}
       {orbitEnabled && gizmoScreenPos && (
         <div className="height-gizmo" style={{ left: `${gizmoScreenPos.left}px`, top: `${gizmoScreenPos.top}px` }}>
           <button

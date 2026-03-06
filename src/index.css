@@ -172,6 +172,9 @@ button:disabled {
   top: 14px;
   right: 14px;
   z-index: 14;
+  display: flex;
+  flex-direction: column;
+  height: 90%;
   width: min(360px, calc(100% - 28px));
   border: 1px solid #324248;
   border-radius: 10px;
@@ -194,8 +197,9 @@ button:disabled {
 }
 
 .sun-overlay-content {
-  max-height: min(76vh, 760px);
-  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
   padding: 10px;
 }
 
@@ -324,6 +328,20 @@ button:disabled {
   padding: 6px 12px;
   font-size: 0.82rem;
   pointer-events: none;
+}
+
+.map-edge-hover-label {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 8px));
+  z-index: 13;
+  border: 1px solid #5f6970;
+  background: rgba(17, 24, 25, 0.94);
+  color: #e7eef2;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.76rem;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .height-gizmo {
