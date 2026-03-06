@@ -122,6 +122,12 @@ const TUTORIAL_STEPS = [
       'Check the calculated roof pitch and view the roof in perspective to verify it looks correct.',
     targetSelectors: ['[data-testid="status-pitch-value"]', '[data-testid="orbit-toggle-button"]'],
   },
+  {
+    title: 'Adjust date with arrows',
+    description:
+      'In the Sun Date & Time input, use arrow keys: Left/Up for previous day and Right/Down for next day.',
+    targetSelectors: ['[data-testid="sun-datetime-input"]'],
+  },
 ] as const
 
 export function EditorScreen() {
@@ -135,6 +141,7 @@ export function EditorScreen() {
   const [importConfigJson, setImportConfigJson] = useState('')
   const [importConfigError, setImportConfigError] = useState<string | null>(null)
   const [tutorialKwpEdited, setTutorialKwpEdited] = useState(false)
+  const [tutorialDatetimeEdited, setTutorialDatetimeEdited] = useState(false)
 
   const {
     state,
@@ -325,6 +332,7 @@ export function EditorScreen() {
     hasEditedKwp: tutorialKwpEdited,
     constrainedVertexCount: activeConstraints.vertexHeights.length,
     orbitEnabled,
+    hasEditedDatetime: tutorialDatetimeEdited,
   })
 
   const activeTutorialStep = tutorial.currentStepIndex !== null ? TUTORIAL_STEPS[tutorial.currentStepIndex] : null
@@ -512,7 +520,10 @@ export function EditorScreen() {
           datetimeIso={sunDatetimeRaw}
           timeZone={sunDailyTimeZone}
           selectedRoofs={selectedRoofInputs}
-          onDatetimeInputChange={onSunDatetimeInputChange}
+          onDatetimeInputChange={(datetimeIsoRaw) => {
+            setTutorialDatetimeEdited(true)
+            onSunDatetimeInputChange(datetimeIsoRaw)
+          }}
           expanded={Boolean(solved.activeSolved) && !state.isDrawing}
         >
           {solved.activeSolved ? (
@@ -533,7 +544,7 @@ export function EditorScreen() {
           ) : (
             <section className="panel-section">
               <h3>Sun Tools</h3>
-              <p>Solve a roof plane first to enable projection and daily POA chart.</p>
+              <p>Solve a roof plane first to enable projection and daily production chart.</p>
             </section>
           )}
         </SunOverlayColumn>

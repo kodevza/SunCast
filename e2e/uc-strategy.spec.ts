@@ -95,6 +95,15 @@ async function drawFootprint(page: Page, points: Array<[number, number]>) {
   await expect(page.getByTestId('vertex-height-input-0')).toBeVisible()
 }
 
+async function expandEdgeHeightsIfCollapsed(page: Page) {
+  const edgeInput = page.getByTestId('edge-height-input-0')
+  if (await edgeInput.isVisible()) {
+    return
+  }
+  await page.locator('summary').filter({ hasText: 'Edge Heights' }).click()
+  await expect(edgeInput).toBeVisible()
+}
+
 async function setVertexHeight(page: Page, vertexIndex: number, heightM: number) {
   await page.getByTestId(`vertex-height-input-${vertexIndex}`).fill(String(heightM))
   await page.getByTestId(`vertex-height-set-${vertexIndex}`).click()
@@ -151,7 +160,7 @@ test('UC2 + UC0.1: edge and vertex constraints update solver status', async ({ p
   ])
 
   await expect(page.getByText('CONSTRAINTS_INSUFFICIENT')).toBeVisible()
-  await expect(page.getByTestId('edge-height-input-0')).toBeVisible()
+  await expandEdgeHeightsIfCollapsed(page)
 
   await page.getByTestId('edge-height-input-0').fill('3')
   await page.getByTestId('edge-height-set-0').click()
@@ -288,7 +297,7 @@ test('UC5: datetime-driven clear-sky POA is shown and changes with datetime', as
   await setVertexHeight(page, 2, 6)
 
   await expect(page.getByText(/^Pitch:/)).toBeVisible()
-  await expect(page.getByTestId('sun-status-set-datetime')).toHaveText('Set datetime')
+  await expect(page.getByTestId('sun-datetime-input')).not.toHaveValue('')
 
   await setSunDatetime(page, '2026-06-21T12:00:00-04:00')
   await expect(page.getByTestId('sun-poa-value')).toContainText('POA (clear-sky):')
@@ -301,7 +310,7 @@ test('UC5: datetime-driven clear-sky POA is shown and changes with datetime', as
   expect(eveningPoa).not.toBe(noonPoa)
 })
 
-test('UC6: daily POA chart appears and changes with selected date', async ({ page }) => {
+test('UC6: daily production chart appears and changes with selected date', async ({ page }) => {
   await page.goto('/')
   await drawFootprint(page, [
     [0.22, 0.24],
@@ -315,7 +324,7 @@ test('UC6: daily POA chart appears and changes with selected date', async ({ pag
   await setVertexHeight(page, 2, 6)
 
   await expect(page.getByText(/^Pitch:/)).toBeVisible()
-  await expect(page.getByTestId('sun-daily-chart')).toHaveCount(0)
+  await expect(page.getByTestId('sun-daily-chart')).toBeVisible()
 
   await page.getByTestId('sun-datetime-input').fill('2026-06-21T12:00:00-04:00')
   await expect(page.getByTestId('sun-daily-chart')).toBeVisible()
@@ -337,7 +346,7 @@ test('UC12: tutorial highlights workflow controls and stores completion', async 
   await page.goto('/')
 
   await expect(page.getByRole('dialog', { name: /Tutorial step 1 of 5/i })).toBeVisible()
-  await expectTutorialSpotlightAround(page, page.getByTestId('map-canvas'))
+  await expectTutorialSpotlightAround(page, page.getByTestId('draw-footprint-button'))
 
   await page.getByTestId('draw-footprint-button').click()
   await clickMapRatios(page, [

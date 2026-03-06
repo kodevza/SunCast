@@ -178,6 +178,11 @@ Typical usage flow:
    * daily PV production estimate
    * annual aggregated PV production profile
 
+7. **Navigate sun date quickly**
+
+   * in **Sun Date & Time**, use arrow keys to change date by 1 day
+   * `→` or `↓` = next day, `←` or `↑` = previous day
+
 ---
 
 # Project Structure
@@ -229,7 +234,7 @@ Important design principles:
 
 * **geometry first** — roof plane derived from vertex heights
 * **capacity weighted estimation** — polygons contribute according to kWp
-* **local solar calculation** — no external API required
+* **hybrid solar inputs** — local solar calculation + external weather forecast API
 * **editor state driven UI**
 
 ---
@@ -251,4 +256,3 @@ If useful, I can also create a **much stronger README version** that includes:
 * solar math explanation
 * developer onboarding guide
 * screenshots of editor workflow.
-

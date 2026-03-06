@@ -42,8 +42,6 @@ export interface DailyPoaSeries {
   timestamps: number[]
   sunriseTs: number
   sunsetTs: number
-  peakValue_Wm2: number
-  peakTimeLabel: string
 }
 
 const zonedPartsFormatterCache = new Map<string, Intl.DateTimeFormat>()
@@ -297,16 +295,12 @@ export function getDailyPoaSeries(input: DailyPoaSeriesInput): DailyPoaSeries | 
     return null
   }
 
-  const peakIndex = values_Wm2.reduce((bestIndex, current, index, all) => (current > all[bestIndex] ? index : bestIndex), 0)
-
   return {
     labels,
     values_Wm2,
     timestamps,
     sunriseTs: sunriseSunset.sunriseTs,
     sunsetTs: sunriseSunset.sunsetTs,
-    peakValue_Wm2: values_Wm2[peakIndex],
-    peakTimeLabel: labels[peakIndex],
   }
 }
 

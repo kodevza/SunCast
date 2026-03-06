@@ -383,9 +383,9 @@ button:disabled {
 .tutorial-spotlight {
   position: fixed;
   z-index: 1200;
-  border: 2px solid rgba(138, 216, 255, 0.9);
+  border: 2px solid #8ad8ff;
   border-radius: 10px;
-  box-shadow: 0 0 0 1px rgba(8, 14, 16, 0.5), 0 0 18px rgba(102, 220, 255, 0.22);
+  box-shadow: 0 0 0 1px rgba(8, 14, 16, 0.86), 0 0 18px rgba(102, 220, 255, 0.22);
   pointer-events: none;
   animation: tutorial-pulse 2s ease-in-out infinite;
 }
@@ -402,7 +402,7 @@ button:disabled {
 }
 
 .tutorial-card-light {
-  background: rgba(18, 26, 29, 0.9);
+  background: rgba(18, 26, 29, 0.96);
 }
 
 .tutorial-step-index {
@@ -428,10 +428,10 @@ button:disabled {
 
 @keyframes tutorial-pulse {
   0% {
-    box-shadow: 0 0 0 1px rgba(8, 14, 16, 0.5), 0 0 12px rgba(102, 220, 255, 0.16);
+    box-shadow: 0 0 0 1px rgba(8, 14, 16, 0.86), 0 0 18px rgba(102, 220, 255, 0.22);
   }
   100% {
-    box-shadow: 0 0 0 1px rgba(8, 14, 16, 0.5), 0 0 24px rgba(102, 220, 255, 0.36);
+    box-shadow: 0 0 0 1px rgba(8, 14, 16, 0.86), 0 0 38px rgba(102, 220, 255, 0.52);
   }
 }
 

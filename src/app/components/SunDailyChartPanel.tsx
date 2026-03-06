@@ -18,7 +18,7 @@ import {
   getDailyPoaSeries,
   getSunriseSunset,
 } from '../../geometry/sun/dailyEstimation'
-import { formatMinuteOfDay, sumProfiles } from '../../geometry/sun/profileAggregation'
+import { formatMinuteOfDay, parseHhmmToMinuteOfDay, scaleProfile, sumProfiles } from '../../geometry/sun/profileAggregation'
 import type { RoofPlane } from '../../types/geometry'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
@@ -30,68 +30,101 @@ interface SunDailyChartPanelProps {
     footprintId: string
     latDeg: number
     lonDeg: number
+    kwp: number
     roofPlane: RoofPlane
   }>
 }
 
 export function SunDailyChartPanel({ dateIso, timeZone, selectedRoofs }: SunDailyChartPanelProps) {
+  const totalSelectedKwp = useMemo(
+    () => selectedRoofs.reduce((sum, roof) => sum + (Number.isFinite(roof.kwp) && roof.kwp > 0 ? roof.kwp : 0), 0),
+    [selectedRoofs],
+  )
+
   const aggregated = useMemo(() => {
-    if (!dateIso || selectedRoofs.length === 0) {
+    if (!dateIso || selectedRoofs.length === 0 || totalSelectedKwp <= 0) {
       return null
     }
 
     const perRoofSeries = selectedRoofs
-      .map((roof) =>
-        getDailyPoaSeries({
+      .map((roof) => {
+        const safeKwp = Number.isFinite(roof.kwp) && roof.kwp > 0 ? roof.kwp : 0
+        if (safeKwp <= 0) {
+          return null
+        }
+
+        const series = getDailyPoaSeries({
           dateIso,
           timeZone,
           latDeg: roof.latDeg,
           lonDeg: roof.lonDeg,
           plane: roof.roofPlane,
           stepMinutes: SUN_DAILY_SERIES_STEP_MINUTES,
-        }),
-      )
+        })
+
+        if (!series) {
+          return null
+        }
+
+        const baseProfile = series.labels
+          .map((label, index) => {
+            const minuteOfDay = parseHhmmToMinuteOfDay(label)
+            if (minuteOfDay === null) {
+              return null
+            }
+            return {
+              minuteOfDay,
+              value: series.values_Wm2[index],
+            }
+          })
+          .filter((point): point is { minuteOfDay: number; value: number } => point !== null)
+
+        return {
+          sunriseTs: series.sunriseTs,
+          sunsetTs: series.sunsetTs,
+          productionKwContribution: scaleProfile(baseProfile, safeKwp / 1000),
+        }
+      })
       .filter((series): series is NonNullable<typeof series> => Boolean(series))
 
     if (perRoofSeries.length === 0) {
       return null
     }
 
-    const profiles = perRoofSeries.map((series) =>
-      series.labels.map((label, index) => {
-        const [hourRaw, minuteRaw] = label.split(':')
-        const hour = Number(hourRaw)
-        const minute = Number(minuteRaw)
-        return {
-          minuteOfDay: Number.isInteger(hour) && Number.isInteger(minute) ? hour * 60 + minute : -1,
-          value: series.values_Wm2[index],
-        }
-      }),
-    )
+    const productionKwPoints = sumProfiles(perRoofSeries.map((series) => series.productionKwContribution))
 
-    const points = sumProfiles(profiles)
+    if (productionKwPoints.length === 0) {
+      return null
+    }
+
+    const points = productionKwPoints
+      .map((point) => ({
+        minuteOfDay: point.minuteOfDay,
+        production_kW: point.value,
+      }))
+      .filter((point): point is { minuteOfDay: number; production_kW: number } => Number.isFinite(point.production_kW))
+
     if (points.length === 0) {
       return null
     }
 
-    const firstDaylightByRoof = perRoofSeries.map((series) => series.sunriseTs)
-    const lastDaylightByRoof = perRoofSeries.map((series) => series.sunsetTs)
-    const sunriseTs = Math.min(...firstDaylightByRoof)
-    const sunsetTs = Math.max(...lastDaylightByRoof)
+    const sunriseTs = Math.min(...perRoofSeries.map((series) => series.sunriseTs))
+    const sunsetTs = Math.max(...perRoofSeries.map((series) => series.sunsetTs))
 
     const labels = points.map((point) => formatMinuteOfDay(point.minuteOfDay))
-    const values_Wm2 = points.map((point) => point.value)
-    const peakIndex = values_Wm2.reduce((bestIndex, current, index, all) => (current > all[bestIndex] ? index : bestIndex), 0)
+    const productionValues_kW = points.map((point) => point.production_kW)
+
+    const productionPeakIndex = productionValues_kW.reduce((bestIndex, current, index, all) => (current > all[bestIndex] ? index : bestIndex), 0)
 
     return {
       labels,
-      values_Wm2,
+      productionValues_kW,
       sunriseTs,
       sunsetTs,
-      peakValue_Wm2: values_Wm2[peakIndex],
-      peakTimeLabel: labels[peakIndex],
+      peakProductionValue_kW: productionValues_kW[productionPeakIndex],
+      peakProductionTimeLabel: labels[productionPeakIndex],
     }
-  }, [dateIso, selectedRoofs, timeZone])
+  }, [dateIso, selectedRoofs, timeZone, totalSelectedKwp])
 
   const sunriseSunset = useMemo(() => {
     if (!dateIso || selectedRoofs.length === 0) {
@@ -110,14 +143,14 @@ export function SunDailyChartPanel({ dateIso, timeZone, selectedRoofs }: SunDail
       labels: aggregated.labels,
       datasets: [
         {
-          label: 'POA (clear-sky) W/m2',
-          data: aggregated.values_Wm2,
-          borderColor: '#7ce0f2',
-          backgroundColor: 'rgba(124, 224, 242, 0.18)',
+          data: aggregated.productionValues_kW,
+          yAxisID: 'yProduction',
+          borderColor: '#cad8de',
+          backgroundColor: 'rgba(246, 210, 95, 0.18)',
           pointRadius: 1,
           pointHoverRadius: 3,
           borderWidth: 1.5,
-          fill: true,
+          fill: false,
           tension: 0.2,
         },
       ],
@@ -132,6 +165,17 @@ export function SunDailyChartPanel({ dateIso, timeZone, selectedRoofs }: SunDail
       plugins: {
         legend: {
           display: false,
+          labels: {
+            color: '#cad8de',
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const y = context.parsed.y
+              return `${(typeof y === 'number' ? y : 0).toFixed(2)} kW`
+            },
+          },
         },
       },
       scales: {
@@ -146,13 +190,15 @@ export function SunDailyChartPanel({ dateIso, timeZone, selectedRoofs }: SunDail
             color: 'rgba(90, 110, 120, 0.35)',
           },
         },
-        y: {
+        yProduction: {
+          type: 'linear',
+          position: 'left',
           beginAtZero: true,
           ticks: {
             color: '#cad8de',
           },
           grid: {
-            color: 'rgba(90, 110, 120, 0.35)',
+            drawOnChartArea: false,
           },
         },
       },
@@ -162,26 +208,24 @@ export function SunDailyChartPanel({ dateIso, timeZone, selectedRoofs }: SunDail
 
   return (
     <section className="panel-section">
-      <h3>Daily POA</h3>
+      <h3>Daily Production</h3>
 
-      {!dateIso && <p>Select date/time above to compute sunrise, sunset, and POA profile.</p>}
+      {!dateIso && <p>Select date/time above to compute sunrise, sunset, and production profile.</p>}
 
       {dateIso && !sunriseSunset && <p data-testid="sun-daily-no-events">No sunrise/sunset for this date at this latitude.</p>}
 
-      {dateIso && sunriseSunset && (
-        <p className="sun-daily-window-meta">
-          Sunrise/Sunset: {formatTimestampHHmm(sunriseSunset.sunriseTs, timeZone)}-{formatTimestampHHmm(sunriseSunset.sunsetTs, timeZone)}
-        </p>
-      )}
+
+      {dateIso && selectedRoofs.length > 0 && totalSelectedKwp <= 0 && <p>Set kWp on selected polygons to compute production.</p>}
 
       {aggregated && chartData && (
         <>
           <div className="sun-daily-chart" data-testid="sun-daily-chart">
             <Line data={chartData} options={chartOptions} />
           </div>
-          <p data-testid="sun-daily-peak">
-            Peak: {aggregated.peakValue_Wm2.toFixed(0)} W/m2 at {aggregated.peakTimeLabel}
+          <p data-testid="sun-daily-production-peak">
+            Real production peak: {aggregated.peakProductionValue_kW.toFixed(2)} kW at {aggregated.peakProductionTimeLabel}
           </p>
+          <p data-testid="sun-daily-power">Weighted capacity: {totalSelectedKwp.toFixed(1)} kWp</p>
           <p data-testid="sun-daily-window">
             Window: {formatTimestampHHmm(aggregated.sunriseTs, timeZone)}-{formatTimestampHHmm(aggregated.sunsetTs, timeZone)}
           </p>

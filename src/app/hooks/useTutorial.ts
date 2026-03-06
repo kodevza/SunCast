@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 const TUTORIAL_STORAGE_KEY = 'suncast_uc12_tutorial_state'
-const TOTAL_STEPS = 5
+const TOTAL_STEPS = 6
 
 interface TutorialStorageState {
   completedSteps: number
@@ -15,6 +15,7 @@ interface TutorialSignals {
   hasEditedKwp: boolean
   constrainedVertexCount: number
   orbitEnabled: boolean
+  hasEditedDatetime: boolean
 }
 
 interface TutorialController {
@@ -74,6 +75,7 @@ function getCompletedStepCount(signals: TutorialSignals): number {
     (signals.kwp ?? 0) > 0 && signals.hasEditedKwp,
     signals.constrainedVertexCount >= 3,
     signals.orbitEnabled,
+    signals.hasEditedDatetime,
   ]
 
   let completed = 0

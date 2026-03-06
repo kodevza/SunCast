@@ -163,6 +163,14 @@ export function AnualDayProfilePanel({ datetimeIso, timeZone, selectedRoofs }: A
     return annualProfile.points.reduce((peak, point) => (point.value > peak.value ? point : peak), annualProfile.points[0])
   }, [annualProfile])
 
+  const annualEnergyKwhEstimate = useMemo(() => {
+    if (!annualProfile || annualProfile.points.length === 0) {
+      return null
+    }
+    const stepHours = annualProfile.meta.stepMinutes / 60
+    return annualProfile.points.reduce((sum, point) => sum + point.value * stepHours, 0)
+  }, [annualProfile])
+
   return (
     <section className="panel-section">
       <h3>Annual Day Profile</h3>
@@ -174,6 +182,15 @@ export function AnualDayProfilePanel({ datetimeIso, timeZone, selectedRoofs }: A
             <Line data={chartData} options={chartOptions} />
           </div>
           <p data-testid="sun-annual-meta">Weighted capacity: {totalSelectedKwp.toFixed(1)} kWp</p>
+          <p data-testid="sun-annual-sampling-meta">
+            Sampling: 1 day every {annualProfile.meta.sampleWindowDays} days, weighted to cover all {annualProfile.meta.dayCount}{' '}
+            days ({annualProfile.meta.sampledDayCount} sampled days).
+          </p>
+          {annualEnergyKwhEstimate !== null && (
+            <p data-testid="sun-annual-total">
+              Overall PV sum (annual energy estimate): {annualEnergyKwhEstimate.toFixed(1)} kWh
+            </p>
+          )}
         </>
       )}
     </section>
