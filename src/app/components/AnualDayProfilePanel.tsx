@@ -177,18 +177,16 @@ export function AnualDayProfilePanel({ datetimeIso, timeZone, selectedRoofs }: A
       {selectedRoofs.length === 0 && <p>Select one or more solved polygons to compute annual aggregation.</p>}
       {annualProfile && chartData && annualPeak && (
         <>
-          <p>Weighted estimated output by time of day for {selectedYear}.</p>
           <div className="sun-daily-chart" data-testid="sun-annual-chart">
             <Line data={chartData} options={chartOptions} />
           </div>
-          <p data-testid="sun-annual-meta">Weighted capacity: {totalSelectedKwp.toFixed(1)} kWp</p>
           <p data-testid="sun-annual-sampling-meta">
             Sampling: 1 day every {annualProfile.meta.sampleWindowDays} days, weighted to cover all {annualProfile.meta.dayCount}{' '}
             days ({annualProfile.meta.sampledDayCount} sampled days).
           </p>
           {annualEnergyKwhEstimate !== null && (
             <p data-testid="sun-annual-total">
-              Overall PV sum (annual energy estimate): {annualEnergyKwhEstimate.toFixed(1)} kWh
+              Overall PV: {annualEnergyKwhEstimate.toFixed(1)} kWh
             </p>
           )}
         </>

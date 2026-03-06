@@ -40,7 +40,7 @@ export function SunDateTimePanel({ datetimeIso, timeZone, onDatetimeInputChange 
       return
     }
 
-    const dayDelta = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0
+    const dayDelta = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0
     if (dayDelta === 0) {
       return
     }

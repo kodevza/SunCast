@@ -125,7 +125,7 @@ const TUTORIAL_STEPS = [
   {
     title: 'Adjust date with arrows',
     description:
-      'In the Sun Date & Time input, use arrow keys: Left/Up for previous day and Right/Down for next day.',
+      'In the Sun Date & Time input, use arrow keys: Up for previous day and Down for next day.',
     targetSelectors: ['[data-testid="sun-datetime-input"]'],
   },
 ] as const

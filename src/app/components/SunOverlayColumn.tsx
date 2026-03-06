@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { AnualDayProfilePanel } from './AnualDayProfilePanel'
 import { ForecastPvPanel } from './ForecastPvPanel'
+import { MonthlyProductionPanel } from './MonthlyProductionPanel'
 import { SunDateTimePanel } from './SunDateTimePanel'
 import type { RoofPlane } from '../../types/geometry'
 
@@ -55,6 +56,7 @@ export function SunOverlayColumn({
           <SunDateTimePanel datetimeIso={datetimeIso} timeZone={timeZone} onDatetimeInputChange={onDatetimeInputChange} />
           <ForecastPvPanel datetimeIso={datetimeIso} timeZone={timeZone} selectedRoofs={selectedRoofs} />
           {children}
+          <MonthlyProductionPanel datetimeIso={datetimeIso} timeZone={timeZone} selectedRoofs={selectedRoofs} />
           <AnualDayProfilePanel datetimeIso={datetimeIso} timeZone={timeZone} selectedRoofs={selectedRoofs} />
         </div>
       )}
