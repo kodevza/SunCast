@@ -2,11 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { DrawTools } from '../components/DrawTools/DrawTools'
 import { MapView } from '../components/MapView/MapView'
 import { RoofEditor } from '../components/RoofEditor/RoofEditor'
+import { SunProjectionStatus } from '../components/SunProjectionStatus'
+import { SunDailyChartPanel } from '../components/SunDailyChartPanel'
 import { useProjectStore } from '../../state/project-store'
 import { validateFootprint } from '../../geometry/solver/validation'
 import { solveRoofPlane } from '../../geometry/solver/solveRoofPlane'
 import { generateRoofMesh } from '../../geometry/mesh/generateRoofMesh'
 import { clampAzimuth, computeRoofMetrics, planeSlopeFromPitchAzimuth } from '../../geometry/solver/metrics'
+import { computeSunProjection } from '../../geometry/sun/sunProjection'
+import { parseIsoDateTimeWithTimezone } from '../../geometry/sun/sunPosition'
 import { RoofSolverError } from '../../geometry/solver/errors'
 import { projectPointsToLocalMeters } from '../../geometry/projection/localMeters'
 import type { LngLat, RoofMeshData, SolvedRoofPlane } from '../../types/geometry'
@@ -41,6 +45,16 @@ function squaredDistancePointToSegment(
   return dx * dx + dy * dy
 }
 
+function computeFootprintCentroid(vertices: LngLat[]): LngLat {
+  let lonSum = 0
+  let latSum = 0
+  for (const [lon, lat] of vertices) {
+    lonSum += lon
+    latSum += lat
+  }
+  return [lonSum / vertices.length, latSum / vertices.length]
+}
+
 export function EditorScreen() {
   const [orbitEnabled, setOrbitEnabled] = useState(false)
   const [mapBearingDeg, setMapBearingDeg] = useState(0)
@@ -67,6 +81,10 @@ export function EditorScreen() {
     setEdgeHeight,
     clearVertexHeight,
     clearEdgeHeight,
+    sunProjection,
+    setSunProjectionEnabled,
+    setSunProjectionDatetimeIso,
+    setSunProjectionDailyDateIso,
   } = useProjectStore()
 
   const footprintEntries = useMemo(() => Object.values(state.footprints), [state.footprints])
@@ -284,6 +302,37 @@ export function EditorScreen() {
     }
   }, [activeConstraints.vertexHeights.length, solved.activeSolved])
 
+  const sunDatetimeRaw = sunProjection.datetimeIso ?? ''
+  const sunDailyDateRaw = sunProjection.dailyDateIso ?? ''
+  const sunDailyTimeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', [])
+  const sunDatetimeParsed = sunDatetimeRaw.trim() === '' ? null : parseIsoDateTimeWithTimezone(sunDatetimeRaw.trim())
+  const sunDatetimeError =
+    sunDatetimeRaw.trim() === '' || sunDatetimeParsed
+      ? null
+      : 'Use ISO datetime with timezone, e.g. 2026-03-05T14:30:00+01:00'
+  const hasValidSunDatetime = sunDatetimeParsed !== null
+
+  const sunProjectionResult = useMemo(() => {
+    if (!sunProjection.enabled || !hasValidSunDatetime || !activeFootprint || !solved.activeSolved) {
+      return null
+    }
+    const [lon, lat] = computeFootprintCentroid(activeFootprint.vertices)
+    try {
+      return computeSunProjection({
+        datetimeIso: sunDatetimeRaw.trim(),
+        latDeg: lat,
+        lonDeg: lon,
+        plane: solved.activeSolved.solution.plane,
+      })
+    } catch {
+      return null
+    }
+  }, [activeFootprint, hasValidSunDatetime, solved.activeSolved, sunDatetimeRaw, sunProjection.enabled])
+  const activeFootprintCentroid = useMemo(
+    () => (activeFootprint ? computeFootprintCentroid(activeFootprint.vertices) : null),
+    [activeFootprint],
+  )
+
   useEffect(() => {
     if (!activeFootprint || !solved.activeSolved) {
       return
@@ -434,6 +483,28 @@ export function EditorScreen() {
           onClearEdge={clearEdgeHeight}
           onConstraintLimitExceeded={() => setInteractionError('Failed to apply height constraints')}
         />
+
+        {solved.activeSolved && (
+          <>
+            <SunProjectionStatus
+              enabled={sunProjection.enabled}
+              hasDatetime={hasValidSunDatetime}
+              datetimeIso={sunDatetimeRaw}
+              datetimeError={sunDatetimeError}
+              onToggleEnabled={setSunProjectionEnabled}
+              onDatetimeChange={(datetimeIso) => setSunProjectionDatetimeIso(datetimeIso.trim() === '' ? null : datetimeIso)}
+              result={sunProjectionResult}
+            />
+            <SunDailyChartPanel
+              dateIso={sunDailyDateRaw}
+              timeZone={sunDailyTimeZone}
+              latDeg={activeFootprintCentroid ? activeFootprintCentroid[1] : null}
+              lonDeg={activeFootprintCentroid ? activeFootprintCentroid[0] : null}
+              plane={solved.activeSolved.solution.plane}
+              onDateChange={(dateIso) => setSunProjectionDailyDateIso(dateIso.trim() === '' ? null : dateIso)}
+            />
+          </>
+        )}
 
         <section className="panel-section">
           <h3>Status</h3>

@@ -44,6 +44,10 @@ async function setVertexHeight(page: Page, vertexIndex: number, heightM: number)
   await page.getByTestId(`vertex-height-set-${vertexIndex}`).click()
 }
 
+async function setSunDatetime(page: Page, datetimeIso: string) {
+  await page.getByTestId('sun-datetime-input').fill(datetimeIso)
+}
+
 async function readStoredProject(page: Page): Promise<StoredProject> {
   return page.evaluate(() => {
     const raw = window.localStorage.getItem('suncast_project')
@@ -211,4 +215,60 @@ test('UC3 + determinism: multiple footprints persist, reload, and delete', async
 
   const storedAfterDelete = await readStoredProject(page)
   expect(Object.keys(storedAfterDelete.footprints)).toHaveLength(1)
+})
+
+test('UC5: datetime-driven clear-sky POA is shown and changes with datetime', async ({ page }) => {
+  await page.goto('/')
+  await drawFootprint(page, [
+    [0.22, 0.24],
+    [0.56, 0.23],
+    [0.60, 0.56],
+    [0.26, 0.60],
+  ])
+
+  await setVertexHeight(page, 0, 2)
+  await setVertexHeight(page, 1, 4)
+  await setVertexHeight(page, 2, 6)
+
+  await expect(page.getByText(/^Pitch:/)).toBeVisible()
+  await expect(page.getByTestId('sun-status-set-datetime')).toHaveText('Set datetime')
+
+  await setSunDatetime(page, '2026-06-21T12:00:00-04:00')
+  await expect(page.getByTestId('sun-poa-value')).toContainText('POA (clear-sky):')
+  const noonPoa = await page.getByTestId('sun-poa-value').innerText()
+
+  await setSunDatetime(page, '2026-06-21T18:00:00-04:00')
+  await expect(page.getByTestId('sun-poa-value')).toContainText('POA (clear-sky):')
+  const eveningPoa = await page.getByTestId('sun-poa-value').innerText()
+
+  expect(eveningPoa).not.toBe(noonPoa)
+})
+
+test('UC6: daily POA chart appears and changes with selected date', async ({ page }) => {
+  await page.goto('/')
+  await drawFootprint(page, [
+    [0.22, 0.24],
+    [0.56, 0.23],
+    [0.60, 0.56],
+    [0.26, 0.60],
+  ])
+
+  await setVertexHeight(page, 0, 2)
+  await setVertexHeight(page, 1, 4)
+  await setVertexHeight(page, 2, 6)
+
+  await expect(page.getByText(/^Pitch:/)).toBeVisible()
+  await expect(page.getByTestId('sun-daily-chart')).toHaveCount(0)
+
+  await page.getByTestId('sun-daily-date-input').fill('2026-06-21')
+  await expect(page.getByTestId('sun-daily-chart')).toBeVisible()
+  await expect(page.getByTestId('sun-daily-peak')).toContainText('Peak:')
+
+  const junePeak = await page.getByTestId('sun-daily-peak').innerText()
+
+  await page.getByTestId('sun-daily-date-input').fill('2026-12-21')
+  await expect(page.getByTestId('sun-daily-peak')).toContainText('Peak:')
+  const decemberPeak = await page.getByTestId('sun-daily-peak').innerText()
+
+  expect(decemberPeak).not.toBe(junePeak)
 })

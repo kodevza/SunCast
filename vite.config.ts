@@ -1,10 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import istanbul from 'vite-plugin-istanbul'
+import type { PluginOption } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const plugins = [react()]
+  const plugins: PluginOption[] = [react()]
   if (mode === 'coverage') {
     plugins.push(
       istanbul({

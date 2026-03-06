@@ -55,6 +55,13 @@ export interface ProjectData {
   footprints: Record<string, StoredFootprint>
   activeFootprintId: string | null
   solverConfigVersion?: string
+  sunProjection?: ProjectSunProjectionSettings
+}
+
+export interface ProjectSunProjectionSettings {
+  enabled: boolean
+  datetimeIso: string | null
+  dailyDateIso: string | null
 }
 
 export interface StoredFootprint {

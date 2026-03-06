@@ -3,12 +3,18 @@ import type {
   FaceConstraints,
   FootprintPolygon,
   ProjectData,
+  ProjectSunProjectionSettings,
   StoredFootprint,
   VertexHeightConstraint,
 } from '../../types/geometry'
 
 const STORAGE_KEY = 'suncast_project'
-const SOLVER_CONFIG_VERSION = 'uc3'
+const SOLVER_CONFIG_VERSION = 'uc6'
+const DEFAULT_SUN_PROJECTION: ProjectSunProjectionSettings = {
+  enabled: true,
+  datetimeIso: null,
+  dailyDateIso: null,
+}
 
 interface FootprintStateEntry {
   footprint: FootprintPolygon
@@ -20,6 +26,7 @@ interface ProjectState {
   activeFootprintId: string | null
   drawDraft: Array<[number, number]>
   isDrawing: boolean
+  sunProjection: ProjectSunProjectionSettings
 }
 
 type Action =
@@ -37,6 +44,9 @@ type Action =
   | { type: 'SET_EDGE_HEIGHT'; payload: { edgeIndex: number; heightM: number } }
   | { type: 'CLEAR_VERTEX_HEIGHT'; vertexIndex: number }
   | { type: 'CLEAR_EDGE_HEIGHT'; edgeIndex: number }
+  | { type: 'SET_SUN_PROJECTION_ENABLED'; enabled: boolean }
+  | { type: 'SET_SUN_PROJECTION_DATETIME'; datetimeIso: string | null }
+  | { type: 'SET_SUN_PROJECTION_DAILY_DATE'; dailyDateIso: string | null }
   | { type: 'LOAD'; payload: ProjectState }
 
 const initialState: ProjectState = {
@@ -44,6 +54,7 @@ const initialState: ProjectState = {
   activeFootprintId: null,
   drawDraft: [],
   isDrawing: false,
+  sunProjection: DEFAULT_SUN_PROJECTION,
 }
 
 function generateFootprintId(): string {
@@ -176,6 +187,11 @@ function sanitizeLoadedState(state: ProjectState): ProjectState {
       state.activeFootprintId && sanitized[state.activeFootprintId]
         ? state.activeFootprintId
         : (ids.at(-1) ?? null),
+    sunProjection: {
+      enabled: state.sunProjection?.enabled ?? DEFAULT_SUN_PROJECTION.enabled,
+      datetimeIso: state.sunProjection?.datetimeIso ?? DEFAULT_SUN_PROJECTION.datetimeIso,
+      dailyDateIso: state.sunProjection?.dailyDateIso ?? DEFAULT_SUN_PROJECTION.dailyDateIso,
+    },
   }
 }
 
@@ -353,6 +369,30 @@ function reducer(state: ProjectState, action: Action): ProjectState {
           },
         }
       })
+    case 'SET_SUN_PROJECTION_ENABLED':
+      return {
+        ...state,
+        sunProjection: {
+          ...state.sunProjection,
+          enabled: action.enabled,
+        },
+      }
+    case 'SET_SUN_PROJECTION_DATETIME':
+      return {
+        ...state,
+        sunProjection: {
+          ...state.sunProjection,
+          datetimeIso: action.datetimeIso,
+        },
+      }
+    case 'SET_SUN_PROJECTION_DAILY_DATE':
+      return {
+        ...state,
+        sunProjection: {
+          ...state.sunProjection,
+          dailyDateIso: action.dailyDateIso,
+        },
+      }
     case 'LOAD':
       return sanitizeLoadedState(action.payload)
     default:
@@ -373,6 +413,11 @@ function readStorage(): ProjectState | null {
         activeFootprintId: parsed.activeFootprintId ?? null,
         drawDraft: [],
         isDrawing: false,
+        sunProjection: {
+          enabled: parsed.sunProjection?.enabled ?? DEFAULT_SUN_PROJECTION.enabled,
+          datetimeIso: parsed.sunProjection?.datetimeIso ?? DEFAULT_SUN_PROJECTION.datetimeIso,
+          dailyDateIso: parsed.sunProjection?.dailyDateIso ?? DEFAULT_SUN_PROJECTION.dailyDateIso,
+        },
       }
     } catch {
       return null
@@ -407,10 +452,11 @@ export function useProjectStore() {
       footprints,
       activeFootprintId: state.activeFootprintId,
       solverConfigVersion: SOLVER_CONFIG_VERSION,
+      sunProjection: state.sunProjection,
     }
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  }, [state.activeFootprintId, state.footprints])
+  }, [state.activeFootprintId, state.footprints, state.sunProjection])
 
   const activeEntry = state.activeFootprintId ? state.footprints[state.activeFootprintId] : null
   const activeFootprint = activeEntry?.footprint ?? null
@@ -421,6 +467,7 @@ export function useProjectStore() {
       state,
       activeFootprint,
       activeConstraints,
+      sunProjection: state.sunProjection,
       startDrawing: () => dispatch({ type: 'START_DRAW' }),
       cancelDrawing: () => dispatch({ type: 'CANCEL_DRAW' }),
       addDraftPoint: (point: [number, number]) => dispatch({ type: 'ADD_DRAFT_POINT', point }),
@@ -460,6 +507,11 @@ export function useProjectStore() {
       },
       clearVertexHeight: (vertexIndex: number) => dispatch({ type: 'CLEAR_VERTEX_HEIGHT', vertexIndex }),
       clearEdgeHeight: (edgeIndex: number) => dispatch({ type: 'CLEAR_EDGE_HEIGHT', edgeIndex }),
+      setSunProjectionEnabled: (enabled: boolean) => dispatch({ type: 'SET_SUN_PROJECTION_ENABLED', enabled }),
+      setSunProjectionDatetimeIso: (datetimeIso: string | null) =>
+        dispatch({ type: 'SET_SUN_PROJECTION_DATETIME', datetimeIso }),
+      setSunProjectionDailyDateIso: (dailyDateIso: string | null) =>
+        dispatch({ type: 'SET_SUN_PROJECTION_DAILY_DATE', dailyDateIso }),
     }),
     [activeConstraints, activeFootprint, state],
   )
