@@ -22,6 +22,7 @@ interface UseOrbitCameraArgs {
 interface UseOrbitCameraResult {
   gizmoScreenPos: { left: number; top: number } | null
   adjustOrbitCamera: (bearingDeltaDeg: number, pitchDeltaDeg: number) => void
+  setOrbitCameraPose: (bearingDeg: number, pitchDeg: number) => void
 }
 
 export function useOrbitCamera({
@@ -68,6 +69,22 @@ export function useOrbitCamera({
       map.easeTo({
         bearing: map.getBearing() + bearingDeltaDeg,
         pitch: nextPitch,
+        duration: 220,
+      })
+    },
+    [mapRef],
+  )
+
+  const setOrbitCameraPose = useCallback(
+    (bearingDeg: number, pitchDeg: number) => {
+      const map = mapRef.current
+      if (!map) {
+        return
+      }
+      const clampedPitch = Math.max(0, Math.min(MAX_ORBIT_PITCH_DEG, pitchDeg))
+      map.easeTo({
+        bearing: bearingDeg,
+        pitch: clampedPitch,
         duration: 220,
       })
     },
@@ -151,5 +168,5 @@ export function useOrbitCamera({
     }
   }, [gizmoAnchor, mapRef, orbitEnabled])
 
-  return { gizmoScreenPos, adjustOrbitCamera }
+  return { gizmoScreenPos, adjustOrbitCamera, setOrbitCameraPose }
 }

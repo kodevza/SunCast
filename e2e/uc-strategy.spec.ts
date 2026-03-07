@@ -342,6 +342,50 @@ test('UC5: datetime-driven clear-sky POA is shown and changes with datetime', as
   expect(eveningPoa).not.toBe(noonPoa)
 })
 
+test('UC5 + orbit sun perspective: sun view toggle works and SHIFT+ARROW adjusts hours', async ({ page }) => {
+  await page.goto('/')
+  await drawFootprint(page, [
+    [0.22, 0.24],
+    [0.56, 0.23],
+    [0.60, 0.56],
+    [0.26, 0.60],
+  ])
+
+  await setVertexHeight(page, 0, 2)
+  await setVertexHeight(page, 1, 4)
+  await setVertexHeight(page, 2, 6)
+
+  await expect(page.getByTestId('status-pitch-value')).toBeVisible()
+
+  const orbitButton = page.getByTestId('orbit-toggle-button')
+  if ((await orbitButton.innerText()) === 'Orbit') {
+    await orbitButton.click()
+  }
+  await expect(orbitButton).toHaveText(/Exit orbit/i)
+
+  await setSunDatetime(page, '2026-06-21T12:00:00-04:00')
+  await expect(page.getByTestId('sun-projection-status')).toBeVisible()
+
+  const sunStatusBefore = await page.getByTestId('sun-projection-status').innerText()
+
+  const sunViewButton = page.getByTestId('sun-perspective-toggle-button')
+  await expect(sunViewButton).toBeEnabled()
+  await expect(sunViewButton).toHaveText('Sun view')
+  await sunViewButton.click()
+  await expect(sunViewButton).toHaveText('Exit sun view')
+
+  const datetimeInput = page.getByTestId('sun-datetime-input')
+  await datetimeInput.click()
+  await page.keyboard.press('Shift+ArrowUp')
+  await expect(datetimeInput).toHaveValue('2026-06-21T13:00:00-04:00')
+
+  const sunStatusAfterHourUp = await page.getByTestId('sun-projection-status').innerText()
+  expect(sunStatusAfterHourUp).not.toBe(sunStatusBefore)
+
+  await page.keyboard.press('Shift+ArrowDown')
+  await expect(datetimeInput).toHaveValue('2026-06-21T12:00:00-04:00')
+})
+
 test('UC6: daily production chart appears and changes with selected date', async ({ page }) => {
   await page.goto('/')
   await drawFootprint(page, [

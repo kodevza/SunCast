@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FootprintPolygon, RoofMeshData, VertexHeightConstraint } from '../../../../types/geometry'
+import type { SunProjectionResult } from '../../../../geometry/sun/sunProjection'
 import { MapOverlayControls } from './MapOverlayControls'
 import { useLatest } from './useLatest'
 import { useMapInstance } from './useMapInstance'
@@ -15,6 +16,7 @@ interface MapViewProps {
   isDrawing: boolean
   orbitEnabled: boolean
   onToggleOrbit: () => void
+  sunProjectionResult: SunProjectionResult | null
   roofMeshes: RoofMeshData[]
   vertexConstraints: VertexHeightConstraint[]
   selectedVertexIndex: number | null
@@ -43,6 +45,7 @@ export function MapView({
   isDrawing,
   orbitEnabled,
   onToggleOrbit,
+  sunProjectionResult,
   roofMeshes,
   vertexConstraints,
   selectedVertexIndex,
@@ -63,6 +66,7 @@ export function MapView({
   onInitialized,
 }: MapViewProps) {
   const [meshesVisible, setMeshesVisible] = useState(false)
+  const [sunPerspectiveEnabled, setSunPerspectiveEnabled] = useState(false)
 
   const drawingRef = useLatest(isDrawing)
   const orbitEnabledRef = useLatest(orbitEnabled)
@@ -133,7 +137,7 @@ export function MapView({
     selectedEdgeIndex,
   })
 
-  const { gizmoScreenPos, adjustOrbitCamera } = useOrbitCamera({
+  const { gizmoScreenPos, adjustOrbitCamera, setOrbitCameraPose } = useOrbitCamera({
     mapRef,
     mapLoaded,
     orbitEnabled,
@@ -151,12 +155,31 @@ export function MapView({
     roofLayerRef.current?.setVisible(orbitEnabled && meshesVisible)
   }, [meshesVisible, orbitEnabled, roofLayerRef])
 
+  useEffect(() => {
+    if (!orbitEnabled || !sunProjectionResult) {
+      setSunPerspectiveEnabled(false)
+    }
+  }, [orbitEnabled, sunProjectionResult])
+
+  useEffect(() => {
+    if (!orbitEnabled || !sunPerspectiveEnabled || !sunProjectionResult) {
+      return
+    }
+
+    const normalizedBearingDeg = ((sunProjectionResult.sunAzimuthDeg + 180 + 540) % 360) - 180
+    const pitchDeg = 90 - sunProjectionResult.sunElevationDeg
+    setOrbitCameraPose(normalizedBearingDeg, pitchDeg)
+  }, [orbitEnabled, setOrbitCameraPose, sunPerspectiveEnabled, sunProjectionResult])
+
   return (
     <div className="map-root-wrap">
       <div ref={containerRef} className="map-root" data-testid="map-canvas" />
       <MapOverlayControls
         orbitEnabled={orbitEnabled}
         onToggleOrbit={onToggleOrbit}
+        sunPerspectiveEnabled={sunPerspectiveEnabled}
+        canUseSunPerspective={sunProjectionResult !== null}
+        onToggleSunPerspective={() => setSunPerspectiveEnabled((enabled) => !enabled)}
         meshesVisible={meshesVisible}
         onToggleMeshesVisible={() => setMeshesVisible((visible) => !visible)}
         roofMeshesCount={roofMeshes.length}

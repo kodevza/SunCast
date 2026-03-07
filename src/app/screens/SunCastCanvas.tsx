@@ -19,6 +19,7 @@ export function SunCastCanvas({ model }: SunCastCanvasProps) {
         isDrawing={model.isDrawing}
         orbitEnabled={model.orbitEnabled}
         onToggleOrbit={model.onToggleOrbit}
+        sunProjectionResult={model.sunProjectionResult}
         roofMeshes={model.roofMeshes}
         vertexConstraints={model.vertexConstraints}
         selectedVertexIndex={model.selectedVertexIndex}

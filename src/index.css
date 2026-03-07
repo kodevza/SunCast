@@ -259,16 +259,25 @@ button:disabled {
 .map-debug-toggle {
   position: absolute;
   top: 14px;
-  left: 136px;
+  left: 232px;
   z-index: 10;
   border: 1px solid #4f7f5a;
+  background: rgba(17, 24, 25, 0.94);
+}
+
+.map-sun-perspective-toggle {
+  position: absolute;
+  top: 14px;
+  left: 136px;
+  z-index: 10;
+  border: 1px solid #8b7a41;
   background: rgba(17, 24, 25, 0.94);
 }
 
 .map-camera-controls {
   position: absolute;
   top: 14px;
-  left: 244px;
+  left: 340px;
   z-index: 10;
   display: grid;
   grid-template-columns: repeat(4, auto);

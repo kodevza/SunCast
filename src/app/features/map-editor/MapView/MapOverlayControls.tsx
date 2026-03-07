@@ -4,6 +4,9 @@ import type { HoveredEdgeLength } from './useMapInteractions'
 interface MapOverlayControlsProps {
   orbitEnabled: boolean
   onToggleOrbit: () => void
+  sunPerspectiveEnabled: boolean
+  canUseSunPerspective: boolean
+  onToggleSunPerspective: () => void
   meshesVisible: boolean
   onToggleMeshesVisible: () => void
   roofMeshesCount: number
@@ -19,6 +22,9 @@ interface MapOverlayControlsProps {
 export function MapOverlayControls({
   orbitEnabled,
   onToggleOrbit,
+  sunPerspectiveEnabled,
+  canUseSunPerspective,
+  onToggleSunPerspective,
   meshesVisible,
   onToggleMeshesVisible,
   roofMeshesCount,
@@ -34,6 +40,15 @@ export function MapOverlayControls({
     <>
       <button type="button" className="map-orbit-toggle" onClick={onToggleOrbit} data-testid="orbit-toggle-button">
         {orbitEnabled ? 'Exit orbit' : 'Orbit'}
+      </button>
+      <button
+        type="button"
+        className="map-sun-perspective-toggle"
+        onClick={onToggleSunPerspective}
+        data-testid="sun-perspective-toggle-button"
+        disabled={!orbitEnabled || !canUseSunPerspective}
+      >
+        {sunPerspectiveEnabled ? 'Exit sun view' : 'Sun view'}
       </button>
       <button
         type="button"
