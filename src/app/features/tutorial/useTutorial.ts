@@ -23,6 +23,7 @@ interface TutorialController {
   currentStepIndex: number | null
   stepCount: number
   startTutorial: () => void
+  nextStep: () => void
   skipTutorial: () => void
   completeTutorial: () => void
 }
@@ -94,6 +95,7 @@ export function useTutorial(signals: TutorialSignals): TutorialController {
   const [tutorialEnabled, setTutorialEnabled] = useState(() => readTutorialState().tutorialEnabled)
   const [forceCompleted, setForceCompleted] = useState(false)
   const [manualBaselineCompleted, setManualBaselineCompleted] = useState<number | null>(null)
+  const [manualStepIndex, setManualStepIndex] = useState<number | null>(null)
   const persistedCompleted = readTutorialState().completedSteps
 
   const completedFromSignals = useMemo(() => getCompletedStepCount(signals), [signals])
@@ -105,6 +107,8 @@ export function useTutorial(signals: TutorialSignals): TutorialController {
         : Math.min(TOTAL_STEPS, Math.max(0, completedFromSignals - manualBaselineCompleted))
   const isCompleted = completedSteps >= TOTAL_STEPS
   const tutorialVisible = tutorialEnabled && !isCompleted
+  const autoStepIndex = Math.min(completedSteps, TOTAL_STEPS - 1)
+  const effectiveStepIndex = Math.max(autoStepIndex, manualStepIndex ?? autoStepIndex)
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -122,27 +126,38 @@ export function useTutorial(signals: TutorialSignals): TutorialController {
     setForceCompleted(false)
     setTutorialEnabled(true)
     setManualBaselineCompleted(completedFromSignals)
+    setManualStepIndex(0)
   }, [completedFromSignals])
+
+  const nextStep = useCallback(() => {
+    setManualStepIndex((previous) => {
+      const currentIndex = Math.max(autoStepIndex, previous ?? autoStepIndex)
+      return Math.min(TOTAL_STEPS - 1, currentIndex + 1)
+    })
+  }, [autoStepIndex])
 
   const skipTutorial = useCallback(() => {
     setManualBaselineCompleted(null)
+    setManualStepIndex(null)
     setTutorialEnabled(false)
   }, [])
 
   const completeTutorial = useCallback(() => {
     setForceCompleted(true)
     setManualBaselineCompleted(null)
+    setManualStepIndex(null)
     setTutorialEnabled(false)
   }, [])
 
   const isVisible = tutorialVisible
-  const currentStepIndex = isVisible ? Math.min(completedSteps, TOTAL_STEPS - 1) : null
+  const currentStepIndex = isVisible ? effectiveStepIndex : null
 
   return {
     isVisible,
     currentStepIndex,
     stepCount: TOTAL_STEPS,
     startTutorial,
+    nextStep,
     skipTutorial,
     completeTutorial,
   }

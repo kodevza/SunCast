@@ -67,6 +67,7 @@ export function TutorialController({ model }: TutorialControllerProps) {
       step={activeTutorialStep}
       stepIndex={tutorial.currentStepIndex ?? 0}
       stepCount={tutorial.stepCount}
+      onNext={tutorial.nextStep}
       onSkip={tutorial.skipTutorial}
       onComplete={tutorial.completeTutorial}
     />

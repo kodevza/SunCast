@@ -121,4 +121,16 @@ describe('useTutorial', () => {
     expect(hook.get().currentStepIndex).toBe(1)
     hook.unmount()
   })
+
+  it('nextStep advances tutorial hint manually', () => {
+    const hook = renderTutorialHook(INITIAL_SIGNALS)
+    expect(hook.get().currentStepIndex).toBe(0)
+
+    act(() => {
+      hook.get().nextStep()
+    })
+
+    expect(hook.get().currentStepIndex).toBe(1)
+    hook.unmount()
+  })
 })

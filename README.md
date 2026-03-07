@@ -11,6 +11,8 @@ Interactive web application for **modeling roof geometry and estimating photovol
 
 The app allows users to draw roofs, configure geometry, and visualize **estimated PV output over the day and year**.
 
+Live demo: [SunCast Demo](https://konradzawadka.github.io/SunCast/)
+
 ---
 
 # Main Features

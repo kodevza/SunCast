@@ -10,6 +10,7 @@ interface TutorialOverlayProps {
   step: TutorialOverlayStep
   stepIndex: number
   stepCount: number
+  onNext: () => void
   onSkip: () => void
   onComplete: () => void
 }
@@ -43,7 +44,14 @@ function toHighlightRect(element: HTMLElement): HighlightRect {
   }
 }
 
-export function TutorialOverlay({ step, stepIndex, stepCount, onSkip, onComplete }: TutorialOverlayProps) {
+export function TutorialOverlay({
+  step,
+  stepIndex,
+  stepCount,
+  onNext,
+  onSkip,
+  onComplete,
+}: TutorialOverlayProps) {
   const [highlightRects, setHighlightRects] = useState<HighlightRect[]>([])
   const [cardStyle, setCardStyle] = useState<{ top: number; left: number }>({ top: 20, left: 20 })
   const cardRef = useRef<HTMLDivElement | null>(null)
@@ -136,6 +144,11 @@ export function TutorialOverlay({ step, stepIndex, stepCount, onSkip, onComplete
           <button type="button" onClick={onSkip}>
             Skip tutorial
           </button>
+          {stepIndex < stepCount - 1 && (
+            <button type="button" onClick={onNext}>
+              Next hint
+            </button>
+          )}
           {stepIndex === stepCount - 1 && (
             <button type="button" onClick={onComplete}>
               Finish tutorial
