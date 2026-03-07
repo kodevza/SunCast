@@ -234,7 +234,7 @@ export function ForecastPvPanel({
 
   return (
     <section className="panel-section">
-      <h3>Estimated PV (Forecast)</h3>
+      <h3>Day Estimated (Weather Forecast)</h3>
       {!selectedDateIso && <p>Select datetime above to load irradiance forecast.</p>}
       {!computationEnabled && <p>Production computation paused while editing geometry.</p>}
       {computationEnabled && selectedDateIso && !hasForecastInputs && (

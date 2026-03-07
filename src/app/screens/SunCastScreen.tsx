@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConstraintEditor } from '../hooks/useConstraintEditor'
 import { useRoofDebugSimulation } from '../hooks/useRoofDebugSimulation'
 import { useSolvedRoofEntries } from '../hooks/useSolvedRoofEntries'
@@ -28,13 +28,14 @@ function computeFootprintCentroid(vertices: Array<[number, number]>): [number, n
 }
 
 export function SunCastScreen() {
-  const [orbitEnabled, setOrbitEnabled] = useState(false)
+  const [orbitEnabled, setOrbitEnabled] = useState(true)
   const [mapInitialized, setMapInitialized] = useState(false)
   const [mapBearingDeg, setMapBearingDeg] = useState(0)
   const [mapPitchDeg, setMapPitchDeg] = useState(0)
   const [tutorialKwpEdited, setTutorialKwpEdited] = useState(false)
   const [tutorialDatetimeEdited, setTutorialDatetimeEdited] = useState(false)
   const [isGeometryDragActive, setIsGeometryDragActive] = useState(false)
+  const tutorialStartRef = useRef<() => void>(() => {})
 
   const {
     state,
@@ -257,6 +258,7 @@ export function SunCastScreen() {
         onClearVertex={clearVertexHeight}
         onClearEdge={clearEdgeHeight}
         onConstraintLimitExceeded={setConstraintLimitError}
+        onStartTutorial={() => tutorialStartRef.current()}
         onDevSelectVertex={(vertexIndex) => {
           selectVertex(vertexIndex)
         }}
@@ -335,6 +337,9 @@ export function SunCastScreen() {
         constrainedVertexCount={activeConstraints.vertexHeights.length}
         orbitEnabled={orbitEnabled}
         hasEditedDatetime={tutorialDatetimeEdited}
+        onReady={({ startTutorial }) => {
+          tutorialStartRef.current = startTutorial
+        }}
       />
     </SunCastLayout>
   )

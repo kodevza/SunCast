@@ -38,6 +38,7 @@ interface SunCastSidebarProps {
   onClearVertex: (vertexIndex: number) => void
   onClearEdge: (edgeIndex: number) => void
   onConstraintLimitExceeded: () => void
+  onStartTutorial: () => void
   onDevSelectVertex: (vertexIndex: number) => void
   onDevSelectEdge: (edgeIndex: number) => void
   onDevClearSelection: () => void
@@ -77,6 +78,7 @@ export function SunCastSidebar({
   onClearVertex,
   onClearEdge,
   onConstraintLimitExceeded,
+  onStartTutorial,
   onDevSelectVertex,
   onDevSelectEdge,
   onDevClearSelection,
@@ -84,8 +86,20 @@ export function SunCastSidebar({
 }: SunCastSidebarProps) {
   return (
     <aside className="sun-cast-sidebar">
-      <h2>SunCast</h2>
-      <p className="subtitle">Geometry-first roof modeling on satellite imagery</p>
+      <div className="sun-cast-sidebar-title-row">
+        <h2>SunCast</h2>
+        <button
+          type="button"
+          className="sun-cast-tutorial-trigger"
+          onClick={onStartTutorial}
+          aria-label="Start tutorial"
+          title="Start tutorial"
+          data-testid="start-tutorial-button"
+        >
+          ?
+        </button>
+      </div>
+      <p className="subtitle">Draw your roof and get short-term and long-term production forecasts.</p>
 
       <DevTools
         footprintEntries={footprintEntries}

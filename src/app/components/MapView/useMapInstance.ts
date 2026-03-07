@@ -41,7 +41,7 @@ export function useMapInstance({ onInitialized }: UseMapInstanceArgs): UseMapIns
       maxPitch: MAX_ORBIT_PITCH_DEG,
     })
 
-    map.addControl(new maplibregl.NavigationControl(), 'top-right')
+    map.addControl(new maplibregl.NavigationControl(), 'top-left')
 
     const handleLoad = () => {
       setMapLoaded(true)

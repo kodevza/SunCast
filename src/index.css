@@ -33,9 +33,30 @@ body {
   background: rgba(17, 21, 23, 0.92);
 }
 
+.sun-cast-sidebar-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sun-cast-sidebar-title-row h2 {
+  margin: 0;
+}
+
+.sun-cast-tutorial-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
 .subtitle {
   color: #99acb3;
-  margin-top: 0;
+  margin-top: 8px;
   margin-bottom: 16px;
 }
 
@@ -229,7 +250,7 @@ button:disabled {
 .map-orbit-toggle {
   position: absolute;
   top: 14px;
-  left: 14px;
+  left: 54px;
   z-index: 10;
   border: 1px solid #51666f;
   background: rgba(17, 24, 25, 0.94);
@@ -238,7 +259,7 @@ button:disabled {
 .map-debug-toggle {
   position: absolute;
   top: 14px;
-  left: 96px;
+  left: 136px;
   z-index: 10;
   border: 1px solid #4f7f5a;
   background: rgba(17, 24, 25, 0.94);
@@ -247,7 +268,7 @@ button:disabled {
 .map-camera-controls {
   position: absolute;
   top: 14px;
-  left: 204px;
+  left: 244px;
   z-index: 10;
   display: grid;
   grid-template-columns: repeat(4, auto);
@@ -319,6 +340,20 @@ button:disabled {
   border: 1px solid #50745a;
   background: rgba(14, 24, 18, 0.92);
   color: #d4f6dc;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  pointer-events: none;
+}
+
+.map-orbit-hint {
+  position: absolute;
+  left: 14px;
+  top: 56px;
+  z-index: 11;
+  border: 1px solid #51666f;
+  background: rgba(17, 24, 25, 0.92);
+  color: #d7e3e7;
   border-radius: 8px;
   padding: 6px 10px;
   font-size: 0.78rem;

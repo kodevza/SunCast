@@ -22,6 +22,7 @@ interface TutorialController {
   isVisible: boolean
   currentStepIndex: number | null
   stepCount: number
+  startTutorial: () => void
   skipTutorial: () => void
   completeTutorial: () => void
 }
@@ -92,10 +93,16 @@ function getCompletedStepCount(signals: TutorialSignals): number {
 export function useTutorial(signals: TutorialSignals): TutorialController {
   const [tutorialEnabled, setTutorialEnabled] = useState(() => readTutorialState().tutorialEnabled)
   const [forceCompleted, setForceCompleted] = useState(false)
+  const [manualBaselineCompleted, setManualBaselineCompleted] = useState<number | null>(null)
   const persistedCompleted = readTutorialState().completedSteps
 
   const completedFromSignals = useMemo(() => getCompletedStepCount(signals), [signals])
-  const completedSteps = forceCompleted ? TOTAL_STEPS : Math.max(persistedCompleted, completedFromSignals)
+  const completedSteps =
+    forceCompleted
+      ? TOTAL_STEPS
+      : manualBaselineCompleted === null
+        ? Math.max(persistedCompleted, completedFromSignals)
+        : Math.min(TOTAL_STEPS, Math.max(0, completedFromSignals - manualBaselineCompleted))
   const isCompleted = completedSteps >= TOTAL_STEPS
   const tutorialVisible = tutorialEnabled && !isCompleted
 
@@ -111,12 +118,20 @@ export function useTutorial(signals: TutorialSignals): TutorialController {
     window.localStorage.setItem(TUTORIAL_STORAGE_KEY, JSON.stringify(persistedState))
   }, [completedSteps, tutorialVisible])
 
+  const startTutorial = useCallback(() => {
+    setForceCompleted(false)
+    setTutorialEnabled(true)
+    setManualBaselineCompleted(completedFromSignals)
+  }, [completedFromSignals])
+
   const skipTutorial = useCallback(() => {
+    setManualBaselineCompleted(null)
     setTutorialEnabled(false)
   }, [])
 
   const completeTutorial = useCallback(() => {
     setForceCompleted(true)
+    setManualBaselineCompleted(null)
     setTutorialEnabled(false)
   }, [])
 
@@ -127,6 +142,7 @@ export function useTutorial(signals: TutorialSignals): TutorialController {
     isVisible,
     currentStepIndex,
     stepCount: TOTAL_STEPS,
+    startTutorial,
     skipTutorial,
     completeTutorial,
   }

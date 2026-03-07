@@ -6,6 +6,9 @@ import {
   DRAG_HIT_TOLERANCE_PX,
   EDGE_HIT_LAYER_ID,
   FOOTPRINT_HIT_LAYER_ID,
+  MAX_ORBIT_PITCH_DEG,
+  ORBIT_STEER_BEARING_PER_PIXEL_DEG,
+  ORBIT_STEER_PITCH_PER_PIXEL_DEG,
   VERTEX_HIT_LAYER_ID,
 } from './mapViewConstants'
 import { edgeLengthMeters } from './mapViewGeoJson'
@@ -51,10 +54,15 @@ interface UseMapInteractionsResult {
   hoveredEdgeLength: HoveredEdgeLength | null
 }
 
+interface OrbitSteerState {
+  lastScreenPoint: [number, number]
+}
+
 export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractionsArgs): UseMapInteractionsResult {
   const [hoveredEdgeLength, setHoveredEdgeLength] = useState<HoveredEdgeLength | null>(null)
   const hoveredEdgeLengthRef = useRef<HoveredEdgeLength | null>(null)
   const dragStateRef = useRef<DragState | null>(null)
+  const orbitSteerStateRef = useRef<OrbitSteerState | null>(null)
 
   useEffect(() => {
     hoveredEdgeLengthRef.current = hoveredEdgeLength
@@ -136,7 +144,7 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
       dragState.lastLngLat = [event.lngLat.lng, event.lngLat.lat]
     }
 
-    const finishDrag = () => {
+    const finishGeometryDrag = () => {
       const dragState = dragStateRef.current
       if (!dragState) {
         return
@@ -150,6 +158,20 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
         refs.onMoveRejectedRef.current()
       }
       refs.onGeometryDragStateChangeRef.current(false)
+    }
+
+    const finishOrbitSteer = () => {
+      if (!orbitSteerStateRef.current) {
+        return
+      }
+      orbitSteerStateRef.current = null
+      map.dragPan.enable()
+      map.getCanvas().style.cursor = ''
+    }
+
+    const finishInteractions = () => {
+      finishGeometryDrag()
+      finishOrbitSteer()
     }
 
     const handleClick = (event: maplibregl.MapMouseEvent & { originalEvent: MouseEvent }) => {
@@ -186,6 +208,17 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
     }
 
     const handleMouseDown = (event: maplibregl.MapMouseEvent) => {
+      const isMiddleButton = event.originalEvent instanceof MouseEvent && event.originalEvent.button === 1
+      if (refs.orbitEnabledRef.current && isMiddleButton) {
+        orbitSteerStateRef.current = {
+          lastScreenPoint: [event.point.x, event.point.y],
+        }
+        map.dragPan.disable()
+        map.getCanvas().style.cursor = 'grabbing'
+        event.originalEvent.preventDefault()
+        return
+      }
+
       if (refs.drawingRef.current || refs.orbitEnabledRef.current) {
         return
       }
@@ -222,7 +255,27 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
       map.getCanvas().style.cursor = 'grabbing'
     }
 
+    const handleOrbitSteerMove = (event: maplibregl.MapMouseEvent) => {
+      const orbitSteerState = orbitSteerStateRef.current
+      if (!orbitSteerState || !refs.orbitEnabledRef.current) {
+        return
+      }
+
+      const deltaX = event.point.x - orbitSteerState.lastScreenPoint[0]
+      const deltaY = event.point.y - orbitSteerState.lastScreenPoint[1]
+      if (deltaX === 0 && deltaY === 0) {
+        return
+      }
+
+      map.jumpTo({
+        bearing: map.getBearing() + deltaX * ORBIT_STEER_BEARING_PER_PIXEL_DEG,
+        pitch: Math.max(0, Math.min(MAX_ORBIT_PITCH_DEG, map.getPitch() - deltaY * ORBIT_STEER_PITCH_PER_PIXEL_DEG)),
+      })
+      orbitSteerState.lastScreenPoint = [event.point.x, event.point.y]
+    }
+
     const handleMouseMove = (event: maplibregl.MapMouseEvent) => {
+      handleOrbitSteerMove(event)
       handleHoverMove(event)
       handleDragMove(event)
     }
@@ -241,8 +294,8 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
     map.on('click', handleClick)
     map.on('mousedown', handleMouseDown)
     map.on('mousemove', handleMouseMove)
-    map.on('mouseup', finishDrag)
-    map.on('mouseout', finishDrag)
+    map.on('mouseup', finishInteractions)
+    map.on('mouseout', finishInteractions)
     map.on('rotate', emitBearing)
     map.on('pitch', emitPitch)
 
@@ -250,8 +303,8 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
       map.off('click', handleClick)
       map.off('mousedown', handleMouseDown)
       map.off('mousemove', handleMouseMove)
-      map.off('mouseup', finishDrag)
-      map.off('mouseout', finishDrag)
+      map.off('mouseup', finishInteractions)
+      map.off('mouseout', finishInteractions)
       map.off('rotate', emitBearing)
       map.off('pitch', emitPitch)
       setHoveredEdgeLength(null)

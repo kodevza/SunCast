@@ -80,6 +80,7 @@ export function MapOverlayControls({
           </button>
         </div>
       )}
+      {orbitEnabled && (roofMeshesCount > 0 || isDrawing) && <div className="map-orbit-hint">Middle mouse drag: steer orbit camera</div>}
       {orbitEnabled && roofMeshesCount === 0 && !isDrawing && (
         <div className="map-debug-hint" data-testid="map-debug-hint">
           Mesh needs a solved roof (set at least 3 constraints).

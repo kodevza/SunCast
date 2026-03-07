@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { TutorialOverlay } from '../components/Tutorial/TutorialOverlay'
 import { useTutorial } from '../hooks/useTutorial'
 
@@ -45,6 +46,7 @@ interface TutorialControllerProps {
   constrainedVertexCount: number
   orbitEnabled: boolean
   hasEditedDatetime: boolean
+  onReady?: (controls: { startTutorial: () => void }) => void
 }
 
 export function TutorialController({
@@ -56,6 +58,7 @@ export function TutorialController({
   constrainedVertexCount,
   orbitEnabled,
   hasEditedDatetime,
+  onReady,
 }: TutorialControllerProps) {
   const tutorial = useTutorial({
     draftVertexCount,
@@ -66,6 +69,10 @@ export function TutorialController({
     orbitEnabled,
     hasEditedDatetime,
   })
+
+  useEffect(() => {
+    onReady?.({ startTutorial: tutorial.startTutorial })
+  }, [onReady, tutorial.startTutorial])
 
   const activeTutorialStep = tutorial.currentStepIndex !== null ? TUTORIAL_STEPS[tutorial.currentStepIndex] : null
   if (!mapInitialized || !tutorial.isVisible || !activeTutorialStep) {

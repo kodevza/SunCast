@@ -151,10 +151,6 @@ export function MapView({
     roofLayerRef.current?.setVisible(orbitEnabled && meshesVisible)
   }, [meshesVisible, orbitEnabled, roofLayerRef])
 
-  useEffect(() => {
-    setMeshesVisible(orbitEnabled)
-  }, [orbitEnabled])
-
   return (
     <div className="map-root-wrap">
       <div ref={containerRef} className="map-root" data-testid="map-canvas" />

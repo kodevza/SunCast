@@ -8,6 +8,8 @@ export const AUTO_FOCUS_MAX_ZOOM = 19
 
 export const CLICK_HIT_TOLERANCE_PX = 10
 export const DRAG_HIT_TOLERANCE_PX = 12
+export const ORBIT_STEER_BEARING_PER_PIXEL_DEG = 0.35
+export const ORBIT_STEER_PITCH_PER_PIXEL_DEG = 0.2
 
 export const FOOTPRINT_HIT_LAYER_ID = 'footprints-hit'
 export const EDGE_HIT_LAYER_ID = 'active-footprint-edge-hit'
