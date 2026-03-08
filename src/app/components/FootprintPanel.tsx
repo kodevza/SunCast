@@ -5,6 +5,7 @@ interface FootprintPanelProps {
   activeFootprintId: string | null
   selectedFootprintIds: string[]
   activeFootprintKwp: number | null
+  onShareProject: () => Promise<void>
   onSelectFootprint: (footprintId: string, multiSelect: boolean) => void
   onSetActiveFootprintKwp: (kwp: number) => void
   onDeleteActiveFootprint: () => void
@@ -15,13 +16,28 @@ export function FootprintPanel({
   activeFootprintId,
   selectedFootprintIds,
   activeFootprintKwp,
+  onShareProject,
   onSelectFootprint,
   onSetActiveFootprintKwp,
   onDeleteActiveFootprint,
 }: FootprintPanelProps) {
   return (
     <section className="panel-section">
-      <h3>Roof Polygons</h3>
+      <div className="panel-section-header">
+        <h3>Roof Polygons</h3>
+        <button
+          type="button"
+          onClick={() => {
+            void onShareProject()
+          }}
+          disabled={footprints.length === 0}
+          aria-label="Share project"
+          title="Share project"
+          data-testid="share-project-button"
+        >
+          Share
+        </button>
+      </div>
       {footprints.length === 0 ? (
         <p>No roof polygons yet.</p>
       ) : (

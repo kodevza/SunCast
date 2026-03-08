@@ -73,6 +73,18 @@ body {
   margin-top: 0;
 }
 
+.panel-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel-section-header h3,
+.panel-section-header h4 {
+  margin-bottom: 0;
+}
+
 .draw-actions,
 .constraint-grid {
   display: grid;
@@ -155,6 +167,16 @@ button:disabled {
 
 .status-warning {
   color: #ffe08c;
+}
+
+.status-success {
+  color: #93e8a0;
+}
+
+.status-adjustment-control {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0;
 }
 
 .sun-controls {
