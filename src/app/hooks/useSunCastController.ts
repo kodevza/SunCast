@@ -146,7 +146,7 @@ export function useSunCastController(): {
   canvasModel: SunCastCanvasModel
   tutorialModel: SunCastTutorialModel
 } {
-  const [orbitEnabled, setOrbitEnabled] = useState(true)
+  const [orbitEnabled, setOrbitEnabled] = useState(false)
   const [mapInitialized, setMapInitialized] = useState(false)
   const [mapBearingDeg, setMapBearingDeg] = useState(0)
   const [mapPitchDeg, setMapPitchDeg] = useState(0)

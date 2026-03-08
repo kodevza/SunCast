@@ -7,15 +7,27 @@ function toBase64Url(bytes: Uint8Array): string {
     binary += String.fromCharCode(byte)
   }
 
-  const base64 = typeof btoa === 'function' ? btoa(binary) : Buffer.from(binary, 'binary').toString('base64')
+  if (typeof btoa !== 'function') {
+    throw new Error('Base64 encoding is not supported in this environment.')
+  }
+  const base64 = btoa(binary)
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
 }
 
 function fromBase64Url(value: string): Uint8Array {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
   const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4)
-  const binary = typeof atob === 'function' ? atob(padded) : Buffer.from(padded, 'base64').toString('binary')
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0))
+  if (typeof atob !== 'function') {
+    throw new Error('Base64 decoding is not supported in this environment.')
+  }
+  const binary = atob(padded)
+  return Uint8Array.from(binary, (char: string) => char.charCodeAt(0))
+}
+
+function toStrictArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const buffer = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(buffer).set(bytes)
+  return buffer
 }
 
 async function streamToUint8Array(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
@@ -29,7 +41,7 @@ async function compress(input: Uint8Array): Promise<Uint8Array> {
     throw new Error('Share compression is not supported in this browser.')
   }
 
-  const stream = new Blob([input]).stream().pipeThrough(new CompressionStream('gzip'))
+  const stream = new Blob([toStrictArrayBuffer(input)]).stream().pipeThrough(new CompressionStream('gzip'))
   return streamToUint8Array(stream)
 }
 
@@ -38,7 +50,7 @@ async function decompress(input: Uint8Array): Promise<Uint8Array> {
     throw new Error('Share decompression is not supported in this browser.')
   }
 
-  const stream = new Blob([input]).stream().pipeThrough(new DecompressionStream('gzip'))
+  const stream = new Blob([toStrictArrayBuffer(input)]).stream().pipeThrough(new DecompressionStream('gzip'))
   return streamToUint8Array(stream)
 }
 
