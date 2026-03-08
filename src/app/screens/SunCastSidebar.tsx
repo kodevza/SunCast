@@ -26,6 +26,8 @@ export function SunCastSidebar({ model }: SunCastSidebarProps) {
         </button>
       </div>
       <p className="subtitle">Draw your roof and get short-term and long-term production forecasts.</p>
+      {model.shareError && <p className="status-error">{model.shareError}</p>}
+      {!model.shareError && model.shareSuccess && <p className="status-success">{model.shareSuccess}</p>}
 
       {import.meta.env.DEV && (
         <DevTools
@@ -51,6 +53,7 @@ export function SunCastSidebar({ model }: SunCastSidebarProps) {
         activeFootprintId={model.activeFootprintId}
         selectedFootprintIds={model.selectedFootprintIds}
         activeFootprintKwp={model.activeFootprint?.kwp ?? null}
+        onShareProject={model.onShareProject}
         onSelectFootprint={model.onSelectFootprint}
         onSetActiveFootprintKwp={model.onSetActiveFootprintKwp}
         onDeleteActiveFootprint={model.onDeleteActiveFootprint}
@@ -73,12 +76,17 @@ export function SunCastSidebar({ model }: SunCastSidebarProps) {
         interactionError={model.interactionError}
         solverError={model.solverError}
         warnings={model.warnings}
-        pitchDeg={model.pitchDeg}
+        basePitchDeg={model.basePitchDeg}
+        pitchAdjustmentPercent={model.pitchAdjustmentPercent}
+        adjustedPitchDeg={model.adjustedPitchDeg}
+        onSetPitchAdjustmentPercent={model.onSetPitchAdjustmentPercent}
         azimuthDeg={model.azimuthDeg}
         roofAreaM2={model.roofAreaM2}
         minHeightM={model.minHeightM}
         maxHeightM={model.maxHeightM}
         fitRmsErrorM={model.fitRmsErrorM}
+        activeFootprintLatDeg={model.activeFootprintLatDeg}
+        activeFootprintLonDeg={model.activeFootprintLonDeg}
       />
     </aside>
   )

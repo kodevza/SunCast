@@ -159,16 +159,18 @@ export function toEdgeHeightLabelFeatures(
   return features
 }
 
-export function buildDraftFeatures(drawDraft: Array<[number, number]>): MapFeature[] {
+export function buildDraftFeatures(drawDraft: Array<[number, number]>, draftPreviewPoint: [number, number] | null): MapFeature[] {
   const features: MapFeature[] = []
+  const draftLineCoords =
+    draftPreviewPoint && drawDraft.length >= 1 ? [...drawDraft, draftPreviewPoint] : drawDraft
 
-  if (drawDraft.length >= 2) {
+  if (draftLineCoords.length >= 2) {
     features.push({
       type: 'Feature',
       properties: {},
       geometry: {
         type: 'LineString',
-        coordinates: drawDraft,
+        coordinates: draftLineCoords,
       },
     })
   }
@@ -236,7 +238,11 @@ export function syncInteractiveSources(map: maplibregl.Map, state: InteractiveMa
   })
 }
 
-export function syncDraftSource(map: maplibregl.Map, drawDraft: Array<[number, number]>): void {
+export function syncDraftSource(
+  map: maplibregl.Map,
+  drawDraft: Array<[number, number]>,
+  draftPreviewPoint: [number, number] | null,
+): void {
   const source = map.getSource(DRAFT_SOURCE_ID) as maplibregl.GeoJSONSource | undefined
   if (!source) {
     return
@@ -244,6 +250,6 @@ export function syncDraftSource(map: maplibregl.Map, drawDraft: Array<[number, n
 
   source.setData({
     type: 'FeatureCollection',
-    features: buildDraftFeatures(drawDraft),
+    features: buildDraftFeatures(drawDraft, draftPreviewPoint),
   })
 }

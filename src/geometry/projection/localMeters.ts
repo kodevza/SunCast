@@ -48,6 +48,12 @@ export function lonLatToLocalMeters(origin: LocalOrigin, point: LngLat): Point2 
   }
 }
 
+export function localMetersToLonLat(origin: LocalOrigin, point: Point2): LngLat {
+  const lon = origin.lon0 + (point.x / (EARTH_RADIUS_M * origin.cosLat0)) / DEG_TO_RAD
+  const lat = origin.lat0 + (point.y / EARTH_RADIUS_M) / DEG_TO_RAD
+  return [lon, lat]
+}
+
 export function projectPointsToLocalMeters(points: LngLat[]): { origin: LocalOrigin; points2d: Point2[] } {
   const origin = buildLocalOrigin(points)
   const points2d = points.map((point) => lonLatToLocalMeters(origin, point))

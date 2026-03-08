@@ -69,6 +69,7 @@ export function MapView({
   const [sunPerspectiveEnabled, setSunPerspectiveEnabled] = useState(false)
 
   const drawingRef = useLatest(isDrawing)
+  const drawDraftRef = useLatest(drawDraft)
   const orbitEnabledRef = useLatest(orbitEnabled)
   const activeFootprintRef = useLatest(activeFootprint)
   const onMapClickRef = useLatest(onMapClick)
@@ -85,6 +86,7 @@ export function MapView({
   const interactionRefs = useMemo(
     () => ({
       drawingRef,
+      drawDraftRef,
       orbitEnabledRef,
       activeFootprintRef,
       onMapClickRef,
@@ -101,6 +103,7 @@ export function MapView({
     }),
     [
       activeFootprintRef,
+      drawDraftRef,
       drawingRef,
       onBearingChangeRef,
       onClearSelectionRef,
@@ -119,7 +122,7 @@ export function MapView({
 
   const { containerRef, mapRef, roofLayerRef, mapLoaded } = useMapInstance({ onInitialized })
 
-  const { hoveredEdgeLength } = useMapInteractions({
+  const { hoveredEdgeLength, drawingAngleHint, draftPreviewPoint } = useMapInteractions({
     mapRef,
     mapLoaded,
     refs: interactionRefs,
@@ -132,6 +135,7 @@ export function MapView({
     activeFootprint,
     selectedFootprintIds,
     drawDraft,
+    draftPreviewPoint,
     vertexConstraints,
     selectedVertexIndex,
     selectedEdgeIndex,
@@ -186,6 +190,7 @@ export function MapView({
         isDrawing={isDrawing}
         hasActiveFootprint={activeFootprint !== null}
         hoveredEdgeLength={hoveredEdgeLength}
+        drawingAngleHint={drawingAngleHint}
         gizmoScreenPos={gizmoScreenPos}
         onAdjustHeight={onAdjustHeight}
         showSolveHint={showSolveHint}

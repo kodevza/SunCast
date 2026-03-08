@@ -2,6 +2,16 @@ import type { FootprintPolygon, ProjectSunProjectionSettings } from '../../types
 import { sanitizeVertexHeights } from './projectState.constraints'
 import type { FootprintStateEntry, ProjectState } from './projectState.types'
 
+const MIN_PITCH_ADJUSTMENT_PERCENT = -90
+const MAX_PITCH_ADJUSTMENT_PERCENT = 200
+
+function sanitizePitchAdjustmentPercent(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+  return Math.min(MAX_PITCH_ADJUSTMENT_PERCENT, Math.max(MIN_PITCH_ADJUSTMENT_PERCENT, value))
+}
+
 export function sanitizeLoadedState(
   state: ProjectState,
   defaultSunProjection: ProjectSunProjectionSettings,
@@ -25,6 +35,7 @@ export function sanitizeLoadedState(
       constraints: {
         vertexHeights: sanitizeVertexHeights(entry.constraints.vertexHeights ?? [], footprint.vertices.length),
       },
+      pitchAdjustmentPercent: sanitizePitchAdjustmentPercent(entry.pitchAdjustmentPercent),
     }
   }
 

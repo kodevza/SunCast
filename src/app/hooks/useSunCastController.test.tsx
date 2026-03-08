@@ -106,6 +106,7 @@ function makeState(): ProjectState {
           kwp: 4,
         },
         constraints: { vertexHeights: [] },
+        pitchAdjustmentPercent: 0,
       },
       b: {
         footprint: {
@@ -118,6 +119,7 @@ function makeState(): ProjectState {
           kwp: 5,
         },
         constraints: { vertexHeights: [] },
+        pitchAdjustmentPercent: 0,
       },
     },
     activeFootprintId: 'a',
@@ -159,6 +161,7 @@ describe('useSunCastController', () => {
       setSunProjectionDatetimeIso: vi.fn(),
       setSunProjectionDailyDateIso: vi.fn(),
       setActiveFootprintKwp: vi.fn(),
+      setActivePitchAdjustmentPercent: vi.fn(),
       selectOnlyFootprint: vi.fn(),
       toggleFootprintSelection: vi.fn(),
       selectAllFootprints: vi.fn(),
@@ -217,6 +220,7 @@ describe('useSunCastController', () => {
       setSunProjectionDatetimeIso: vi.fn(),
       setSunProjectionDailyDateIso: vi.fn(),
       setActiveFootprintKwp: vi.fn(),
+      setActivePitchAdjustmentPercent: vi.fn(),
       selectOnlyFootprint: vi.fn(),
       toggleFootprintSelection: vi.fn(),
       selectAllFootprints: vi.fn(),

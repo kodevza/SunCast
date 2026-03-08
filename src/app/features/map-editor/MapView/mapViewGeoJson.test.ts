@@ -45,10 +45,27 @@ describe('mapViewGeoJson', () => {
       [1, 1],
       [2, 2],
       [3, 3],
-    ])
+    ], null)
 
     expect(features).toHaveLength(4)
     expect(features[0].geometry.type).toBe('LineString')
+  })
+
+  it('extends draft line to preview point while drawing', () => {
+    const features = buildDraftFeatures(
+      [
+        [1, 1],
+        [2, 1],
+      ],
+      [2, 2],
+    )
+
+    expect(features[0].geometry.type).toBe('LineString')
+    expect((features[0].geometry as GeoJSON.LineString).coordinates).toEqual([
+      [1, 1],
+      [2, 1],
+      [2, 2],
+    ])
   })
 
   it('returns edge labels only for edges with equal endpoint heights', () => {

@@ -21,6 +21,9 @@ export function fromStoredFootprint(stored: StoredFootprint, defaultFootprintKwp
     constraints: {
       vertexHeights: sanitizeVertexHeights(vertexHeights, footprint.vertices.length),
     },
+    pitchAdjustmentPercent: Number.isFinite(stored.pitchAdjustmentPercent)
+      ? (stored.pitchAdjustmentPercent as number)
+      : 0,
   }
 }
 
@@ -35,5 +38,6 @@ export function toStoredFootprint(entry: FootprintStateEntry, defaultFootprintKw
     polygon: entry.footprint.vertices,
     vertexHeights,
     kwp: Number.isFinite(entry.footprint.kwp) ? Math.max(0, entry.footprint.kwp) : defaultFootprintKwp,
+    pitchAdjustmentPercent: entry.pitchAdjustmentPercent,
   }
 }

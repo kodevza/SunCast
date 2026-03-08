@@ -20,6 +20,7 @@ function createState(): Pick<ProjectState, 'footprints' | 'activeFootprintId' | 
           kwp: 5,
         },
         constraints: { vertexHeights: [{ vertexIndex: 1, heightM: 2.2 }] },
+        pitchAdjustmentPercent: 0,
       },
     },
     activeFootprintId: 'a',

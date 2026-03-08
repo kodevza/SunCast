@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { createProjectCommands } from './projectState.commands'
 import {
   DEFAULT_FOOTPRINT_KWP,
@@ -13,17 +13,49 @@ import {
   isFootprintSelected,
 } from './projectState.selectors'
 import { readStorage, writeStorage } from './projectState.storage'
+import { deserializeSharePayload } from './projectState.share'
+import { decodeSharePayload } from '../../shared/utils/shareCodec'
 
 const SOLVER_CONFIG_VERSION = 'uc6'
 
 export function useProjectStore() {
   const [state, dispatch] = useReducer(projectStateReducer, initialProjectState)
   const hasSkippedInitialPersist = useRef(false)
+  const [startupHydrationError, setStartupHydrationError] = useState<string | null>(null)
 
   useEffect(() => {
-    const stored = readStorage(DEFAULT_SUN_PROJECTION, DEFAULT_FOOTPRINT_KWP)
-    if (stored) {
-      dispatch({ type: 'LOAD', payload: stored })
+    let cancelled = false
+
+    const hydrate = async () => {
+      const hashPayload = window.location.hash.startsWith('#')
+        ? window.location.hash.slice(1)
+        : window.location.hash
+      const shareParam = new URLSearchParams(hashPayload).get('c')
+      if (shareParam) {
+        try {
+          const decoded = await decodeSharePayload(shareParam)
+          const shared = deserializeSharePayload(decoded, DEFAULT_SUN_PROJECTION, DEFAULT_FOOTPRINT_KWP)
+          if (!cancelled) {
+            dispatch({ type: 'LOAD', payload: shared })
+          }
+          return
+        } catch {
+          if (!cancelled) {
+            setStartupHydrationError('Invalid shared URL. Loaded saved project instead.')
+          }
+        }
+      }
+
+      const stored = readStorage(DEFAULT_SUN_PROJECTION, DEFAULT_FOOTPRINT_KWP)
+      if (stored && !cancelled) {
+        dispatch({ type: 'LOAD', payload: stored })
+      }
+    }
+
+    void hydrate()
+
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -54,7 +86,8 @@ export function useProjectStore() {
       selectedFootprintIds: getSelectedFootprintIds(state),
       isFootprintSelected: (footprintId: string) => isFootprintSelected(state, footprintId),
       sunProjection: state.sunProjection,
+      startupHydrationError,
       ...createProjectCommands(dispatch, () => state),
     }
-  }, [state])
+  }, [startupHydrationError, state])
 }

@@ -1,0 +1,59 @@
+import { describe, expect, it } from 'vitest'
+import {
+  buildSharePayload,
+  deserializeSharePayload,
+  serializeSharePayload,
+  validateSharePayload,
+} from './projectState.share'
+
+const DEFAULT_SUN = { enabled: true, datetimeIso: null, dailyDateIso: null }
+const DEFAULT_KWP = 4.3
+
+describe('projectState.share', () => {
+  it('builds and deserializes shared payload', () => {
+    const payload = buildSharePayload({
+      footprints: {
+        fp1: {
+          footprint: {
+            id: 'fp1',
+            vertices: [
+              [1, 1],
+              [2, 1],
+              [2, 2],
+            ],
+            kwp: 6,
+          },
+          constraints: {
+            vertexHeights: [{ vertexIndex: 1, heightM: 3.2 }],
+          },
+          pitchAdjustmentPercent: 12,
+        },
+      },
+      activeFootprintId: 'fp1',
+      sunProjection: {
+        enabled: false,
+        datetimeIso: '2026-03-07T11:00',
+        dailyDateIso: '2026-03-07',
+      },
+    })
+
+    const loaded = deserializeSharePayload(serializeSharePayload(payload), DEFAULT_SUN, DEFAULT_KWP)
+    expect(loaded.activeFootprintId).toBe('fp1')
+    expect(loaded.selectedFootprintIds).toEqual(['fp1'])
+    expect(loaded.footprints.fp1.footprint.kwp).toBe(6)
+    expect(loaded.footprints.fp1.constraints.vertexHeights).toEqual([{ vertexIndex: 1, heightM: 3.2 }])
+    expect(loaded.footprints.fp1.pitchAdjustmentPercent).toBe(12)
+  })
+
+  it('rejects invalid payload schema', () => {
+    expect(
+      validateSharePayload({
+        version: 1,
+        footprints: [{ id: 'fp1', polygon: [], vertexHeights: {}, kwp: 5 }],
+        activeFootprintId: 'fp1',
+      }),
+    ).toBe(false)
+
+    expect(() => deserializeSharePayload('{"version":2}', DEFAULT_SUN, DEFAULT_KWP)).toThrow('Invalid share payload')
+  })
+})

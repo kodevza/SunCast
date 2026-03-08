@@ -1,5 +1,5 @@
 import { HEIGHT_STEP_M, HEIGHT_STEP_SHIFT_M } from './mapViewConstants'
-import type { HoveredEdgeLength } from './useMapInteractions'
+import type { DrawingAngleHint, HoveredEdgeLength } from './useMapInteractions'
 
 interface MapOverlayControlsProps {
   orbitEnabled: boolean
@@ -13,6 +13,7 @@ interface MapOverlayControlsProps {
   isDrawing: boolean
   hasActiveFootprint: boolean
   hoveredEdgeLength: HoveredEdgeLength | null
+  drawingAngleHint: DrawingAngleHint | null
   gizmoScreenPos: { left: number; top: number } | null
   onAdjustHeight: (stepM: number) => void
   showSolveHint: boolean
@@ -31,6 +32,7 @@ export function MapOverlayControls({
   isDrawing,
   hasActiveFootprint,
   hoveredEdgeLength,
+  drawingAngleHint,
   gizmoScreenPos,
   onAdjustHeight,
   showSolveHint,
@@ -107,6 +109,17 @@ export function MapOverlayControls({
           data-testid="map-edge-hover-label"
         >
           {hoveredEdgeLength.lengthM.toFixed(2)} m
+        </div>
+      )}
+      {drawingAngleHint && isDrawing && !orbitEnabled && (
+        <div
+          className="map-draw-angle-label"
+          style={{ left: `${drawingAngleHint.left}px`, top: `${drawingAngleHint.top}px` }}
+          data-testid="map-draw-angle-label"
+        >
+          {drawingAngleHint.lengthM.toFixed(2)} m
+          {drawingAngleHint.angleDeg !== null ? ` | ${drawingAngleHint.angleDeg.toFixed(1)} deg` : ''}
+          {drawingAngleHint.snapped ? ' snap' : ''}
         </div>
       )}
       {orbitEnabled && gizmoScreenPos && (

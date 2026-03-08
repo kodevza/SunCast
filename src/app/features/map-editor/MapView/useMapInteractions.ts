@@ -11,6 +11,7 @@ import {
   ORBIT_STEER_PITCH_PER_PIXEL_DEG,
   VERTEX_HIT_LAYER_ID,
 } from './mapViewConstants'
+import { segmentLengthMeters, snapDrawPointToRightAngle } from './drawingAssist'
 import { edgeLengthMeters } from './mapViewGeoJson'
 import { getEdgeHit, getFootprintHit, getHitFeatures, getVertexHit } from './mapViewHitTesting'
 
@@ -27,8 +28,17 @@ export interface HoveredEdgeLength {
   lengthM: number
 }
 
+export interface DrawingAngleHint {
+  left: number
+  top: number
+  angleDeg: number | null
+  lengthM: number
+  snapped: boolean
+}
+
 interface MapInteractionRefs {
   drawingRef: RefObject<boolean>
+  drawDraftRef: RefObject<Array<[number, number]>>
   orbitEnabledRef: RefObject<boolean>
   activeFootprintRef: RefObject<FootprintPolygon | null>
   onMapClickRef: RefObject<(point: [number, number]) => void>
@@ -52,6 +62,8 @@ interface UseMapInteractionsArgs {
 
 interface UseMapInteractionsResult {
   hoveredEdgeLength: HoveredEdgeLength | null
+  drawingAngleHint: DrawingAngleHint | null
+  draftPreviewPoint: [number, number] | null
 }
 
 interface OrbitSteerState {
@@ -60,6 +72,8 @@ interface OrbitSteerState {
 
 export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractionsArgs): UseMapInteractionsResult {
   const [hoveredEdgeLength, setHoveredEdgeLength] = useState<HoveredEdgeLength | null>(null)
+  const [drawingAngleHint, setDrawingAngleHint] = useState<DrawingAngleHint | null>(null)
+  const [draftPreviewPoint, setDraftPreviewPoint] = useState<[number, number] | null>(null)
   const hoveredEdgeLengthRef = useRef<HoveredEdgeLength | null>(null)
   const dragStateRef = useRef<DragState | null>(null)
   const orbitSteerStateRef = useRef<OrbitSteerState | null>(null)
@@ -79,6 +93,28 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
     }
 
     const handleHoverMove = (event: maplibregl.MapMouseEvent) => {
+      if (refs.drawingRef.current && !refs.orbitEnabledRef.current) {
+        const drawDraft = refs.drawDraftRef.current
+        if (drawDraft.length >= 1) {
+          const snapped = snapDrawPointToRightAngle(drawDraft, [event.lngLat.lng, event.lngLat.lat])
+          const lengthM = segmentLengthMeters(drawDraft[drawDraft.length - 1], snapped.point)
+          setDraftPreviewPoint(snapped.point)
+          setDrawingAngleHint({
+            left: event.point.x,
+            top: event.point.y,
+            angleDeg: drawDraft.length >= 2 ? snapped.angleDeg : null,
+            lengthM,
+            snapped: snapped.snapped,
+          })
+        } else {
+          setDraftPreviewPoint(null)
+          setDrawingAngleHint(null)
+        }
+      } else {
+        setDraftPreviewPoint(null)
+        setDrawingAngleHint(null)
+      }
+
       if (refs.drawingRef.current || refs.orbitEnabledRef.current || dragStateRef.current) {
         if (hoveredEdgeLengthRef.current !== null) {
           setHoveredEdgeLength(null)
@@ -86,14 +122,20 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
         return
       }
 
-      const hits = getHitFeatures(map, event.point, DRAG_HIT_TOLERANCE_PX, [VERTEX_HIT_LAYER_ID, EDGE_HIT_LAYER_ID])
-      const hasInteractiveHit = hits.some(
-        (feature) => feature.layer.id === VERTEX_HIT_LAYER_ID || feature.layer.id === EDGE_HIT_LAYER_ID,
-      )
-      map.getCanvas().style.cursor = hasInteractiveHit ? 'grab' : ''
-
-      const edgeIndex = getEdgeHit(hits, EDGE_HIT_LAYER_ID)
       const active = refs.activeFootprintRef.current
+      const hits = getHitFeatures(map, event.point, DRAG_HIT_TOLERANCE_PX, [VERTEX_HIT_LAYER_ID, EDGE_HIT_LAYER_ID])
+      const vertexIndex = getVertexHit(hits, VERTEX_HIT_LAYER_ID)
+      const edgeIndex = getEdgeHit(hits, EDGE_HIT_LAYER_ID)
+      const canModifyEdge = edgeIndex !== null && !!active && active.vertices.length >= 3
+
+      if (canModifyEdge) {
+        map.getCanvas().style.cursor = 'ew-resize'
+      } else if (vertexIndex !== null) {
+        map.getCanvas().style.cursor = 'grab'
+      } else {
+        map.getCanvas().style.cursor = ''
+      }
+
       if (edgeIndex === null || !active || active.vertices.length < 2) {
         setHoveredEdgeLength(null)
         return
@@ -176,7 +218,9 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
 
     const handleClick = (event: maplibregl.MapMouseEvent & { originalEvent: MouseEvent }) => {
       if (refs.drawingRef.current) {
-        refs.onMapClickRef.current([event.lngLat.lng, event.lngLat.lat])
+        const drawDraft = refs.drawDraftRef.current
+        const snapped = snapDrawPointToRightAngle(drawDraft, [event.lngLat.lng, event.lngLat.lat])
+        refs.onMapClickRef.current(snapped.point)
         return
       }
 
@@ -308,11 +352,15 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
       map.off('rotate', emitBearing)
       map.off('pitch', emitPitch)
       setHoveredEdgeLength(null)
+      setDrawingAngleHint(null)
+      setDraftPreviewPoint(null)
       refs.onGeometryDragStateChangeRef.current(false)
     }
   }, [mapLoaded, mapRef, refs])
 
   return {
     hoveredEdgeLength,
+    drawingAngleHint,
+    draftPreviewPoint,
   }
 }

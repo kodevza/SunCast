@@ -70,6 +70,7 @@ export interface StoredFootprint {
   polygon: LngLat[]
   vertexHeights: Record<string, number>
   kwp?: number
+  pitchAdjustmentPercent?: number
 }
 
 export interface RoofMeshData {

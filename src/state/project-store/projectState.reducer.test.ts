@@ -17,6 +17,7 @@ function withFootprints(state: ProjectState): ProjectState {
           kwp: 4,
         },
         constraints: { vertexHeights: [{ vertexIndex: 0, heightM: 1.2 }] },
+        pitchAdjustmentPercent: 0,
       },
       b: {
         footprint: {
@@ -29,6 +30,7 @@ function withFootprints(state: ProjectState): ProjectState {
           kwp: 5,
         },
         constraints: { vertexHeights: [] },
+        pitchAdjustmentPercent: 0,
       },
     },
     activeFootprintId: 'a',
@@ -99,6 +101,15 @@ describe('projectStateReducer', () => {
     expect(state.footprints.a.constraints.vertexHeights).toEqual([{ vertexIndex: 0, heightM: 1.2 }])
   })
 
+  it('updates active pitch adjustment percent with clamping', () => {
+    let state = withFootprints(initialProjectState)
+    state = projectStateReducer(state, { type: 'SET_ACTIVE_PITCH_ADJUSTMENT_PERCENT', pitchAdjustmentPercent: 15.5 })
+    expect(state.footprints.a.pitchAdjustmentPercent).toBe(15.5)
+
+    state = projectStateReducer(state, { type: 'SET_ACTIVE_PITCH_ADJUSTMENT_PERCENT', pitchAdjustmentPercent: 999 })
+    expect(state.footprints.a.pitchAdjustmentPercent).toBe(200)
+  })
+
   it('sanitizes load payload', () => {
     const dirtyState: ProjectState = {
       ...initialProjectState,
@@ -120,6 +131,7 @@ describe('projectStateReducer', () => {
               { vertexIndex: 2, heightM: 3 },
             ],
           },
+          pitchAdjustmentPercent: Number.NaN,
         },
       },
       activeFootprintId: 'missing',
@@ -138,6 +150,7 @@ describe('projectStateReducer', () => {
     expect(loaded.activeFootprintId).toBe('a')
     expect(loaded.selectedFootprintIds).toEqual(['a'])
     expect(loaded.footprints.a.footprint.kwp).toBe(4.3)
+    expect(loaded.footprints.a.pitchAdjustmentPercent).toBe(0)
     expect(loaded.footprints.a.constraints.vertexHeights).toEqual([{ vertexIndex: 2, heightM: 3 }])
     expect(loaded.sunProjection).toEqual(DEFAULT_SUN_PROJECTION)
   })

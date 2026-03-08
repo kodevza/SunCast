@@ -8,6 +8,7 @@ import type {
 export interface FootprintStateEntry {
   footprint: FootprintPolygon
   constraints: FaceConstraints
+  pitchAdjustmentPercent: number
 }
 
 export interface ImportedFootprintEntry {
@@ -43,6 +44,7 @@ export type Action =
   | { type: 'SET_VERTEX_HEIGHTS'; payload: VertexHeightConstraint[] }
   | { type: 'SET_EDGE_HEIGHT'; payload: { edgeIndex: number; heightM: number } }
   | { type: 'SET_ACTIVE_FOOTPRINT_KWP'; kwp: number }
+  | { type: 'SET_ACTIVE_PITCH_ADJUSTMENT_PERCENT'; pitchAdjustmentPercent: number }
   | { type: 'CLEAR_VERTEX_HEIGHT'; vertexIndex: number }
   | { type: 'CLEAR_EDGE_HEIGHT'; edgeIndex: number }
   | { type: 'SET_SUN_PROJECTION_ENABLED'; enabled: boolean }

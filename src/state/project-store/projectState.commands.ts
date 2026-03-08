@@ -21,6 +21,7 @@ export interface ProjectCommands {
   setEdgeHeight: (edgeIndex: number, heightM: number) => boolean
   setVertexHeights: (constraints: VertexHeightConstraint[]) => boolean
   setActiveFootprintKwp: (kwp: number) => boolean
+  setActivePitchAdjustmentPercent: (pitchAdjustmentPercent: number) => boolean
   clearVertexHeight: (vertexIndex: number) => void
   clearEdgeHeight: (edgeIndex: number) => void
   setSunProjectionEnabled: (enabled: boolean) => void
@@ -96,6 +97,13 @@ export function createProjectCommands(
         return false
       }
       dispatch({ type: 'SET_ACTIVE_FOOTPRINT_KWP', kwp })
+      return true
+    },
+    setActivePitchAdjustmentPercent: (pitchAdjustmentPercent: number) => {
+      if (!Number.isFinite(pitchAdjustmentPercent) || !getActiveFootprint(getState())) {
+        return false
+      }
+      dispatch({ type: 'SET_ACTIVE_PITCH_ADJUSTMENT_PERCENT', pitchAdjustmentPercent })
       return true
     },
     upsertImportedFootprints: (entries: ImportedFootprintEntry[]) => {

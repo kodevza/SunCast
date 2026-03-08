@@ -11,6 +11,7 @@ interface UseMapSourcesArgs {
   activeFootprint: FootprintPolygon | null
   selectedFootprintIds: string[]
   drawDraft: Array<[number, number]>
+  draftPreviewPoint: [number, number] | null
   vertexConstraints: VertexHeightConstraint[]
   selectedVertexIndex: number | null
   selectedEdgeIndex: number | null
@@ -23,6 +24,7 @@ export function useMapSources({
   activeFootprint,
   selectedFootprintIds,
   drawDraft,
+  draftPreviewPoint,
   vertexConstraints,
   selectedVertexIndex,
   selectedEdgeIndex,
@@ -68,8 +70,8 @@ export function useMapSources({
       return
     }
 
-    syncDraftSource(map, drawDraft)
-  }, [drawDraft, mapLoaded, mapRef])
+    syncDraftSource(map, drawDraft, draftPreviewPoint)
+  }, [draftPreviewPoint, drawDraft, mapLoaded, mapRef])
 
   useEffect(() => {
     if (!mapLoaded || hasAppliedInitialFootprintFocusRef.current) {

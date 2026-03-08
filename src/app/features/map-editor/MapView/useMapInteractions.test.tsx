@@ -72,6 +72,7 @@ function renderInteractions(args: { mapRef: RefObject<any>; mapLoaded: boolean; 
 function createRefs(overrides: Partial<any> = {}) {
   return {
     drawingRef: { current: false },
+    drawDraftRef: { current: [] as Array<[number, number]> },
     orbitEnabledRef: { current: false },
     activeFootprintRef: {
       current: {
@@ -100,6 +101,54 @@ function createRefs(overrides: Partial<any> = {}) {
 }
 
 describe('useMapInteractions', () => {
+  it('snaps draft click to a right angle when near 90 degrees', () => {
+    const { handlers, map } = createMapMock()
+    const onMapClick = vi.fn()
+    const refs = createRefs({
+      drawingRef: { current: true },
+      drawDraftRef: { current: [[0, 0], [0.001, 0]] as Array<[number, number]> },
+      onMapClickRef: { current: onMapClick },
+    })
+    const mapRef = createRef<any>()
+    mapRef.current = map
+
+    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+
+    act(() => {
+      handlers.click({
+        point: { x: 40, y: 50 },
+        lngLat: { lng: 0.00105, lat: 0.0003 },
+        originalEvent: new MouseEvent('click'),
+      })
+    })
+
+    expect(onMapClick).toHaveBeenCalledTimes(1)
+    const snapped = onMapClick.mock.calls[0][0] as [number, number]
+    expect(snapped[0]).toBeCloseTo(0.001, 6)
+    hook.unmount()
+  })
+
+  it('uses resize cursor on editable edge hover', () => {
+    const hitFeatures = [{ layer: { id: 'active-footprint-edge-hit' }, properties: { edgeIndex: 0 } }]
+    const { handlers, map } = createMapMock(hitFeatures)
+    const refs = createRefs()
+    const mapRef = createRef<any>()
+    mapRef.current = map
+
+    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+
+    act(() => {
+      handlers.mousemove({
+        point: { x: 40, y: 50 },
+        lngLat: { lng: 10, lat: 10 },
+        originalEvent: new MouseEvent('mousemove'),
+      })
+    })
+
+    expect((map.getCanvas as any)().style.cursor).toBe('ew-resize')
+    hook.unmount()
+  })
+
   it('uses middle mouse for orbit steer and clamps pitch', () => {
     const { handlers, map } = createMapMock()
     const refs = createRefs({ orbitEnabledRef: { current: true } })

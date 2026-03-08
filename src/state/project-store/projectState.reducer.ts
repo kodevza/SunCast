@@ -18,6 +18,15 @@ export const initialProjectState: ProjectState = {
   isDrawing: false,
   sunProjection: DEFAULT_SUN_PROJECTION,
 }
+const MIN_PITCH_ADJUSTMENT_PERCENT = -90
+const MAX_PITCH_ADJUSTMENT_PERCENT = 200
+
+function sanitizePitchAdjustmentPercent(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+  return Math.min(MAX_PITCH_ADJUSTMENT_PERCENT, Math.max(MIN_PITCH_ADJUSTMENT_PERCENT, value))
+}
 
 function generateFootprintId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -99,6 +108,7 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
           [footprintId]: {
             footprint,
             constraints: { vertexHeights: [] },
+            pitchAdjustmentPercent: 0,
           },
         },
         activeFootprintId: footprintId,
@@ -261,6 +271,11 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
           kwp: Math.max(0, action.kwp),
         },
       }))
+    case 'SET_ACTIVE_PITCH_ADJUSTMENT_PERCENT':
+      return applyToActiveFootprint(state, (entry) => ({
+        ...entry,
+        pitchAdjustmentPercent: sanitizePitchAdjustmentPercent(action.pitchAdjustmentPercent),
+      }))
     case 'CLEAR_VERTEX_HEIGHT':
       return applyToActiveFootprint(state, (entry) => ({
         ...entry,
@@ -332,6 +347,7 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
           constraints: {
             vertexHeights: sanitizeVertexHeights(entry.vertexHeights, footprint.vertices.length),
           },
+          pitchAdjustmentPercent: state.footprints[entry.footprintId]?.pitchAdjustmentPercent ?? 0,
         }
         importedIds.push(entry.footprintId)
       }

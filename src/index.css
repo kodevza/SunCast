@@ -418,6 +418,20 @@ button:disabled {
   white-space: nowrap;
 }
 
+.map-draw-angle-label {
+  position: absolute;
+  transform: translate(12px, calc(-100% - 12px));
+  z-index: 13;
+  border: 1px solid #6a7452;
+  background: rgba(25, 28, 16, 0.94);
+  color: #eef5ce;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.76rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 .height-gizmo {
   position: absolute;
   z-index: 15;
