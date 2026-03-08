@@ -159,6 +159,10 @@ async function readStoredProject(page: Page): Promise<StoredProject> {
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
+    if (window.sessionStorage.getItem('suncast_e2e_initialized') === '1') {
+      return
+    }
+    window.sessionStorage.setItem('suncast_e2e_initialized', '1')
     window.localStorage.clear()
     window.localStorage.setItem(
       'suncast_uc12_tutorial_state',
@@ -234,6 +238,30 @@ test('UC2 + UC0.1: edge and vertex constraints update solver status', async ({ p
   await expect(page.getByText(/Active constraints:/)).not.toContainText('V3=9.00m')
 })
 
+test('UC15: address search moves map and updates hash', async ({ page }) => {
+  await page.route('https://photon.komoot.io/api/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        features: [
+          {
+            geometry: { coordinates: [21.0122, 52.2297] },
+            properties: { street: 'Marszalkowska', housenumber: '10', city: 'Warsaw', country: 'Poland' },
+          },
+        ],
+      }),
+    })
+  })
+
+  await page.goto('/')
+  await page.getByTestId('place-search-input').fill('warsaw')
+  await expect(page.getByTestId('place-search-result-0')).toBeVisible()
+
+  await page.getByTestId('place-search-result-0').click()
+  await expect(page).toHaveURL(/#.*lat=52.229700.*lon=21.012200/)
+})
+
 test('UC1 + UC4 + IP1: orbit mode, height gizmo, mesh toggle, and non-orbit drag', async ({ page }) => {
   await page.goto('/')
   await drawFootprint(page, [
@@ -303,7 +331,8 @@ test('UC3 + determinism: multiple footprints persist, reload, and delete', async
   await setVertexHeight(page, 2, 8)
   await expect(page.getByTestId('status-pitch-value')).toBeVisible()
 
-  const pitchBeforeReload = await page.getByText(/^Pitch:/).innerText()
+  const pitchValue = page.getByTestId('status-pitch-value')
+  const pitchBeforeReload = await pitchValue.innerText()
 
   await drawFootprint(page, [
     [0.66, 0.34],
@@ -320,7 +349,7 @@ test('UC3 + determinism: multiple footprints persist, reload, and delete', async
 
   await expect(page.locator('.footprint-list-item')).toHaveCount(2)
   await expect(page.getByText(/Active constraints:/)).toContainText('V0=3.00m')
-  await expect(page.getByText(/^Pitch:/)).toHaveText(pitchBeforeReload)
+  await expect(page.getByTestId('status-pitch-value')).toHaveText(pitchBeforeReload)
 
   const stored = await readStoredProject(page)
   expect(Object.keys(stored.footprints)).toHaveLength(2)
@@ -422,7 +451,7 @@ test('UC6: daily production chart appears and changes with selected date', async
   await setVertexHeight(page, 1, 4)
   await setVertexHeight(page, 2, 6)
 
-  await expect(page.getByText(/^Pitch:/)).toBeVisible()
+  await expect(page.getByTestId('status-pitch-value')).toBeVisible()
   await expect(page.getByTestId('sun-daily-chart')).toBeVisible()
 
   await page.getByTestId('sun-datetime-input').fill('2026-06-21T12:00:00-04:00')
