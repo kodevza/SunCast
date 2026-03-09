@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' '[pre-commit] running lint, tests, and build...'
+npm run precommit:check

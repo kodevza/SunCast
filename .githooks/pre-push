@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' '[pre-push] running build...'
+npm run prepush:check

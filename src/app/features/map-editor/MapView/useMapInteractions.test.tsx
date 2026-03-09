@@ -48,7 +48,7 @@ function createMapMock(hitFeatures: unknown[] = []): MapMock {
 }
 
 function renderInteractions(args: {
-  mapRef: RefObject<UseMapInteractionsArgs['mapRef']['current']>
+  mapRef: RefObject<unknown>
   mapLoaded: boolean
   refs: InteractionRefs
 }) {
@@ -57,7 +57,12 @@ function renderInteractions(args: {
   const root = createRoot(container)
 
   function HookProbe() {
-    useMapInteractions({ ...args, constrainedDrawLengthM: null })
+    useMapInteractions({
+      mapRef: args.mapRef as UseMapInteractionsArgs['mapRef'],
+      mapLoaded: args.mapLoaded,
+      refs: args.refs,
+      constrainedDrawLengthM: null,
+    })
     return null
   }
 
@@ -115,7 +120,7 @@ describe('useMapInteractions', () => {
       drawDraftRef: { current: [[0, 0], [0.001, 0]] as Array<[number, number]> },
       onMapClickRef: { current: onMapClick },
     })
-    const mapRef = createRef<UseMapInteractionsArgs['mapRef']['current']>()
+    const mapRef = createRef<unknown>()
     mapRef.current = map
 
     const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
@@ -142,7 +147,7 @@ describe('useMapInteractions', () => {
       drawDraftRef: { current: [[0, 0], [0.001, 0]] as Array<[number, number]> },
       onMapClickRef: { current: onMapClick },
     })
-    const mapRef = createRef<UseMapInteractionsArgs['mapRef']['current']>()
+    const mapRef = createRef<unknown>()
     mapRef.current = map
 
     const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
@@ -166,7 +171,7 @@ describe('useMapInteractions', () => {
     const hitFeatures = [{ layer: { id: 'active-footprint-edge-hit' }, properties: { edgeIndex: 0 } }]
     const { handlers, map } = createMapMock(hitFeatures)
     const refs = createRefs()
-    const mapRef = createRef<UseMapInteractionsArgs['mapRef']['current']>()
+    const mapRef = createRef<unknown>()
     mapRef.current = map
 
     const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
@@ -179,14 +184,15 @@ describe('useMapInteractions', () => {
       })
     })
 
-    expect((map.getCanvas() as { style: { cursor: string } }).style.cursor).toBe('ew-resize')
+    const getCanvas = map.getCanvas as unknown as () => { style: { cursor: string } }
+    expect(getCanvas().style.cursor).toBe('ew-resize')
     hook.unmount()
   })
 
   it('uses middle mouse for orbit steer and clamps pitch', () => {
     const { handlers, map } = createMapMock()
     const refs = createRefs({ orbitEnabledRef: { current: true } })
-    const mapRef = createRef<UseMapInteractionsArgs['mapRef']['current']>()
+    const mapRef = createRef<unknown>()
     mapRef.current = map
 
     const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
@@ -223,7 +229,7 @@ describe('useMapInteractions', () => {
     const hitFeatures = [{ layer: { id: 'active-footprint-vertex-hit' }, properties: { vertexIndex: 1 } }]
     const { handlers, map } = createMapMock(hitFeatures)
     const refs = createRefs({ onMoveVertexRef: { current: vi.fn(() => false) } })
-    const mapRef = createRef<UseMapInteractionsArgs['mapRef']['current']>()
+    const mapRef = createRef<unknown>()
     mapRef.current = map
 
     const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
