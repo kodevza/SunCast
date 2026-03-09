@@ -16,6 +16,7 @@ import { planeSlopeFromPitchAzimuth } from '../../../geometry/solver/metrics'
 import { getAnnualAggregatedDayProfile } from '../../../geometry/sun/annualEstimation'
 import { formatMinuteOfDay, scaleProfile, sumProfiles } from '../../../geometry/sun/profileAggregation'
 import type { SelectedRoofSunInput } from './SunOverlayColumn'
+import { extractYearInTimeZone } from './sunDateTime'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 
@@ -26,22 +27,13 @@ interface AnnualDayProfilePanelProps {
   computationEnabled?: boolean
 }
 
-function extractYear(datetimeIso: string): number | null {
-  const match = /^(\d{4})-\d{2}-\d{2}T/.exec(datetimeIso.trim())
-  if (!match) {
-    return null
-  }
-  const year = Number(match[1])
-  return Number.isInteger(year) ? year : null
-}
-
 export function AnnualDayProfilePanel({
   datetimeIso,
   timeZone,
   selectedRoofs,
   computationEnabled = true,
 }: AnnualDayProfilePanelProps) {
-  const selectedYear = useMemo(() => extractYear(datetimeIso) ?? new Date().getFullYear(), [datetimeIso])
+  const selectedYear = useMemo(() => extractYearInTimeZone(datetimeIso, timeZone) ?? new Date().getFullYear(), [datetimeIso, timeZone])
 
   const annualProfile = useMemo(() => {
     if (!computationEnabled || selectedRoofs.length === 0) {
@@ -174,7 +166,7 @@ export function AnnualDayProfilePanel({
 
   return (
     <section className="panel-section">
-      <h3>Annual Day Profile</h3>
+      <h3>Annual Day Profile sum(kW)</h3>
       {!computationEnabled && <p>Production computation paused while editing geometry.</p>}
       {selectedRoofs.length === 0 && <p>Select one or more solved polygons to compute annual aggregation.</p>}
       {annualProfile && chartData && annualPeak && (

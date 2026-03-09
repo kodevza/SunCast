@@ -97,8 +97,3 @@ export async function fetchOpenMeteoTiltedIrradiance({
   const payload = (await response.json()) as unknown
   return parseOpenMeteoTiltedIrradiancePayload(payload)
 }
-
-export function extractDateIso(datetimeIso: string): string | null {
-  const match = /^(\d{4}-\d{2}-\d{2})T/.exec(datetimeIso.trim())
-  return match ? match[1] : null
-}

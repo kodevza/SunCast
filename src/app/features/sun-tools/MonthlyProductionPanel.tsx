@@ -13,6 +13,7 @@ import { Bar } from 'react-chartjs-2'
 import { planeSlopeFromPitchAzimuth } from '../../../geometry/solver/metrics'
 import { getAnnualMonthlyEnergyEstimate } from '../../../geometry/sun/annualEstimation'
 import type { SelectedRoofSunInput } from './SunOverlayColumn'
+import { extractYearInTimeZone } from './sunDateTime'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
@@ -25,22 +26,13 @@ interface MonthlyProductionPanelProps {
 
 const MONTH_LABELS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
 
-function extractYear(datetimeIso: string): number | null {
-  const match = /^(\d{4})-\d{2}-\d{2}T/.exec(datetimeIso.trim())
-  if (!match) {
-    return null
-  }
-  const year = Number(match[1])
-  return Number.isInteger(year) ? year : null
-}
-
 export function MonthlyProductionPanel({
   datetimeIso,
   timeZone,
   selectedRoofs,
   computationEnabled = true,
 }: MonthlyProductionPanelProps) {
-  const selectedYear = useMemo(() => extractYear(datetimeIso) ?? new Date().getFullYear(), [datetimeIso])
+  const selectedYear = useMemo(() => extractYearInTimeZone(datetimeIso, timeZone) ?? new Date().getFullYear(), [datetimeIso, timeZone])
 
   const totalSelectedKwp = useMemo(
     () => selectedRoofs.reduce((sum, roof) => sum + (Number.isFinite(roof.kwp) && roof.kwp > 0 ? roof.kwp : 0), 0),
@@ -143,7 +135,7 @@ export function MonthlyProductionPanel({
 
   return (
     <section className="panel-section">
-      <h3>Monthly Production</h3>
+      <h3>Monthly Production (kWh)</h3>
       {!computationEnabled && <p>Production computation paused while editing geometry.</p>}
       {selectedRoofs.length === 0 && <p>Select one or more solved polygons to compute monthly production.</p>}
       {computationEnabled && selectedRoofs.length > 0 && totalSelectedKwp <= 0 && (

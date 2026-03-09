@@ -2,6 +2,7 @@ import { useEffect, useRef, useMemo } from 'react'
 import { computeSunProjection } from '../../../geometry/sun/sunProjection'
 import { parseIsoDateTimeWithTimezone } from '../../../geometry/sun/sunPosition'
 import type { ProjectSunProjectionSettings, RoofPlane } from '../../../types/geometry'
+import { extractDateIsoInTimeZone, formatIsoDateTimeWithLocalOffset } from './sunDateTime'
 
 interface UseSunProjectionPanelParams {
   sunProjection: ProjectSunProjectionSettings
@@ -21,11 +22,6 @@ function computeFootprintCentroid(vertices: Array<[number, number]>): [number, n
   return [lonSum / vertices.length, latSum / vertices.length]
 }
 
-function extractDateIso(datetimeIso: string): string | null {
-  const match = /^(\d{4}-\d{2}-\d{2})T/.exec(datetimeIso)
-  return match ? match[1] : null
-}
-
 export function useSunProjectionPanel({
   sunProjection,
   activeVertices,
@@ -35,9 +31,13 @@ export function useSunProjectionPanel({
 }: UseSunProjectionPanelParams) {
   const hasAppliedDefaultDatetimeRef = useRef(false)
   const sunDatetimeRaw = sunProjection.datetimeIso ?? ''
-  const sunDailyDateRaw = sunProjection.dailyDateIso ?? ''
   const sunDailyTimeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', [])
   const sunDatetimeParsed = sunDatetimeRaw.trim() === '' ? null : parseIsoDateTimeWithTimezone(sunDatetimeRaw.trim())
+  const derivedSunDailyDateIso = useMemo(
+    () => extractDateIsoInTimeZone(sunDatetimeRaw, sunDailyTimeZone),
+    [sunDatetimeRaw, sunDailyTimeZone],
+  )
+  const sunDailyDateRaw = derivedSunDailyDateIso ?? ''
   const sunDatetimeError =
     sunDatetimeRaw.trim() === '' || sunDatetimeParsed ? null : 'Use ISO datetime with timezone, e.g. 2026-03-05T14:30:00+01:00'
   const hasValidSunDatetime = sunDatetimeParsed !== null
@@ -52,10 +52,19 @@ export function useSunProjectionPanel({
       return
     }
 
-    const nowIso = new Date().toISOString()
+    const nowIso = formatIsoDateTimeWithLocalOffset(new Date())
     setSunProjectionDatetimeIso(nowIso)
-    setSunProjectionDailyDateIso(extractDateIso(nowIso))
-  }, [setSunProjectionDailyDateIso, setSunProjectionDatetimeIso, sunProjection.datetimeIso])
+    setSunProjectionDailyDateIso(extractDateIsoInTimeZone(nowIso, sunDailyTimeZone))
+  }, [setSunProjectionDailyDateIso, setSunProjectionDatetimeIso, sunDailyTimeZone, sunProjection.datetimeIso])
+
+  useEffect(() => {
+    const persistedDailyDateIso = sunProjection.dailyDateIso ?? null
+    const normalizedDailyDateIso = derivedSunDailyDateIso ?? null
+    if (persistedDailyDateIso === normalizedDailyDateIso) {
+      return
+    }
+    setSunProjectionDailyDateIso(normalizedDailyDateIso)
+  }, [derivedSunDailyDateIso, setSunProjectionDailyDateIso, sunProjection.dailyDateIso])
 
   const activeFootprintCentroid = useMemo(
     () => (activeVertices && activeVertices.length > 0 ? computeFootprintCentroid(activeVertices) : null),
@@ -88,7 +97,7 @@ export function useSunProjectionPanel({
     }
 
     setSunProjectionDatetimeIso(trimmed)
-    setSunProjectionDailyDateIso(extractDateIso(trimmed))
+    setSunProjectionDailyDateIso(extractDateIsoInTimeZone(trimmed, sunDailyTimeZone))
   }
 
   return {

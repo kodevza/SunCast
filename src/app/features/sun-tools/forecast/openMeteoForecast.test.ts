@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { extractDateIso, fetchOpenMeteoTiltedIrradiance, parseOpenMeteoTiltedIrradiancePayload } from './openMeteoForecast'
+import { fetchOpenMeteoTiltedIrradiance, parseOpenMeteoTiltedIrradiancePayload } from './openMeteoForecast'
 
 describe('openMeteoForecast', () => {
   it('returns empty list for malformed payload', () => {
@@ -52,10 +52,5 @@ describe('openMeteoForecast', () => {
 
     expect(points).toEqual([{ timestampIso: '2026-03-07T11:00', irradianceWm2: 700 }])
     expect(fetchImpl).toHaveBeenCalledTimes(1)
-  })
-
-  it('extracts date from datetime input', () => {
-    expect(extractDateIso('2026-03-07T12:34')).toBe('2026-03-07')
-    expect(extractDateIso('invalid')).toBeNull()
   })
 })

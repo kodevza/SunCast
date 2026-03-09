@@ -19,14 +19,12 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 
 interface ForecastPvPanelProps {
   datetimeIso: string
-  timeZone: string
   selectedRoofs: SelectedRoofSunInput[]
   computationEnabled?: boolean
 }
 
 export function ForecastPvPanel({
   datetimeIso,
-  timeZone,
   selectedRoofs,
   computationEnabled = true,
 }: ForecastPvPanelProps) {
@@ -40,7 +38,6 @@ export function ForecastPvPanel({
     totalSelectedKwp,
   } = useForecastPv({
     datetimeIso,
-    timeZone,
     selectedRoofs,
     computationEnabled,
   })
@@ -112,7 +109,7 @@ export function ForecastPvPanel({
   }, [forecastPoints])
   return (
     <section className="panel-section">
-      <h3>Day Estimated (Weather Forecast)</h3>
+      <h3>Day Estimated (Weather Forecast, UTC)</h3>
       {!selectedDateIso && <p>Select datetime above to load irradiance forecast.</p>}
       {!computationEnabled && <p>Production computation paused while editing geometry.</p>}
       {computationEnabled && selectedDateIso && !hasForecastInputs && (
@@ -132,7 +129,7 @@ export function ForecastPvPanel({
             Peak: {forecastPeak.estimatedKw.toFixed(2)} kW at {forecastPeak.timeLabel}
           </p>
           <p data-testid="sun-forecast-points">Points: {forecastPoints.length}</p>
-          <p data-testid="sun-forecast-date">Date: {selectedDateIso}</p>
+          <p data-testid="sun-forecast-date">Date (UTC): {selectedDateIso}</p>
           <p data-testid="sun-forecast-selection">Selected polygons: {selectedCount}</p>
           <p data-testid="sun-forecast-power">Weighted capacity: {totalSelectedKwp.toFixed(1)} kWp</p>
         </>

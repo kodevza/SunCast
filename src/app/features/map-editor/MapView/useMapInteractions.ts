@@ -11,7 +11,7 @@ import {
   ORBIT_STEER_PITCH_PER_PIXEL_DEG,
   VERTEX_HIT_LAYER_ID,
 } from './mapViewConstants'
-import { segmentLengthMeters, snapDrawPointToRightAngle } from './drawingAssist'
+import { angleFromSouthDeg, pointAtDistanceMeters, segmentAzimuthDeg, segmentLengthMeters, snapDrawPointToRightAngle } from './drawingAssist'
 import { edgeLengthMeters } from './mapViewGeoJson'
 import { getEdgeHit, getFootprintHit, getHitFeatures, getVertexHit } from './mapViewHitTesting'
 
@@ -32,6 +32,9 @@ export interface DrawingAngleHint {
   left: number
   top: number
   angleDeg: number | null
+  azimuthDeg: number | null
+  angleFromSouthDeg: number | null
+  secondPointPreview: boolean
   lengthM: number
   snapped: boolean
 }
@@ -58,6 +61,7 @@ interface UseMapInteractionsArgs {
   mapRef: RefObject<maplibregl.Map | null>
   mapLoaded: boolean
   refs: MapInteractionRefs
+  constrainedDrawLengthM: number | null
 }
 
 interface UseMapInteractionsResult {
@@ -70,7 +74,12 @@ interface OrbitSteerState {
   lastScreenPoint: [number, number]
 }
 
-export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractionsArgs): UseMapInteractionsResult {
+export function useMapInteractions({
+  mapRef,
+  mapLoaded,
+  refs,
+  constrainedDrawLengthM,
+}: UseMapInteractionsArgs): UseMapInteractionsResult {
   const [hoveredEdgeLength, setHoveredEdgeLength] = useState<HoveredEdgeLength | null>(null)
   const [drawingAngleHint, setDrawingAngleHint] = useState<DrawingAngleHint | null>(null)
   const [draftPreviewPoint, setDraftPreviewPoint] = useState<[number, number] | null>(null)
@@ -92,17 +101,33 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
       return
     }
 
+    const getDrawPoint = (drawDraft: Array<[number, number]>, rawPoint: [number, number]) => {
+      const snapped = snapDrawPointToRightAngle(drawDraft, rawPoint)
+      if (drawDraft.length < 1 || constrainedDrawLengthM === null) {
+        return snapped
+      }
+      return {
+        ...snapped,
+        point: pointAtDistanceMeters(drawDraft[drawDraft.length - 1], snapped.point, constrainedDrawLengthM),
+      }
+    }
+
     const handleHoverMove = (event: maplibregl.MapMouseEvent) => {
       if (refs.drawingRef.current && !refs.orbitEnabledRef.current) {
         const drawDraft = refs.drawDraftRef.current
         if (drawDraft.length >= 1) {
-          const snapped = snapDrawPointToRightAngle(drawDraft, [event.lngLat.lng, event.lngLat.lat])
+          const snapped = getDrawPoint(drawDraft, [event.lngLat.lng, event.lngLat.lat])
           const lengthM = segmentLengthMeters(drawDraft[drawDraft.length - 1], snapped.point)
+          const secondPointPreview = drawDraft.length === 1
+          const azimuthDeg = secondPointPreview ? segmentAzimuthDeg(drawDraft[0], snapped.point) : null
           setDraftPreviewPoint(snapped.point)
           setDrawingAngleHint({
             left: event.point.x,
             top: event.point.y,
             angleDeg: drawDraft.length >= 2 ? snapped.angleDeg : null,
+            azimuthDeg,
+            angleFromSouthDeg: azimuthDeg !== null ? angleFromSouthDeg(azimuthDeg) : null,
+            secondPointPreview,
             lengthM,
             snapped: snapped.snapped,
           })
@@ -219,7 +244,7 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
     const handleClick = (event: maplibregl.MapMouseEvent & { originalEvent: MouseEvent }) => {
       if (refs.drawingRef.current) {
         const drawDraft = refs.drawDraftRef.current
-        const snapped = snapDrawPointToRightAngle(drawDraft, [event.lngLat.lng, event.lngLat.lat])
+        const snapped = getDrawPoint(drawDraft, [event.lngLat.lng, event.lngLat.lat])
         refs.onMapClickRef.current(snapped.point)
         return
       }
@@ -356,7 +381,7 @@ export function useMapInteractions({ mapRef, mapLoaded, refs }: UseMapInteractio
       setDraftPreviewPoint(null)
       refs.onGeometryDragStateChangeRef.current(false)
     }
-  }, [mapLoaded, mapRef, refs])
+  }, [constrainedDrawLengthM, mapLoaded, mapRef, refs])
 
   return {
     hoveredEdgeLength,

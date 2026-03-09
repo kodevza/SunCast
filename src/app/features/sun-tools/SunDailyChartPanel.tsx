@@ -209,7 +209,7 @@ export function SunDailyChartPanel({ dateIso, timeZone, selectedRoofs, computati
 
   return (
     <section className="panel-section">
-      <h3>Daily Production</h3>
+      <h3>Daily Production (kW)</h3>
 
       {!dateIso && <p>Select date/time above to compute sunrise, sunset, and production profile.</p>}
       {!computationEnabled && <p>Production computation paused while editing geometry.</p>}

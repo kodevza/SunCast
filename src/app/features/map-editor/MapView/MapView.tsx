@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FootprintPolygon, RoofMeshData, VertexHeightConstraint } from '../../../../types/geometry'
 import type { SunProjectionResult } from '../../../../geometry/sun/sunProjection'
 import { MapOverlayControls } from './MapOverlayControls'
@@ -9,6 +9,7 @@ import { useMapInteractions } from './useMapInteractions'
 import { useMapSources } from './useMapSources'
 import { useOrbitCamera } from './useOrbitCamera'
 import type { PlaceSearchResult } from '../../place-search/placeSearch.types'
+import { pointAtDistanceMeters } from './drawingAssist'
 
 interface MapViewProps {
   footprints: FootprintPolygon[]
@@ -77,12 +78,37 @@ export function MapView({
 }: MapViewProps) {
   const [meshesVisible, setMeshesVisible] = useState(false)
   const [sunPerspectiveEnabled, setSunPerspectiveEnabled] = useState(false)
+  const [drawLengthInput, setDrawLengthInput] = useState('')
+  const [constrainedDrawLengthM, setConstrainedDrawLengthM] = useState<number | null>(null)
+
+  const parseDrawLengthInput = useCallback(() => {
+    const trimmed = drawLengthInput.trim()
+    if (!trimmed) {
+      return null
+    }
+    const parsed = Number.parseFloat(trimmed)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  }, [drawLengthInput])
+
+  const commitDrawLengthInput = useCallback(() => {
+    const parsed = parseDrawLengthInput()
+    setConstrainedDrawLengthM(parsed)
+    return parsed
+  }, [parseDrawLengthInput])
 
   const drawingRef = useLatest(isDrawing)
   const drawDraftRef = useLatest(drawDraft)
   const orbitEnabledRef = useLatest(orbitEnabled)
   const activeFootprintRef = useLatest(activeFootprint)
-  const onMapClickRef = useLatest(onMapClick)
+  const handleDrawPointCommit = useCallback(
+    (point: [number, number]) => {
+      onMapClick(point)
+      setDrawLengthInput('')
+      setConstrainedDrawLengthM(null)
+    },
+    [onMapClick],
+  )
+  const onMapClickRef = useLatest(handleDrawPointCommit)
   const onSelectVertexRef = useLatest(onSelectVertex)
   const onSelectEdgeRef = useLatest(onSelectEdge)
   const onSelectFootprintRef = useLatest(onSelectFootprint)
@@ -136,7 +162,50 @@ export function MapView({
     mapRef,
     mapLoaded,
     refs: interactionRefs,
+    constrainedDrawLengthM: isDrawing ? constrainedDrawLengthM : null,
   })
+
+  useEffect(() => {
+    if (!isDrawing) {
+      setDrawLengthInput('')
+      setConstrainedDrawLengthM(null)
+    }
+  }, [isDrawing])
+
+  useEffect(() => {
+    if (!isDrawing || orbitEnabled || !drawingAngleHint) {
+      return
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || event.shiftKey) {
+        return
+      }
+      const input = document.querySelector('[data-testid="map-draw-length-input"]') as HTMLInputElement | null
+      if (!input) {
+        return
+      }
+      if (document.activeElement === input) {
+        return
+      }
+      event.preventDefault()
+      input.focus()
+      input.select()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [drawingAngleHint, isDrawing, orbitEnabled])
+
+  const submitDrawLengthInput = useCallback(() => {
+    if (!isDrawing || !draftPreviewPoint || drawDraft.length < 1) {
+      return
+    }
+    const parsed = commitDrawLengthInput()
+    const anchor = drawDraft[drawDraft.length - 1]
+    const point = parsed !== null ? pointAtDistanceMeters(anchor, draftPreviewPoint, parsed) : draftPreviewPoint
+    handleDrawPointCommit(point)
+  }, [commitDrawLengthInput, draftPreviewPoint, drawDraft, handleDrawPointCommit, isDrawing])
 
   useMapSources({
     mapRef,
@@ -222,6 +291,9 @@ export function MapView({
         hasActiveFootprint={activeFootprint !== null}
         hoveredEdgeLength={hoveredEdgeLength}
         drawingAngleHint={drawingAngleHint}
+        drawLengthInput={drawLengthInput}
+        onDrawLengthInputChange={setDrawLengthInput}
+        onDrawLengthInputSubmit={submitDrawLengthInput}
         gizmoScreenPos={gizmoScreenPos}
         onAdjustHeight={onAdjustHeight}
         showSolveHint={showSolveHint}

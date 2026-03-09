@@ -16,6 +16,9 @@ interface MapOverlayControlsProps {
   hasActiveFootprint: boolean
   hoveredEdgeLength: HoveredEdgeLength | null
   drawingAngleHint: DrawingAngleHint | null
+  drawLengthInput: string
+  onDrawLengthInputChange: (value: string) => void
+  onDrawLengthInputSubmit: () => void
   gizmoScreenPos: { left: number; top: number } | null
   onAdjustHeight: (stepM: number) => void
   showSolveHint: boolean
@@ -36,6 +39,9 @@ export function MapOverlayControls({
   hasActiveFootprint,
   hoveredEdgeLength,
   drawingAngleHint,
+  drawLengthInput,
+  onDrawLengthInputChange,
+  onDrawLengthInputSubmit,
   gizmoScreenPos,
   onAdjustHeight,
   showSolveHint,
@@ -125,8 +131,35 @@ export function MapOverlayControls({
           data-testid="map-draw-angle-label"
         >
           {drawingAngleHint.lengthM.toFixed(2)} m
-          {drawingAngleHint.angleDeg !== null ? ` | ${drawingAngleHint.angleDeg.toFixed(1)} deg` : ''}
+          {drawingAngleHint.secondPointPreview && drawingAngleHint.azimuthDeg !== null && drawingAngleHint.angleFromSouthDeg !== null
+            ? ` | az ${drawingAngleHint.azimuthDeg.toFixed(1)} deg | S ${drawingAngleHint.angleFromSouthDeg.toFixed(1)} deg`
+            : drawingAngleHint.angleDeg !== null
+              ? ` | ${drawingAngleHint.angleDeg.toFixed(1)} deg`
+              : ''}
           {drawingAngleHint.snapped ? ' snap' : ''}
+          <label className="map-draw-length-input-wrap" onMouseDown={(event) => event.stopPropagation()}>
+            <span>Edge</span>
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              inputMode="decimal"
+              placeholder={drawingAngleHint.lengthM.toFixed(2)}
+              value={drawLengthInput}
+              onClick={(event) => event.stopPropagation()}
+              onChange={(event) => onDrawLengthInputChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onDrawLengthInputSubmit()
+                }
+              }}
+              className="map-draw-length-input"
+              data-testid="map-draw-length-input"
+            />
+            <span>m</span>
+          </label>
         </div>
       )}
       {orbitEnabled && gizmoScreenPos && (

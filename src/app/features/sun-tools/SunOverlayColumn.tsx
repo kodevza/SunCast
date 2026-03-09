@@ -58,7 +58,6 @@ export function SunOverlayColumn({
           <SunDateTimePanel datetimeIso={datetimeIso} timeZone={timeZone} onDatetimeInputChange={onDatetimeInputChange} />
           <ForecastPvPanel
             datetimeIso={datetimeIso}
-            timeZone={timeZone}
             selectedRoofs={selectedRoofs}
             computationEnabled={productionComputationEnabled}
           />

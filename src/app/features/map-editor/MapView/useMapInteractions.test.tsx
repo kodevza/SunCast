@@ -51,7 +51,7 @@ function renderInteractions(args: { mapRef: RefObject<any>; mapLoaded: boolean; 
   const root = createRoot(container)
 
   function HookProbe() {
-    useMapInteractions(args)
+    useMapInteractions({ ...args, constrainedDrawLengthM: null })
     return null
   }
 

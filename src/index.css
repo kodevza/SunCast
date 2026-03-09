@@ -485,8 +485,26 @@ button:disabled {
   border-radius: 8px;
   padding: 4px 8px;
   font-size: 0.76rem;
-  pointer-events: none;
-  white-space: nowrap;
+  pointer-events: auto;
+  white-space: normal;
+  display: grid;
+  gap: 4px;
+}
+
+.map-draw-length-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.map-draw-length-input {
+  width: 76px;
+  border: 1px solid #8da172;
+  background: rgba(12, 14, 8, 0.9);
+  color: #eef5ce;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.74rem;
 }
 
 .height-gizmo {

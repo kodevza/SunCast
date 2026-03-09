@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { SelectedRoofSunInput } from './SunOverlayColumn'
-import { extractDateIso, fetchOpenMeteoTiltedIrradiance } from './forecast/openMeteoForecast'
+import { fetchOpenMeteoTiltedIrradiance } from './forecast/openMeteoForecast'
 import { createRoofForecastProfile, mergeSettledRoofForecasts, type ForecastPoint } from './forecast/forecastPvTransform'
+import { extractDateIsoInTimeZone } from './sunDateTime'
+
+const FORECAST_TIME_ZONE = 'UTC'
 
 interface UseForecastPvArgs {
   datetimeIso: string
-  timeZone: string
   selectedRoofs: SelectedRoofSunInput[]
   computationEnabled?: boolean
 }
@@ -22,7 +24,6 @@ interface UseForecastPvResult {
 
 export function useForecastPv({
   datetimeIso,
-  timeZone,
   selectedRoofs,
   computationEnabled = true,
 }: UseForecastPvArgs): UseForecastPvResult {
@@ -30,7 +31,7 @@ export function useForecastPv({
   const [forecastError, setForecastError] = useState<string | null>(null)
   const [forecastPoints, setForecastPoints] = useState<ForecastPoint[]>([])
 
-  const selectedDateIso = useMemo(() => extractDateIso(datetimeIso), [datetimeIso])
+  const selectedDateIso = useMemo(() => extractDateIsoInTimeZone(datetimeIso, FORECAST_TIME_ZONE), [datetimeIso])
   const selectedCount = selectedRoofs.length
   const hasForecastInputs = computationEnabled && selectedDateIso !== null && selectedCount > 0
 
@@ -58,7 +59,7 @@ export function useForecastPv({
           lonDeg: roof.lonDeg,
           roofPitchDeg: roof.roofPitchDeg,
           roofAzimuthDeg: roof.roofAzimuthDeg,
-          timeZone,
+          timeZone: FORECAST_TIME_ZONE,
           dateIso: selectedDateIso,
           signal: abortController.signal,
         })
@@ -95,7 +96,7 @@ export function useForecastPv({
     return () => {
       abortController.abort()
     }
-  }, [hasForecastInputs, selectedDateIso, selectedRoofs, timeZone])
+  }, [hasForecastInputs, selectedDateIso, selectedRoofs])
 
   return {
     selectedDateIso,
