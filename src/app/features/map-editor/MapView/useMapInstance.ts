@@ -15,13 +15,16 @@ interface UseMapInstanceResult {
   mapRef: RefObject<maplibregl.Map | null>
   roofLayerRef: RefObject<RoofMeshLayer | null>
   mapLoaded: boolean
+  mapError: string | null
 }
 
 export function useMapInstance({ onInitialized }: UseMapInstanceArgs): UseMapInstanceResult {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const roofLayerRef = useRef<RoofMeshLayer | null>(null)
+  const mapLoadedRef = useRef(false)
   const [mapLoaded, setMapLoaded] = useState(false)
+  const [mapError, setMapError] = useState<string | null>(null)
   const onInitializedRef = useLatest(onInitialized)
 
   useEffect(() => {
@@ -47,6 +50,8 @@ export function useMapInstance({ onInitialized }: UseMapInstanceArgs): UseMapIns
     map.addControl(new maplibregl.NavigationControl(), 'top-left')
 
     const handleLoad = () => {
+      mapLoadedRef.current = true
+      setMapError(null)
       setMapLoaded(true)
       const roofLayer = new RoofMeshLayer('roof-mesh-layer')
       roofLayerRef.current = roofLayer
@@ -54,18 +59,33 @@ export function useMapInstance({ onInitialized }: UseMapInstanceArgs): UseMapIns
       roofLayer.setZExaggeration(1)
       onInitializedRef.current?.()
     }
+    const handleError = (event: { error?: Error }) => {
+      if (!mapLoadedRef.current && event.error) {
+        setMapError('Map failed to load. Check connection and tile availability.')
+      }
+    }
+
+    const loadTimeout = window.setTimeout(() => {
+      if (!mapLoadedRef.current) {
+        setMapError('Map is taking too long to load. You can continue with sidebar-only actions.')
+      }
+    }, 12000)
 
     map.on('load', handleLoad)
+    map.on('error', handleError)
     mapRef.current = map
 
     return () => {
+      window.clearTimeout(loadTimeout)
       map.off('load', handleLoad)
+      map.off('error', handleError)
       map.remove()
       mapRef.current = null
       roofLayerRef.current = null
+      mapLoadedRef.current = false
       setMapLoaded(false)
     }
   }, [onInitializedRef])
 
-  return { containerRef, mapRef, roofLayerRef, mapLoaded }
+  return { containerRef, mapRef, roofLayerRef, mapLoaded, mapError }
 }

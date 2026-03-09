@@ -160,7 +160,7 @@ export function MapView({
     ],
   )
 
-  const { containerRef, mapRef, roofLayerRef, mapLoaded } = useMapInstance({ onInitialized })
+  const { containerRef, mapRef, roofLayerRef, mapLoaded, mapError } = useMapInstance({ onInitialized })
 
   const { hoveredEdgeLength, drawingAngleHint, draftPreviewPoint } = useMapInteractions({
     mapRef,
@@ -269,6 +269,12 @@ export function MapView({
   return (
     <div className="map-root-wrap">
       <div ref={containerRef} className="map-root" data-testid="map-canvas" />
+      {mapError && (
+        <div className="map-error-overlay" data-testid="map-error-overlay">
+          <p className="status-error">{mapError}</p>
+          <p>Fallback mode: use sidebar tools, then refresh to retry map rendering.</p>
+        </div>
+      )}
       <MapOverlayControls
         orbitEnabled={orbitEnabled}
         onToggleOrbit={onToggleOrbit}

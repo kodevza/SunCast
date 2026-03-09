@@ -1,6 +1,6 @@
 # Runtime Boundaries
 
-This document defines runtime responsibility boundaries in Stage 1.
+This document defines Stage 1 runtime boundaries and references current code paths.
 
 ## Geometry Domain (`src/geometry/*`)
 
@@ -13,63 +13,74 @@ Responsibilities:
 - footprint validation
 - plane solving and metrics
 - mesh generation inputs
-- sun/irradiance calculation functions
+- sun/irradiance calculations
 
 Rules:
 - pure functions only
 - deterministic output for equal input
-- no UI or browser dependencies
+- no UI/browser dependencies
 
 ## App State (`src/state/project-store/*`)
 
 Responsibilities:
-- project state transitions
+- reducer transitions and command-style state updates
 - active/selected footprint management
-- command-style state mutations
 - persistence load/save and sanitization
+- share payload mapping/import
 
 Rules:
 - state is authoritative for geometry inputs
-- persistence stores constraints and footprint data, not generated mesh
+- persisted data stores constraints and footprint data, not generated mesh
 
-## Map Interaction (`src/app/components/MapView/*`, `src/app/components/DrawTools/*`)
+## App Orchestration (`src/app/hooks/*`)
 
 Responsibilities:
-- map lifecycle and interactions
+- compose sidebar/canvas/tutorial view models
+- coordinate selection, constraints editing, keyboard shortcuts
+- trigger share and sun tools behavior
+
+Rules:
+- orchestration may call geometry/store modules
+- orchestration must not contain solver math
+
+## Map Interaction (`src/app/features/map-editor/*`)
+
+Responsibilities:
+- MapLibre lifecycle
 - drawing/editing input capture
-- hit-testing and drag interactions
-- camera/orbit controls
+- hit-testing, drag interactions, orbit controls
+- map overlays and source updates
 
 Rules:
 - map layer emits user intents/events
-- map layer does not implement solver math
+- map layer does not implement geometry solver logic
 
-## Forecast Integration (`src/app/components/ForecastPvPanel.tsx`)
-
-Responsibilities:
-- fetch short-term weather forecast from Open-Meteo
-- convert weather + solved roof orientation into estimated PV output for UI
-
-Rules:
-- forecast output is an estimate and may differ from clear-sky curves
-- forecast integration must not mutate geometry source-of-truth
-
-## Tutorial (`src/app/hooks/useTutorial.ts`, `src/app/screens/TutorialController.tsx`)
+## Forecast Integration (`src/app/features/sun-tools/*`)
 
 Responsibilities:
-- step progression and guidance overlays
-- track onboarding milestones from app events
+- fetch weather forecast from Open-Meteo
+- convert weather + solved orientation into estimated PV output
 
 Rules:
-- tutorial reads app state and events
+- forecast output is advisory and non-authoritative for geometry
+- failures degrade to non-fatal status and clear-sky panels remain available
+
+## Tutorial (`src/app/features/tutorial/*`)
+
+Responsibilities:
+- onboarding overlays and progression
+- track milestones from app state/events
+
+Rules:
+- tutorial reads app state
 - tutorial does not own geometry logic or persistence
 
 ## Debug / Development-Only
 
-Current development-only tools:
+Development-only tools:
 - `DevTools` panel
 - `window.suncastDebug` API
-- roof debug console simulation
+- roof debug simulation
 
 Rule:
 - all debug paths must be gated by `import.meta.env.DEV`

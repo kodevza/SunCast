@@ -1,152 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { validateFootprint } from '../../geometry/solver/validation'
 import { useProjectStore } from '../../state/project-store'
-import type { FaceConstraints, FootprintPolygon, RoofMeshData, SolverWarning } from '../../types/geometry'
-import type { SunProjectionResult } from '../../geometry/sun/sunProjection'
 import { useConstraintEditor } from './useConstraintEditor'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { useRoofDebugSimulation } from '../features/debug/useRoofDebugSimulation'
 import { useSelectionState } from './useSelectionState'
 import { useSolvedRoofEntries } from './useSolvedRoofEntries'
 import { useSunProjectionPanel } from '../features/sun-tools/useSunProjectionPanel'
-import type { SelectedRoofSunInput } from '../features/sun-tools/SunOverlayColumn'
 import type { ImportedFootprintConfigEntry } from '../features/debug/DevTools'
-import { buildSharePayload, serializeSharePayload } from '../../state/project-store/projectState.share'
-import { encodeSharePayload } from '../../shared/utils/shareCodec'
-import type { PlaceSearchResult } from '../features/place-search/placeSearch.types'
+import { useShareProject } from './useShareProject'
+import { useMapNavigationTarget } from './useMapNavigationTarget'
+import { useSelectedRoofInputs } from './useSelectedRoofInputs'
+import {
+  clampPitchAdjustmentPercent,
+  computeFootprintCentroid,
+  type SunCastCanvasModel,
+  type SunCastSidebarModel,
+  type SunCastTutorialModel,
+} from './sunCastController.types'
 
-const MAX_SHARE_URL_LENGTH = 3500
-const MIN_PITCH_ADJUSTMENT_PERCENT = -90
-const MAX_PITCH_ADJUSTMENT_PERCENT = 200
-
-function clampPitchAdjustmentPercent(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 0
-  }
-  return Math.min(MAX_PITCH_ADJUSTMENT_PERCENT, Math.max(MIN_PITCH_ADJUSTMENT_PERCENT, value))
-}
-
-export interface SunCastSidebarModel {
-  isDrawing: boolean
-  drawDraftCount: number
-  footprints: FootprintPolygon[]
-  activeFootprintId: string | null
-  selectedFootprintIds: string[]
-  activeFootprint: FootprintPolygon | null
-  activeConstraints: FaceConstraints
-  selectedVertexIndex: number | null
-  selectedEdgeIndex: number | null
-  footprintEntries: Array<{
-    footprint: FootprintPolygon
-    constraints: FaceConstraints
-  }>
-  interactionError: string | null
-  solverError: string | null
-  footprintErrors: string[]
-  warnings: SolverWarning[]
-  basePitchDeg: number | null
-  pitchAdjustmentPercent: number
-  adjustedPitchDeg: number | null
-  azimuthDeg: number | null
-  roofAreaM2: number | null
-  minHeightM: number | null
-  maxHeightM: number | null
-  fitRmsErrorM: number | null
-  activeFootprintLatDeg: number | null
-  activeFootprintLonDeg: number | null
-  shareError: string | null
-  shareSuccess: string | null
-  onStartDrawing: () => void
-  onUndoDrawing: () => void
-  onCancelDrawing: () => void
-  onCommitDrawing: () => void
-  onSelectFootprint: (footprintId: string, multiSelect: boolean) => void
-  onSetActiveFootprintKwp: (kwp: number) => void
-  onSetPitchAdjustmentPercent: (pitchAdjustmentPercent: number) => void
-  onDeleteActiveFootprint: () => void
-  onSetVertex: (vertexIndex: number, heightM: number) => boolean
-  onSetEdge: (edgeIndex: number, heightM: number) => boolean
-  onClearVertex: (vertexIndex: number) => void
-  onClearEdge: (edgeIndex: number) => void
-  onConstraintLimitExceeded: () => void
-  onStartTutorial: () => void
-  onShareProject: () => Promise<void>
-  onDevSelectVertex: (vertexIndex: number) => void
-  onDevSelectEdge: (edgeIndex: number) => void
-  onDevClearSelection: () => void
-  onDevImportEntries: (entries: ImportedFootprintConfigEntry[]) => void
-}
-
-export interface SunCastCanvasModel {
-  footprints: FootprintPolygon[]
-  activeFootprint: FootprintPolygon | null
-  selectedFootprintIds: string[]
-  drawDraft: Array<[number, number]>
-  isDrawing: boolean
-  orbitEnabled: boolean
-  roofMeshes: RoofMeshData[]
-  vertexConstraints: FaceConstraints['vertexHeights']
-  selectedVertexIndex: number | null
-  selectedEdgeIndex: number | null
-  showSolveHint: boolean
-  sunProjectionEnabled: boolean
-  hasValidSunDatetime: boolean
-  sunDatetimeError: string | null
-  sunProjectionResult: SunProjectionResult | null
-  sunDatetimeRaw: string
-  sunDailyDateRaw: string
-  sunDailyTimeZone: string
-  selectedRoofInputs: SelectedRoofSunInput[]
-  hasSolvedActiveRoof: boolean
-  mapNavigationTarget: {
-    id: number
-    lon: number
-    lat: number
-  } | null
-  onPlaceSearchSelect: (result: PlaceSearchResult) => void
-  onToggleOrbit: () => void
-  onSelectVertex: (vertexIndex: number) => void
-  onSelectEdge: (edgeIndex: number) => void
-  onSelectFootprint: (footprintId: string, multiSelect: boolean) => void
-  onClearSelection: () => void
-  onMoveVertex: (vertexIndex: number, point: [number, number]) => boolean
-  onMoveEdge: (edgeIndex: number, delta: [number, number]) => boolean
-  onMoveRejected: () => void
-  onAdjustHeight: (stepM: number) => void
-  onMapClick: (point: [number, number]) => void
-  onBearingChange: (bearingDeg: number) => void
-  onPitchChange: (pitchDeg: number) => void
-  onGeometryDragStateChange: (dragging: boolean) => void
-  productionComputationEnabled: boolean
-  onInitialized: () => void
-  onToggleSunProjectionEnabled: (enabled: boolean) => void
-  onSunDatetimeInputChange: (datetimeIsoRaw: string) => void
-}
-
-export interface SunCastTutorialModel {
-  mapInitialized: boolean
-  draftVertexCount: number
-  hasFinishedPolygon: boolean
-  kwp: number | null
-  hasEditedKwp: boolean
-  constrainedVertexCount: number
-  orbitEnabled: boolean
-  hasEditedDatetime: boolean
-  onReady: (controls: { startTutorial: () => void }) => void
-}
-
-function computeFootprintCentroid(vertices: Array<[number, number]>): [number, number] | null {
-  if (vertices.length === 0) {
-    return null
-  }
-  let lonSum = 0
-  let latSum = 0
-  for (const [lon, lat] of vertices) {
-    lonSum += lon
-    latSum += lat
-  }
-  return [lonSum / vertices.length, latSum / vertices.length]
-}
+export type { SunCastCanvasModel, SunCastSidebarModel, SunCastTutorialModel } from './sunCastController.types'
 
 export function useSunCastController(): {
   sidebarModel: SunCastSidebarModel
@@ -157,17 +30,9 @@ export function useSunCastController(): {
   const [mapInitialized, setMapInitialized] = useState(false)
   const [mapBearingDeg, setMapBearingDeg] = useState(0)
   const [mapPitchDeg, setMapPitchDeg] = useState(0)
-  const [tutorialKwpEdited, setTutorialKwpEdited] = useState(false)
+  const [tutorialEditedKwpByFootprint, setTutorialEditedKwpByFootprint] = useState<Record<string, true>>({})
   const [tutorialDatetimeEdited, setTutorialDatetimeEdited] = useState(false)
   const [isGeometryDragActive, setIsGeometryDragActive] = useState(false)
-  const [mapNavigationTarget, setMapNavigationTarget] = useState<{
-    id: number
-    lon: number
-    lat: number
-  } | null>(null)
-  const [shareError, setShareError] = useState<string | null>(null)
-  const [shareSuccess, setShareSuccess] = useState<string | null>(null)
-  const mapNavigationIdRef = useRef(0)
   const tutorialStartRef = useRef<() => void>(() => {})
 
   const {
@@ -206,51 +71,20 @@ export function useSunCastController(): {
   const footprints = useMemo(() => footprintEntries.map((entry) => entry.footprint), [footprintEntries])
   const activeFootprintErrors = validateFootprint(activeFootprint)
 
-  useEffect(() => {
-    setTutorialKwpEdited(false)
-  }, [state.activeFootprintId])
-
   const solved = useSolvedRoofEntries(footprintEntries, state.activeFootprintId)
-  const activeFootprintCentroid = useMemo(
-    () => computeFootprintCentroid(activeFootprint?.vertices ?? []),
-    [activeFootprint],
-  )
+  const activeFootprintCentroid = computeFootprintCentroid(activeFootprint?.vertices ?? [])
   const activePitchAdjustmentPercent = activeFootprint
     ? clampPitchAdjustmentPercent(state.footprints[activeFootprint.id]?.pitchAdjustmentPercent ?? 0)
     : 0
   const basePitchDeg = solved.activeSolved?.metrics.pitchDeg ?? null
   const adjustedPitchDeg =
     basePitchDeg === null ? null : basePitchDeg * (1 + activePitchAdjustmentPercent / 100)
-  const solvedByFootprintId = useMemo(
-    () => new Map(solved.entries.map((entry) => [entry.footprintId, entry])),
-    [solved.entries],
-  )
 
-  const selectedRoofInputs = useMemo<SelectedRoofSunInput[]>(() => {
-    const inputs: SelectedRoofSunInput[] = []
-    for (const footprintId of selectedFootprintIds) {
-      const solvedEntry = solvedByFootprintId.get(footprintId)
-      const footprintEntry = state.footprints[footprintId]
-      if (!solvedEntry || !footprintEntry) {
-        continue
-      }
-      const centroid = computeFootprintCentroid(footprintEntry.footprint.vertices)
-      if (!centroid) {
-        continue
-      }
-      inputs.push({
-        footprintId,
-        lonDeg: centroid[0],
-        latDeg: centroid[1],
-        kwp: footprintEntry.footprint.kwp,
-        roofPitchDeg:
-          solvedEntry.metrics.pitchDeg * (1 + clampPitchAdjustmentPercent(footprintEntry.pitchAdjustmentPercent) / 100),
-        roofAzimuthDeg: solvedEntry.metrics.azimuthDeg,
-        roofPlane: solvedEntry.solution.plane,
-      })
-    }
-    return inputs
-  }, [selectedFootprintIds, solvedByFootprintId, state.footprints])
+  const selectedRoofInputs = useSelectedRoofInputs({
+    selectedFootprintIds,
+    footprintEntries: state.footprints,
+    solvedEntries: solved.entries,
+  })
 
   const {
     selectedVertexIndex,
@@ -344,58 +178,18 @@ export function useSunCastController(): {
     },
   })
 
+  const { shareError, shareSuccess, onShareProject } = useShareProject({
+    footprints: state.footprints,
+    activeFootprintId: state.activeFootprintId,
+    sunProjection: state.sunProjection,
+  })
+
   const onImportDevEntries = (entries: ImportedFootprintConfigEntry[]) => {
     upsertImportedFootprints(entries)
     clearSelectionState()
   }
 
-  const onShareProject = useCallback(async () => {
-    setShareError(null)
-    setShareSuccess(null)
-
-    if (Object.keys(state.footprints).length === 0) {
-      setShareError('Nothing to share yet. Add at least one footprint.')
-      return
-    }
-
-    try {
-      const payload = buildSharePayload({
-        footprints: state.footprints,
-        activeFootprintId: state.activeFootprintId,
-        sunProjection: state.sunProjection,
-      })
-      const encoded = await encodeSharePayload(serializeSharePayload(payload))
-      const shareUrl = new URL(window.location.href)
-      shareUrl.hash = `c=${encoded}`
-      const shareUrlValue = shareUrl.toString()
-
-      if (shareUrlValue.length > MAX_SHARE_URL_LENGTH) {
-        setShareError('Project is too large to share as a URL.')
-        return
-      }
-
-      if (typeof navigator.share === 'function') {
-        try {
-          await navigator.share({ title: 'SunCast project', url: shareUrlValue })
-          setShareSuccess('Share dialog opened.')
-          return
-        } catch (error) {
-          if (error instanceof DOMException && error.name === 'AbortError') {
-            return
-          }
-        }
-      }
-
-      if (!navigator.clipboard?.writeText) {
-        throw new Error('Clipboard sharing is not available in this browser.')
-      }
-
-      await navigator.clipboard.writeText(shareUrlValue)
-      setShareSuccess('Share URL copied to clipboard.')
-    } catch {
-      setShareError('Could not generate share URL.')
-    }
-  }, [state.activeFootprintId, state.footprints, state.sunProjection])
+  const { mapNavigationTarget, onPlaceSearchSelect } = useMapNavigationTarget()
 
   const sidebarModel: SunCastSidebarModel = {
     isDrawing: state.isDrawing,
@@ -447,7 +241,10 @@ export function useSunCastController(): {
     },
     onSetActiveFootprintKwp: (kwp) => {
       setActiveFootprintKwp(kwp)
-      setTutorialKwpEdited(true)
+      const footprintId = state.activeFootprintId
+      if (footprintId) {
+        setTutorialEditedKwpByFootprint((current) => ({ ...current, [footprintId]: true }))
+      }
     },
     onSetPitchAdjustmentPercent: (pitchAdjustmentPercent) => {
       setActivePitchAdjustmentPercent(clampPitchAdjustmentPercent(pitchAdjustmentPercent))
@@ -500,14 +297,7 @@ export function useSunCastController(): {
     selectedRoofInputs,
     hasSolvedActiveRoof: Boolean(solved.activeSolved),
     mapNavigationTarget,
-    onPlaceSearchSelect: (result) => {
-      mapNavigationIdRef.current += 1
-      setMapNavigationTarget({
-        id: mapNavigationIdRef.current,
-        lat: result.lat,
-        lon: result.lon,
-      })
-    },
+    onPlaceSearchSelect,
     onToggleOrbit: () => setOrbitEnabled((enabled) => !enabled),
     onSelectVertex: (vertexIndex) => {
       selectVertex(vertexIndex)
@@ -549,7 +339,7 @@ export function useSunCastController(): {
     draftVertexCount: state.drawDraft.length,
     hasFinishedPolygon: Boolean(activeFootprint),
     kwp: activeFootprint?.kwp ?? null,
-    hasEditedKwp: tutorialKwpEdited,
+    hasEditedKwp: activeFootprint ? Boolean(tutorialEditedKwpByFootprint[activeFootprint.id]) : false,
     constrainedVertexCount: activeConstraints.vertexHeights.length,
     orbitEnabled,
     hasEditedDatetime: tutorialDatetimeEdited,

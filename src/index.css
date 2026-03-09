@@ -20,6 +20,20 @@ body {
   height: 100vh;
 }
 
+.app-runtime-fallback {
+  max-width: 720px;
+  margin: 52px auto;
+  border: 1px solid #7a3333;
+  border-radius: 12px;
+  padding: 20px;
+  background: rgba(44, 20, 20, 0.94);
+}
+
+.app-runtime-fallback h1 {
+  margin: 0 0 12px;
+  font-size: 1.5rem;
+}
+
 .sun-cast-layout {
   display: grid;
   grid-template-columns: 360px 1fr;
@@ -337,6 +351,27 @@ button:disabled {
   position: relative;
   width: 100%;
   height: 100%;
+}
+
+.map-error-overlay {
+  position: absolute;
+  top: 68px;
+  left: 54px;
+  z-index: 13;
+  max-width: min(560px, calc(100% - 72px));
+  border: 1px solid #814141;
+  border-radius: 8px;
+  background: rgba(42, 19, 19, 0.95);
+  padding: 10px 12px;
+}
+
+.map-error-overlay p {
+  margin: 0;
+}
+
+.map-error-overlay p + p {
+  margin-top: 6px;
+  color: #f1d4d4;
 }
 
 .map-orbit-toggle {

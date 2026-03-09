@@ -207,12 +207,14 @@ Simplified structure:
 src/
   app/
     components/
-      MapView/
-      DrawTools/
+      FootprintPanel.tsx
       RoofEditor/
-      SunOverlayColumn.tsx
-      SunDailyChartPanel.tsx
-      ForecastPvPanel.tsx
+      StatusPanel.tsx
+    features/
+      map-editor/
+      sun-tools/
+      place-search/
+      tutorial/
     screens/
       SunCastScreen.tsx
       SunCastSidebar.tsx
@@ -241,12 +243,15 @@ Detailed product design and roadmap live in:
 docs/
 ```
 
-These documents describe:
+Primary handover docs:
 
-* use cases
-* geometry solver
-* solar estimation logic
-* UI workflow
+- `docs/ARCHITECTURE.md`
+- `docs/RUNBOOK.md`
+- `docs/DECISIONS.md`
+- `docs/FEATURES.md`
+- `docs/VENDOR_HANDOVER.md`
+
+Additional `UC*` / `IP*` docs capture iteration history and feature notes.
 
 ---
 
