@@ -228,6 +228,20 @@ When adding features, vendors must prefer:
 
 instead of enlarging existing central orchestrators.
 
+## 4.4 Alias wrapper deny rule
+
+Do not introduce compatibility alias modules that only rename or pass through another symbol, for example:
+
+- `export const X = Y`
+- `export { Y as X } from '...'`
+- single-line re-export wrappers used only to preserve older local names
+
+Vendor rule:
+
+- import and use canonical symbols from their owning module directly
+- if a temporary compatibility layer is unavoidable, document the reason and removal plan in the same PR
+- remove dead alias wrappers when touched
+
 ---
 
 # 5. Refactoring requirements before major feature expansion

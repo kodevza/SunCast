@@ -3,6 +3,7 @@ import { computeRoofShadeGrid, type ComputeRoofShadeGridInput, type ComputeRoofS
 import type { RoofShadeDiagnostics, ShadingRoofInput } from '../../geometry/shading/types'
 import { toShadingObstacleVolume } from '../../geometry/obstacles/obstacleModels'
 import type { ObstacleStateEntry } from '../../types/geometry'
+import { buildObstacleGeometryCacheKey, buildRoofGeometryCacheKey } from '../../shared/utils/shadingCacheKey'
 
 export interface ShadeHeatmapFeature {
   type: 'Feature'
@@ -54,9 +55,10 @@ const DEFAULT_INTERACTION_THROTTLE_MS = 100
 const MIN_COARSE_GRID_RESOLUTION_M = 0.9
 const MAX_INTERACTION_SAMPLE_COUNT = 3500
 
-// Purpose: Builds request key from the provided inputs.
-// Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
-function createRequestKey(request: RoofShadingRequest): string {
+function createCacheRequestKey(request: RoofShadingRequest): string {
+  const roofGeometryKey = buildRoofGeometryCacheKey(request.payload.roofs)
+  const obstacleGeometryKey = buildObstacleGeometryCacheKey(request.payload.obstacles)
+
   return [
     String(request.cacheRevision),
     request.computeMode,
@@ -64,6 +66,8 @@ function createRequestKey(request: RoofShadingRequest): string {
     request.payload.gridResolutionM.toFixed(4),
     String(request.payload.maxSampleCount ?? ''),
     request.payload.sampleOverflowStrategy ?? '',
+    roofGeometryKey,
+    obstacleGeometryKey,
   ].join('::')
 }
 
@@ -159,7 +163,7 @@ function makeRequest({
 
   return {
     ...provisionalRequest,
-    key: createRequestKey(provisionalRequest),
+    key: createCacheRequestKey(provisionalRequest),
   }
 }
 

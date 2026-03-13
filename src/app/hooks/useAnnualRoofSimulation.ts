@@ -10,6 +10,7 @@ import { toShadingObstacleVolume } from '../../geometry/obstacles/obstacleModels
 import type { ObstacleStateEntry } from '../../types/geometry'
 import type { ShadeHeatmapFeature } from './useRoofShading'
 import { reportAppErrorCode } from '../../shared/errors'
+import { buildObstacleGeometryCacheKey, buildRoofGeometryCacheKey } from '../../shared/utils/shadingCacheKey'
 
 const ANNUAL_CACHE_LIMIT = 24
 const annualSimulationCache = new Map<string, AnnualSunAccessResult>()
@@ -118,10 +119,15 @@ function toAnnualHeatmapFeatures(result: AnnualSunAccessResult): ShadeHeatmapFea
 // Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
 function buildRunKey(
   cacheRevision: number,
+  roofs: ShadingRoofInput[],
+  shadingObstacles: ReturnType<typeof toShadingObstacleVolume>[],
   gridResolutionM: number,
   timeZone: string,
   options: AnnualSimulationOptions,
 ): string {
+  const roofGeometryKey = buildRoofGeometryCacheKey(roofs)
+  const obstacleGeometryKey = buildObstacleGeometryCacheKey(shadingObstacles)
+
   return [
     String(cacheRevision),
     gridResolutionM.toFixed(4),
@@ -134,6 +140,8 @@ function buildRunKey(
     options.halfYearMirror ? 1 : 0,
     String(options.lowSunElevationThresholdDeg ?? ''),
     String(options.maxShadowDistanceClampM ?? ''),
+    roofGeometryKey,
+    obstacleGeometryKey,
   ].join('::')
 }
 
@@ -265,7 +273,14 @@ export function useAnnualRoofSimulation(args: UseAnnualRoofSimulationArgs): Annu
       })
       lastReportedErrorRef.current = null
 
-      const runKey = buildRunKey(args.cacheRevision, args.gridResolutionM, args.timeZone, options)
+      const runKey = buildRunKey(
+        args.cacheRevision,
+        args.roofs,
+        shadingObstacles,
+        args.gridResolutionM,
+        args.timeZone,
+        options,
+      )
       const cached = annualSimulationCache.get(runKey)
       if (cached) {
         if (runTokenRef.current !== runToken) {

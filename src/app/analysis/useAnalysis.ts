@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
-import { deriveSelectedRoofInputs } from './deriveSelectedRoofInputs'
-import { useAnnualSimulation } from './useAnnualSimulation'
 import { useDerivedHeatmapMode } from './deriveHeatmapMode'
 import { useDerivedShadingRoofs } from './deriveShadingRoofs'
-import { deriveSolvedRoofs } from './deriveSolvedRoofs'
-import { useLiveShading } from './useLiveShading'
+import { useSolvedRoofEntries } from './useSolvedRoofEntries'
 import { useSunProjectionPanel } from '../features/sun-tools/useSunProjectionPanel'
+import { useAnnualRoofSimulation } from '../hooks/useAnnualRoofSimulation'
+import { useRoofShading } from '../hooks/useRoofShading'
+import { useSelectedRoofInputs } from '../hooks/useSelectedRoofInputs'
 import type { ObstacleStateEntry, ProjectSunProjectionSettings, ShadingSettings } from '../../types/geometry'
 import type { FootprintStateEntry } from '../../state/project-store/projectState.types'
 import type { AnalysisState } from './analysis.types'
@@ -27,9 +27,9 @@ interface UseAnalysisArgs {
 }
 
 export function useAnalysis(args: UseAnalysisArgs) {
-  const solved = deriveSolvedRoofs(args.footprintEntries, args.activeFootprintId)
+  const solved = useSolvedRoofEntries(args.footprintEntries, args.activeFootprintId)
 
-  const selectedRoofInputs = deriveSelectedRoofInputs({
+  const selectedRoofInputs = useSelectedRoofInputs({
     selectedFootprintIds: args.selectedFootprintIds,
     footprintEntries: args.footprintEntriesById,
     solvedEntries: solved.entries,
@@ -40,6 +40,8 @@ export function useAnalysis(args: UseAnalysisArgs) {
     activeFootprintId: args.activeFootprintId,
     footprintEntries: args.footprintEntriesById,
     solvedEntries: solved.entries,
+    obstacles: args.obstacles,
+    datetimeIso: args.sunProjection.datetimeIso,
   })
 
   const productionComputationEnabled = !args.isGeometryDragActive && !args.hasVertexOrEdgeSelection
@@ -60,7 +62,7 @@ export function useAnalysis(args: UseAnalysisArgs) {
     setSunProjectionDailyDateIso: args.setSunProjectionDailyDateIso,
   })
 
-  const shadingResult = useLiveShading({
+  const shadingResult = useRoofShading({
     cacheRevision: args.stateRevision,
     enabled: args.shadingSettings.enabled && args.sunProjection.enabled && hasValidSunDatetime && !args.isGeometryDragActive,
     roofs: shadingRoofs,
@@ -70,7 +72,7 @@ export function useAnalysis(args: UseAnalysisArgs) {
     interactionActive: args.isGeometryDragActive,
   })
 
-  const annualSimulation = useAnnualSimulation({
+  const annualSimulation = useAnnualRoofSimulation({
     cacheRevision: args.stateRevision,
     roofs: shadingRoofs,
     obstacles: args.obstacles,

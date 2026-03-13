@@ -218,4 +218,70 @@ describe('useRoofShading', () => {
     expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(2)
     hook.unmount()
   })
+
+  it('recomputes when roof or obstacle geometry heights change', () => {
+    const datetimeIso = '2026-03-08T14:10'
+    const baseObstacle = {
+      id: 'obs-prism-1',
+      kind: 'building' as const,
+      shape: {
+        type: 'polygon-prism' as const,
+        polygon: [
+          [9.9, 10.1] as [number, number],
+          [9.95, 10.1] as [number, number],
+          [9.95, 10.15] as [number, number],
+        ],
+      },
+      heightAboveGroundM: 6,
+    }
+
+    const hook = renderUseRoofShading(
+      makeArgs({
+        datetimeIso,
+        obstacles: [baseObstacle],
+      }),
+    )
+    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(1)
+
+    hook.rerender(
+      makeArgs({
+        datetimeIso,
+        roofs: [
+          {
+            roofId: 'roof-1',
+            polygon: [
+              [10, 10],
+              [11, 10],
+              [11, 11],
+            ],
+            vertexHeightsM: [1, 1.35, 1.1],
+          },
+        ],
+        obstacles: [baseObstacle],
+      }),
+    )
+    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(2)
+
+    hook.rerender(
+      makeArgs({
+        datetimeIso,
+        obstacles: [
+          {
+            ...baseObstacle,
+            shape: {
+              type: 'polygon-prism' as const,
+              polygon: [
+                [9.88, 10.12],
+                [9.95, 10.1],
+                [9.95, 10.15],
+              ],
+            },
+            heightAboveGroundM: 7.25,
+          },
+        ],
+      }),
+    )
+    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(3)
+    hook.unmount()
+  })
 })

@@ -260,4 +260,84 @@ describe('useAnnualRoofSimulation', () => {
 
     hook.unmount()
   })
+
+  it('recomputes when roof or obstacle geometry changes', async () => {
+    vi.useFakeTimers()
+    const hook = renderHook(
+      makeArgs({
+        obstacles: [
+          {
+            id: 'obs-1',
+            kind: 'building',
+            shape: {
+              type: 'polygon-prism',
+              polygon: [
+                [9.9, 10.1],
+                [9.95, 10.1],
+                [9.95, 10.15],
+              ],
+            },
+            heightAboveGroundM: 6,
+          },
+        ],
+      }),
+    )
+    const options: AnnualSimulationOptions = {
+      year: 2029,
+      dateStartIso: '2029-01-01',
+      dateEndIso: '2029-12-31',
+      sampleWindowDays: 5,
+      stepMinutes: 30,
+      halfYearMirror: true,
+    }
+
+    await act(async () => {
+      const first = hook.get().runSimulation(options)
+      await vi.runAllTimersAsync()
+      await first
+    })
+
+    hook.rerender(
+      makeArgs({
+        roofs: [
+          {
+            roofId: 'roof-1',
+            polygon: [
+              [10, 10],
+              [11, 10],
+              [11, 11],
+            ],
+            vertexHeightsM: [1, 1.25, 1],
+          },
+        ],
+        obstacles: [
+          {
+            id: 'obs-1',
+            kind: 'building',
+            shape: {
+              type: 'polygon-prism',
+              polygon: [
+                [9.88, 10.12],
+                [9.95, 10.1],
+                [9.95, 10.15],
+              ],
+            },
+            heightAboveGroundM: 6.5,
+          },
+        ],
+      }),
+    )
+
+    await act(async () => {
+      const second = hook.get().runSimulation(options)
+      await vi.runAllTimersAsync()
+      await second
+    })
+
+    expect(mockPrepareShadingScene).toHaveBeenCalledTimes(2)
+    expect(mockComputeAnnualSunAccessBatched).toHaveBeenCalledTimes(2)
+
+    hook.unmount()
+    vi.useRealTimers()
+  })
 })
