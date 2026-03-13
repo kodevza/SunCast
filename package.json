@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "precommit:check": "npm run lint && npm test && npm run build",
+    "precommit:check": "npm run lint && npm run test:coverage && npm run coverage:e2e && npm run build",
     "prepush:check": "npm run build",
     "hooks:install": "bash scripts/install-git-hooks.sh",
     "prepare": "npm run hooks:install",
@@ -20,7 +20,8 @@
     "coverage:e2e": "npm run test:e2e:coverage && npm run coverage:e2e:report",
     "coverage:legacy-audit": "node scripts/coverage-legacy-audit.mjs --lcov coverage/lcov.info",
     "coverage:legacy-check": "node scripts/coverage-legacy-audit.mjs --lcov coverage/lcov.info --only-legacy --fail-on-legacy",
-    "validate:repo": "node scripts/validate-repo.mjs"
+    "validate:repo": "node scripts/validate-repo.mjs",
+    "debug:obstacle:snapshot": "npx tsx scripts/debug-obstacle-projection.ts"
   },
   "nyc": {
     "all": true,
