@@ -54,8 +54,6 @@ export function SunCastSidebar({ model }: SunCastSidebarProps) {
         />
       )}
       <p className="subtitle">Draw your roof and get short-term and long-term production forecasts.</p>
-      {model.shareError && <p className="status-error">{model.shareError}</p>}
-      {!model.shareError && model.shareSuccess && <p className="status-success">{model.shareSuccess}</p>}
 
       {import.meta.env.DEV && (
         <DevTools
@@ -127,9 +125,6 @@ export function SunCastSidebar({ model }: SunCastSidebarProps) {
       </section>
 
       <StatusPanel
-        footprintErrors={model.footprintErrors}
-        interactionError={model.interactionError}
-        solverError={model.solverError}
         warnings={model.warnings}
         basePitchDeg={model.basePitchDeg}
         pitchAdjustmentPercent={model.pitchAdjustmentPercent}

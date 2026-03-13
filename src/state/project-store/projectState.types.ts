@@ -79,4 +79,5 @@ export type Action =
   | { type: 'SET_SHADING_ENABLED'; enabled: boolean }
   | { type: 'SET_SHADING_GRID_RESOLUTION'; gridResolutionM: number }
   | { type: 'UPSERT_IMPORTED_FOOTPRINTS'; entries: ImportedFootprintEntry[] }
+  | { type: 'RESET_STATE' }
   | { type: 'LOAD'; payload: ProjectState }

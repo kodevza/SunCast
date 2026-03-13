@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ObstacleStateEntry } from '../../types/geometry'
 import { buildLocalOrigin, localMetersToLonLat, lonLatToLocalMeters } from '../projection/localMeters'
-import { generateObstacleMesh } from './generateObstacleMesh'
+import { generateObstacleMesh, generateObstacleMeshResult } from './generateObstacleMesh'
 
 describe('generateObstacleMesh', () => {
   it('computes 1 m^3 volume for a 1m x 1m x 1m obstacle mesh', () => {
@@ -85,6 +85,14 @@ describe('generateObstacleMesh', () => {
     }
 
     expect(generateObstacleMesh(obstacle)).toBeNull()
+    const result = generateObstacleMeshResult(obstacle)
+    expect(result.ok).toBe(false)
+    if (result.ok) {
+      return
+    }
+    expect(result.error.code).toBe('GEOMETRY_BUILD_FAILED')
+    expect(result.error.severity).toBe('error')
+    expect(result.error.recoverable).toBe(true)
   })
 
   it('supports cylindrical visual mesh for tree obstacles', () => {

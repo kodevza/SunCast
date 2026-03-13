@@ -5,8 +5,8 @@ import type {
   ShadingSettings,
 } from '../../types/geometry'
 import { createObstacleShapeForKind, withMovedObstacleShapeVertex, withObstacleKind } from '../../geometry/obstacles/obstacleModels'
-import { sanitizeLoadedState } from './projectState.sanitize'
-import { sanitizeVertexHeights, setOrReplaceVertexConstraint } from './projectState.constraints'
+import { validateLoadedState } from './projectState.sanitize'
+import { assertValidVertexHeights, setOrReplaceVertexConstraint } from './projectState.constraints'
 import type { Action, FootprintStateEntry, ProjectState } from './projectState.types'
 
 export const DEFAULT_FOOTPRINT_KWP = 4.3
@@ -35,16 +35,6 @@ export const initialProjectState: ProjectState = {
   sunProjection: DEFAULT_SUN_PROJECTION,
   shadingSettings: DEFAULT_SHADING_SETTINGS,
 }
-const MIN_PITCH_ADJUSTMENT_PERCENT = -90
-const MAX_PITCH_ADJUSTMENT_PERCENT = 200
-
-function sanitizePitchAdjustmentPercent(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 0
-  }
-  return Math.min(MAX_PITCH_ADJUSTMENT_PERCENT, Math.max(MIN_PITCH_ADJUSTMENT_PERCENT, value))
-}
-
 function generateFootprintId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `fp-${crypto.randomUUID()}`
@@ -86,15 +76,11 @@ function applyToActiveFootprint(
 function removeFootprintAndPickActive(state: ProjectState, footprintId: string): ProjectState {
   const nextFootprints = { ...state.footprints }
   delete nextFootprints[footprintId]
-  const nextIds = Object.keys(nextFootprints)
 
   return {
     ...state,
     footprints: nextFootprints,
-    activeFootprintId:
-      state.activeFootprintId === footprintId
-        ? (nextIds.at(-1) ?? null)
-        : (state.activeFootprintId && nextFootprints[state.activeFootprintId] ? state.activeFootprintId : nextIds.at(-1) ?? null),
+    activeFootprintId: state.activeFootprintId === footprintId ? null : state.activeFootprintId,
     selectedFootprintIds: state.selectedFootprintIds.filter((id) => id !== footprintId && nextFootprints[id]),
   }
 }
@@ -125,15 +111,11 @@ function applyToObstacle(
 function removeObstacleAndPickActive(state: ProjectState, obstacleId: string): ProjectState {
   const nextObstacles = { ...state.obstacles }
   delete nextObstacles[obstacleId]
-  const nextIds = Object.keys(nextObstacles)
 
   return {
     ...state,
     obstacles: nextObstacles,
-    activeObstacleId:
-      state.activeObstacleId === obstacleId
-        ? (nextIds.at(-1) ?? null)
-        : (state.activeObstacleId && nextObstacles[state.activeObstacleId] ? state.activeObstacleId : nextIds.at(-1) ?? null),
+    activeObstacleId: state.activeObstacleId === obstacleId ? null : state.activeObstacleId,
     selectedObstacleIds: state.selectedObstacleIds.filter((id) => id !== obstacleId && nextObstacles[id]),
   }
 }
@@ -281,7 +263,7 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
         ...entry,
         constraints: {
           ...entry.constraints,
-          vertexHeights: sanitizeVertexHeights(
+          vertexHeights: assertValidVertexHeights(
             setOrReplaceVertexConstraint(entry.constraints.vertexHeights, action.payload),
             entry.footprint.vertices.length,
           ),
@@ -298,7 +280,7 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
           ...entry,
           constraints: {
             ...entry.constraints,
-            vertexHeights: sanitizeVertexHeights(nextVertexHeights, vertexCount),
+            vertexHeights: assertValidVertexHeights(nextVertexHeights, vertexCount),
           },
         }
       })
@@ -324,7 +306,7 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
           ...entry,
           constraints: {
             ...entry.constraints,
-            vertexHeights: sanitizeVertexHeights(nextVertexHeights, vertexCount),
+            vertexHeights: assertValidVertexHeights(nextVertexHeights, vertexCount),
           },
         }
       })
@@ -333,13 +315,13 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
         ...entry,
         footprint: {
           ...entry.footprint,
-          kwp: Math.max(0, action.kwp),
+          kwp: action.kwp,
         },
       }))
     case 'SET_ACTIVE_PITCH_ADJUSTMENT_PERCENT':
       return applyToActiveFootprint(state, (entry) => ({
         ...entry,
-        pitchAdjustmentPercent: sanitizePitchAdjustmentPercent(action.pitchAdjustmentPercent),
+        pitchAdjustmentPercent: action.pitchAdjustmentPercent,
       }))
     case 'CLEAR_VERTEX_HEIGHT':
       return applyToActiveFootprint(state, (entry) => ({
@@ -487,9 +469,7 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
     case 'SET_OBSTACLE_HEIGHT':
       return applyToObstacle(state, action.payload.obstacleId, (entry) => ({
         ...entry,
-        heightAboveGroundM: Number.isFinite(action.payload.heightAboveGroundM)
-          ? Math.max(0, action.payload.heightAboveGroundM)
-          : entry.heightAboveGroundM,
+        heightAboveGroundM: action.payload.heightAboveGroundM,
       }))
     case 'SET_OBSTACLE_KIND':
       return applyToObstacle(state, action.payload.obstacleId, (entry) => withObstacleKind(entry, action.payload.kind))
@@ -510,9 +490,7 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
         ...state,
         shadingSettings: {
           ...state.shadingSettings,
-          gridResolutionM: Number.isFinite(action.gridResolutionM)
-            ? Math.max(0.1, action.gridResolutionM)
-            : state.shadingSettings.gridResolutionM,
+          gridResolutionM: action.gridResolutionM,
         },
       }
     case 'UPSERT_IMPORTED_FOOTPRINTS': {
@@ -532,7 +510,7 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
         nextFootprints[entry.footprintId] = {
           footprint,
           constraints: {
-            vertexHeights: sanitizeVertexHeights(entry.vertexHeights, footprint.vertices.length),
+            vertexHeights: assertValidVertexHeights(entry.vertexHeights, footprint.vertices.length),
           },
           pitchAdjustmentPercent: state.footprints[entry.footprintId]?.pitchAdjustmentPercent ?? 0,
         }
@@ -549,8 +527,14 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
         drawDraft: [],
       }
     }
+    case 'RESET_STATE':
+      return {
+        ...initialProjectState,
+        sunProjection: { ...DEFAULT_SUN_PROJECTION },
+        shadingSettings: { ...DEFAULT_SHADING_SETTINGS },
+      }
     case 'LOAD':
-      return sanitizeLoadedState(action.payload, DEFAULT_SUN_PROJECTION, DEFAULT_FOOTPRINT_KWP, DEFAULT_SHADING_SETTINGS)
+      return validateLoadedState(action.payload, DEFAULT_SUN_PROJECTION, DEFAULT_FOOTPRINT_KWP, DEFAULT_SHADING_SETTINGS)
     default:
       return state
   }

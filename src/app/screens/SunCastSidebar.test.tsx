@@ -45,8 +45,6 @@ function makeModel(overrides: Partial<SunCastSidebarModel> = {}): SunCastSidebar
     fitRmsErrorM: null,
     activeFootprintLatDeg: null,
     activeFootprintLonDeg: null,
-    shareError: null,
-    shareSuccess: null,
     onSetEditMode: vi.fn(),
     onStartDrawing: vi.fn(),
     onUndoDrawing: vi.fn(),

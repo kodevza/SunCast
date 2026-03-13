@@ -1,3 +1,5 @@
+import { createAppError, err, ok, type AppError, type Result } from '../errors'
+
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
@@ -60,11 +62,24 @@ export async function encodeSharePayload(rawJson: string): Promise<string> {
 }
 
 export async function decodeSharePayload(encoded: string): Promise<string> {
+  const result = await decodeSharePayloadResult(encoded)
+  if (!result.ok) {
+    throw new Error(result.error.message)
+  }
+  return result.value
+}
+
+export async function decodeSharePayloadResult(encoded: string): Promise<Result<string, AppError>> {
   try {
     const compressed = fromBase64Url(encoded)
     const decompressed = await decompress(compressed)
-    return textDecoder.decode(decompressed)
-  } catch {
-    throw new Error('Invalid shared URL payload')
+    return ok(textDecoder.decode(decompressed))
+  } catch (cause) {
+    return err(
+      createAppError('SHARE_PAYLOAD_INVALID', 'Invalid shared URL payload.', {
+        cause,
+        context: { area: 'share-codec', enableStateReset: true },
+      }),
+    )
   }
 }

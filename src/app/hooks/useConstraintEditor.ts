@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { projectPointsToLocalMeters } from '../../geometry/projection/localMeters'
 import { validateFootprint } from '../../geometry/solver/validation'
 import type { FaceConstraints, FootprintPolygon, LngLat, VertexHeightConstraint } from '../../types/geometry'
 
@@ -14,52 +13,6 @@ interface UseConstraintEditorParams {
   setEdgeHeight: (edgeIndex: number, heightM: number) => boolean
   moveVertex: (vertexIndex: number, point: LngLat) => void
   moveEdge: (edgeIndex: number, delta: LngLat) => void
-}
-
-const SEGMENT_LENGTH_EPSILON_M = 0.005
-
-function squaredDistancePointToSegment(
-  point: { x: number; y: number },
-  segmentStart: { x: number; y: number },
-  segmentEnd: { x: number; y: number },
-): number {
-  const vx = segmentEnd.x - segmentStart.x
-  const vy = segmentEnd.y - segmentStart.y
-  const wx = point.x - segmentStart.x
-  const wy = point.y - segmentStart.y
-  const vv = vx * vx + vy * vy
-  if (vv <= SEGMENT_LENGTH_EPSILON_M * SEGMENT_LENGTH_EPSILON_M) {
-    const dx = point.x - segmentStart.x
-    const dy = point.y - segmentStart.y
-    return dx * dx + dy * dy
-  }
-  const t = Math.max(0, Math.min(1, (wx * vx + wy * vy) / vv))
-  const projX = segmentStart.x + t * vx
-  const projY = segmentStart.y + t * vy
-  const dx = point.x - projX
-  const dy = point.y - projY
-  return dx * dx + dy * dy
-}
-
-function selectFallbackVertexForEdge(vertices: LngLat[], edgeIndex: number): number | null {
-  const end = (edgeIndex + 1) % vertices.length
-  const { points2d } = projectPointsToLocalMeters(vertices)
-  const segmentStart = points2d[edgeIndex]
-  const segmentEnd = points2d[end]
-
-  let fallbackVertexIndex: number | null = null
-  let maxDistanceSq = -1
-  for (let idx = 0; idx < points2d.length; idx += 1) {
-    if (idx === edgeIndex || idx === end) {
-      continue
-    }
-    const distanceSq = squaredDistancePointToSegment(points2d[idx], segmentStart, segmentEnd)
-    if (distanceSq > maxDistanceSq) {
-      maxDistanceSq = distanceSq
-      fallbackVertexIndex = idx
-    }
-  }
-  return fallbackVertexIndex
 }
 
 export function useConstraintEditor({
@@ -114,18 +67,6 @@ export function useConstraintEditor({
     if (!applied) {
       setInteractionError('Failed to apply edge height')
       return false
-    }
-
-    const end = (edgeIndex + 1) % activeFootprint.vertices.length
-    const postEdgeIndices = new Set(activeConstraints.vertexHeights.map((constraint) => constraint.vertexIndex))
-    postEdgeIndices.add(edgeIndex)
-    postEdgeIndices.add(end)
-
-    if (postEdgeIndices.size === 2 && activeFootprint.vertices.length >= 3) {
-      const fallbackVertexIndex = selectFallbackVertexForEdge(activeFootprint.vertices, edgeIndex)
-      if (fallbackVertexIndex !== null) {
-        setVertexHeight(fallbackVertexIndex, 0)
-      }
     }
 
     setInteractionError(null)

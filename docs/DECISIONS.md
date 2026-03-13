@@ -83,3 +83,15 @@
 - Status: accepted
 - Decision: shading scene preparation prefilters obstacle candidates per roof by expanded bounding boxes and applies configurable max shadow-distance clamp.
 - Why: constrains worst-case ray-casting workload and keeps shading computation tractable as scene size grows.
+
+## D15. Layer-Relative Rebasing For Custom 3D Map Layers
+
+- Status: accepted
+- Decision: roof, obstacle, and heatmap custom layers render geometry in layer-relative coordinates and apply one per-layer anchor translation in the camera projection matrix.
+- Why: prevents float32 precision loss when adding meter-scale deltas to large Mercator anchor values; without rebasing, small geometry can collapse/jitter/disappear at runtime.
+
+## D16. Typed Operational Errors With Central Toast Notification Channel
+
+- Status: accepted
+- Decision: model operational failures with typed `AppError` (`code`, `severity`, `recoverable`, `context`) and `Result<T, E>` at key boundaries; report through central `reportAppError*` services; present user-facing operational failures via one global toast channel (`app.error`) and success notifications via the same channel (`app.success`).
+- Why: removes silent failure erasure, standardizes telemetry, and gives users a single consistent notification surface while keeping local feature fallback logic explicit.

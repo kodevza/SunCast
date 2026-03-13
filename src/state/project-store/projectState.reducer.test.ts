@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProjectState } from './projectState.types'
-import { DEFAULT_SUN_PROJECTION, initialProjectState, projectStateReducer } from './projectState.reducer'
+import { initialProjectState, projectStateReducer } from './projectState.reducer'
 
 function withFootprints(state: ProjectState): ProjectState {
   return {
@@ -67,13 +67,13 @@ describe('projectStateReducer', () => {
     expect(state.selectedFootprintIds).toEqual([])
   })
 
-  it('handles delete behavior and active fallback', () => {
+  it('clears active footprint when active entry is deleted', () => {
     let state = withFootprints(initialProjectState)
     state = { ...state, selectedFootprintIds: ['a', 'b'], activeFootprintId: 'a' }
     state = projectStateReducer(state, { type: 'DELETE_FOOTPRINT', footprintId: 'a' })
 
     expect(Object.keys(state.footprints)).toEqual(['b'])
-    expect(state.activeFootprintId).toBe('b')
+    expect(state.activeFootprintId).toBeNull()
     expect(state.selectedFootprintIds).toEqual(['b'])
   })
 
@@ -101,13 +101,13 @@ describe('projectStateReducer', () => {
     expect(state.footprints.a.constraints.vertexHeights).toEqual([{ vertexIndex: 0, heightM: 1.2 }])
   })
 
-  it('updates active pitch adjustment percent with clamping', () => {
+  it('updates active pitch adjustment percent without clamping', () => {
     let state = withFootprints(initialProjectState)
     state = projectStateReducer(state, { type: 'SET_ACTIVE_PITCH_ADJUSTMENT_PERCENT', pitchAdjustmentPercent: 15.5 })
     expect(state.footprints.a.pitchAdjustmentPercent).toBe(15.5)
 
     state = projectStateReducer(state, { type: 'SET_ACTIVE_PITCH_ADJUSTMENT_PERCENT', pitchAdjustmentPercent: 999 })
-    expect(state.footprints.a.pitchAdjustmentPercent).toBe(200)
+    expect(state.footprints.a.pitchAdjustmentPercent).toBe(999)
   })
 
   it('handles obstacle draw/edit/selection flow', () => {
@@ -145,7 +145,7 @@ describe('projectStateReducer', () => {
     expect(Object.keys(state.obstacles)).toHaveLength(0)
   })
 
-  it('sanitizes load payload', () => {
+  it('throws when load payload is invalid', () => {
     const dirtyState: ProjectState = {
       ...initialProjectState,
       footprints: {
@@ -178,15 +178,11 @@ describe('projectStateReducer', () => {
       },
     }
 
-    const loaded = projectStateReducer(initialProjectState, { type: 'LOAD', payload: dirtyState })
-    const [loadedId] = Object.keys(loaded.footprints)
+    expect(() => projectStateReducer(initialProjectState, { type: 'LOAD', payload: dirtyState })).toThrow()
+  })
 
-    expect(loadedId).toBe('a')
-    expect(loaded.activeFootprintId).toBe('a')
-    expect(loaded.selectedFootprintIds).toEqual(['a'])
-    expect(loaded.footprints.a.footprint.kwp).toBe(4.3)
-    expect(loaded.footprints.a.pitchAdjustmentPercent).toBe(0)
-    expect(loaded.footprints.a.constraints.vertexHeights).toEqual([{ vertexIndex: 2, heightM: 3 }])
-    expect(loaded.sunProjection).toEqual(DEFAULT_SUN_PROJECTION)
+  it('resets project state to defaults', () => {
+    const state = projectStateReducer(withFootprints(initialProjectState), { type: 'RESET_STATE' })
+    expect(state).toEqual(initialProjectState)
   })
 })

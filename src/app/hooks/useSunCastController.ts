@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { validateFootprint } from '../../geometry/solver/validation'
 import { useProjectStore } from '../../state/project-store'
 import { useConstraintEditor } from './useConstraintEditor'
@@ -6,7 +6,7 @@ import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { useRoofDebugSimulation } from '../features/debug/useRoofDebugSimulation'
 import { useSelectionState } from './useSelectionState'
 import { useSolvedRoofEntries } from './useSolvedRoofEntries'
-import { generateObstacleMesh } from '../../geometry/mesh/generateObstacleMesh'
+import { generateObstacleMeshResult } from '../../geometry/mesh/generateObstacleMesh'
 import { useSunProjectionPanel } from '../features/sun-tools/useSunProjectionPanel'
 import type { ImportedFootprintConfigEntry } from '../features/debug/DevTools'
 import { useShareProject } from './useShareProject'
@@ -14,6 +14,17 @@ import { useMapNavigationTarget } from './useMapNavigationTarget'
 import { useSelectedRoofInputs } from './useSelectedRoofInputs'
 import { useRoofShading } from './useRoofShading'
 import { useAnnualRoofSimulation } from './useAnnualRoofSimulation'
+import {
+  reportAppError,
+  reportAppErrorCode,
+  reportAppSuccess,
+  startGlobalProcessingToast,
+  stopGlobalProcessingToast,
+} from '../../shared/errors'
+import {
+  GLOBAL_ERROR_TOAST_ACTION_EVENT_NAME,
+  type GlobalErrorToastActionEventDetail,
+} from '../components/globalErrorToastActions'
 import {
   clampPitchAdjustmentPercent,
   computeFootprintCentroid,
@@ -29,6 +40,7 @@ export function useSunCastController(): {
   canvasModel: SunCastCanvasModel
   tutorialModel: SunCastTutorialModel
 } {
+  const COMPUTE_PROCESSING_SOURCE = 'controller.compute'
   const [orbitEnabled, setOrbitEnabled] = useState(false)
   const [editMode, setEditMode] = useState<'roof' | 'obstacle'>('roof')
   const [mapInitialized, setMapInitialized] = useState(false)
@@ -84,7 +96,7 @@ export function useSunCastController(): {
     toggleObstacleSelection,
     clearObstacleSelection,
     upsertImportedFootprints,
-    startupHydrationError,
+    resetState,
   } = useProjectStore()
 
   const footprintEntries = useMemo(() => Object.values(state.footprints), [state.footprints])
@@ -106,11 +118,40 @@ export function useSunCastController(): {
     solvedEntries: solved.entries,
   })
 
-  const obstacleMeshes = useMemo(() => {
-    return obstacles
-      .map((obstacle) => generateObstacleMesh(obstacle))
-      .filter((mesh): mesh is NonNullable<typeof mesh> => mesh !== null)
+  const obstacleMeshResults = useMemo(() => {
+    return obstacles.map((obstacle) => generateObstacleMeshResult(obstacle))
   }, [obstacles])
+  const obstacleMeshErrors = useMemo(
+    () => obstacleMeshResults.filter((result): result is Extract<typeof result, { ok: false }> => !result.ok),
+    [obstacleMeshResults],
+  )
+  const obstacleMeshes = useMemo(
+    () =>
+      obstacleMeshResults
+        .filter((result): result is Extract<typeof result, { ok: true }> => result.ok)
+        .map((result) => result.value),
+    [obstacleMeshResults],
+  )
+
+  const reportedObstacleMeshErrorSignaturesRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    const signatures = new Set<string>()
+    for (const result of obstacleMeshErrors) {
+      const context = result.error.context ?? {}
+      const signature = `${result.error.code}:${String(context.obstacleId ?? 'unknown')}:${String(context.reason ?? '')}`
+      signatures.add(signature)
+      if (!reportedObstacleMeshErrorSignaturesRef.current.has(signature)) {
+        reportAppError(result.error)
+        reportedObstacleMeshErrorSignaturesRef.current.add(signature)
+      }
+    }
+
+    for (const existing of [...reportedObstacleMeshErrorSignaturesRef.current]) {
+      if (!signatures.has(existing)) {
+        reportedObstacleMeshErrorSignaturesRef.current.delete(existing)
+      }
+    }
+  }, [obstacleMeshErrors])
 
   const shadingRoofs = useMemo(() => {
     const solvedByFootprintId = new Map(solved.entries.map((entry) => [entry.footprintId, entry]))
@@ -275,6 +316,16 @@ export function useSunCastController(): {
       : activeHeatmapMode === 'live-shading'
         ? state.shadingSettings.enabled
         : false
+  const computeProcessingActive = shadingResult.computeState === 'SCHEDULED' || annualSimulation.state === 'RUNNING'
+
+  useEffect(() => {
+    if (computeProcessingActive) {
+      startGlobalProcessingToast(COMPUTE_PROCESSING_SOURCE, 'Processing geometry...')
+    } else {
+      stopGlobalProcessingToast(COMPUTE_PROCESSING_SOURCE)
+    }
+    return () => stopGlobalProcessingToast(COMPUTE_PROCESSING_SOURCE)
+  }, [computeProcessingActive])
 
   useRoofDebugSimulation({
     activeFootprint,
@@ -299,7 +350,7 @@ export function useSunCastController(): {
     },
   })
 
-  const { shareError, shareSuccess, onShareProject } = useShareProject({
+  const { onShareProject } = useShareProject({
     footprints: state.footprints,
     activeFootprintId: state.activeFootprintId,
     obstacles: state.obstacles,
@@ -307,10 +358,114 @@ export function useSunCastController(): {
     sunProjection: state.sunProjection,
   })
 
+  useEffect(() => {
+    const clearShareHashParam = () => {
+      const normalizedHash = window.location.hash.startsWith('#')
+        ? window.location.hash.slice(1)
+        : window.location.hash
+      if (!normalizedHash) {
+        return
+      }
+      const params = new URLSearchParams(normalizedHash)
+      if (!params.has('c')) {
+        return
+      }
+      params.delete('c')
+      const nextHash = params.toString()
+      const nextUrl = `${window.location.pathname}${window.location.search}${nextHash ? `#${nextHash}` : ''}`
+      window.history.replaceState(window.history.state, '', nextUrl)
+    }
+
+    const onGlobalErrorToastAction = (rawEvent: Event) => {
+      const event = rawEvent as CustomEvent<GlobalErrorToastActionEventDetail>
+      if (!event.detail || typeof event.detail.action !== 'string') {
+        return
+      }
+
+      if (event.detail.action === 'share-state') {
+        void onShareProject()
+        return
+      }
+
+      if (event.detail.action === 'reset-state') {
+        resetState()
+        clearSelectionState()
+        setRequestedHeatmapMode('live-shading')
+        clearShareHashParam()
+        reportAppSuccess('Project state reset to defaults.', {
+          area: 'global-error-toast',
+          source: 'reset-state',
+        })
+      }
+    }
+
+    window.addEventListener(GLOBAL_ERROR_TOAST_ACTION_EVENT_NAME, onGlobalErrorToastAction)
+    return () => window.removeEventListener(GLOBAL_ERROR_TOAST_ACTION_EVENT_NAME, onGlobalErrorToastAction)
+  }, [clearSelectionState, onShareProject, resetState])
+
   const onImportDevEntries = (entries: ImportedFootprintConfigEntry[]) => {
     upsertImportedFootprints(entries)
     clearSelectionState()
   }
+
+  const reportedUiErrorSignaturesRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    const signatures = new Set<string>()
+    for (const message of activeFootprintErrors) {
+      const signature = `INPUT_VALIDATION_FAILED:footprint:${message}`
+      signatures.add(signature)
+      if (!reportedUiErrorSignaturesRef.current.has(signature)) {
+        reportAppErrorCode('INPUT_VALIDATION_FAILED', message, {
+          context: { area: 'status-panel', source: 'footprint-validation' },
+        })
+        reportedUiErrorSignaturesRef.current.add(signature)
+      }
+    }
+
+    if (interactionError) {
+      const signature = `INTERACTION_FAILED:${interactionError}`
+      signatures.add(signature)
+      if (!reportedUiErrorSignaturesRef.current.has(signature)) {
+        reportAppErrorCode('INTERACTION_FAILED', interactionError, {
+          context: { area: 'status-panel', source: 'interaction' },
+        })
+        reportedUiErrorSignaturesRef.current.add(signature)
+      }
+    }
+
+    if (solved.activeError) {
+      const signature = `SOLVER_FAILED:${solved.activeError}`
+      signatures.add(signature)
+      if (!reportedUiErrorSignaturesRef.current.has(signature)) {
+        reportAppErrorCode('SOLVER_FAILED', solved.activeError, {
+          context: { area: 'status-panel', source: 'solver' },
+        })
+        reportedUiErrorSignaturesRef.current.add(signature)
+      }
+    }
+
+    if (sunDatetimeError) {
+      const signature = `INPUT_VALIDATION_FAILED:sun:${sunDatetimeError}`
+      signatures.add(signature)
+      if (!reportedUiErrorSignaturesRef.current.has(signature)) {
+        reportAppErrorCode('INPUT_VALIDATION_FAILED', sunDatetimeError, {
+          context: { area: 'sun-datetime', source: 'datetime-input' },
+        })
+        reportedUiErrorSignaturesRef.current.add(signature)
+      }
+    }
+
+    for (const existing of [...reportedUiErrorSignaturesRef.current]) {
+      const isUiValidationSignature =
+        existing.startsWith('INPUT_VALIDATION_FAILED:footprint:') ||
+        existing.startsWith('INPUT_VALIDATION_FAILED:sun:') ||
+        existing.startsWith('INTERACTION_FAILED:') ||
+        existing.startsWith('SOLVER_FAILED:')
+      if (isUiValidationSignature && !signatures.has(existing)) {
+        reportedUiErrorSignaturesRef.current.delete(existing)
+      }
+    }
+  }, [activeFootprintErrors, interactionError, solved.activeError, sunDatetimeError])
 
   const { mapNavigationTarget, onPlaceSearchSelect } = useMapNavigationTarget()
 
@@ -345,8 +500,6 @@ export function useSunCastController(): {
     fitRmsErrorM: solved.activeSolved?.solution.rmsErrorM ?? null,
     activeFootprintLatDeg: activeFootprintCentroid?.[1] ?? null,
     activeFootprintLonDeg: activeFootprintCentroid?.[0] ?? null,
-    shareError: shareError ?? startupHydrationError,
-    shareSuccess,
     onSetEditMode: (mode) => {
       setEditMode(mode)
       if (mode === 'roof' && state.isDrawingObstacle) {
@@ -357,6 +510,7 @@ export function useSunCastController(): {
       }
     },
     onStartDrawing: () => {
+      setOrbitEnabled(false)
       cancelObstacleDrawing()
       clearSelectionState()
       startDrawing()
@@ -371,6 +525,7 @@ export function useSunCastController(): {
       clearSelectionState()
     },
     onStartObstacleDrawing: () => {
+      setOrbitEnabled(false)
       cancelDrawing()
       clearSelectionState()
       startObstacleDrawing()

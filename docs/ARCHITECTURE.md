@@ -43,15 +43,16 @@ Derived-only artifacts (never canonical persisted source data):
 5. Generate render meshes from solved planes (`roof`) and obstacle state (`obstacle`).
 6. Compute live shading grid from solved roofs + obstacle volumes.
 7. Optionally run annual simulation (batched sampling) and expose per-roof + per-cell sun access.
-8. Render roof/obstacle meshes and display metrics/charts in sidebar/panels; shading overlays are produced through a dedicated overlay pipeline.
+8. Render roof/obstacle meshes and display metrics/charts in sidebar/panels; shading overlays are produced through a dedicated overlay pipeline with layer-relative rebasing.
 
 ## Performance Model
 
 - Live shading uses progressive compute: coarse during active geometry interaction, final resolution after interaction settles.
 - Shading requests are memoized by deterministic geometry/time fingerprints.
 - Annual simulation supports batched yielding and optional half-year mirroring to reduce compute cost.
-- Heatmap overlay triangulation/projection is worker-first with synchronous fallback when Worker is unavailable/fails.
+- Heatmap overlay triangulation/projection is worker-first; worker failures stop heatmap processing and surface typed errors.
 - Rendering layers share one Three.js renderer per WebGL context (ref-counted).
+- Custom 3D map layers use per-layer anchor rebasing to keep vertex coordinates near zero and avoid float32 precision artifacts in Mercator world space.
 
 ## External Dependencies
 
@@ -62,8 +63,11 @@ Derived-only artifacts (never canonical persisted source data):
 ## Reliability Model
 
 - Geometry modules are pure functions and unit-tested.
-- Runtime guarded by `AppErrorBoundary` for degraded mode.
-- Map initialization failures degrade to sidebar-only mode with explicit UI notice.
-- Project load path sanitizes/migrates persisted payloads (including legacy obstacle shapes and shading settings).
+- Runtime faults are reported through `AppErrorBoundary` and global error toasts.
+- Operational failures use typed app errors (`code`, `severity`, `recoverable`, `context`) and `Result<T, E>` at storage/share/mesh/worker boundaries.
+- Central `reportAppError` records failures; feature behavior is fail-closed for invalid state and processing errors.
+- Map initialization failures are surfaced as typed app errors.
+- Heatmap worker failures stop heatmap processing and surface explicit in-app error reporting.
+- Project load path validates persisted payloads and rejects invalid state.
 - Storage payloads are schema-versioned; unknown future schema versions are rejected to avoid silent corruption.
-- External provider errors (search/forecast/share) are surfaced as non-fatal status messages.
+- External provider errors (search/forecast/share) are surfaced as typed errors without stale-data fallback.

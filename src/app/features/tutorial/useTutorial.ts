@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { reportAppErrorCode } from '../../../shared/errors'
 
 const TUTORIAL_STORAGE_KEY = 'suncast_uc12_tutorial_state'
 const TOTAL_STEPS = 6
@@ -33,23 +34,27 @@ const DEFAULT_TUTORIAL_STATE: TutorialStorageState = {
   tutorialEnabled: true,
 }
 
-function sanitizeStoredState(value: unknown): TutorialStorageState {
+function assertStoredState(value: unknown): TutorialStorageState {
   if (!value || typeof value !== 'object') {
-    return DEFAULT_TUTORIAL_STATE
+    throw new Error('Tutorial storage payload is invalid')
   }
 
   const completedRaw = (value as { completedSteps?: unknown }).completedSteps
   const enabledRaw = (value as { tutorialEnabled?: unknown }).tutorialEnabled
 
-  const completedSteps = Number.isInteger(completedRaw)
-    ? Math.max(0, Math.min(TOTAL_STEPS, Number(completedRaw)))
-    : DEFAULT_TUTORIAL_STATE.completedSteps
-  const tutorialEnabled =
-    typeof enabledRaw === 'boolean' ? enabledRaw : DEFAULT_TUTORIAL_STATE.tutorialEnabled
+  if (!Number.isInteger(completedRaw)) {
+    throw new Error('Tutorial storage completedSteps is invalid')
+  }
+  if (Number(completedRaw) < 0 || Number(completedRaw) > TOTAL_STEPS) {
+    throw new Error('Tutorial storage completedSteps is out of range')
+  }
+  if (typeof enabledRaw !== 'boolean') {
+    throw new Error('Tutorial storage tutorialEnabled is invalid')
+  }
 
   return {
-    completedSteps,
-    tutorialEnabled,
+    completedSteps: Number(completedRaw),
+    tutorialEnabled: enabledRaw,
   }
 }
 
@@ -64,9 +69,13 @@ function readTutorialState(): TutorialStorageState {
   }
 
   try {
-    return sanitizeStoredState(JSON.parse(raw) as unknown)
-  } catch {
-    return DEFAULT_TUTORIAL_STATE
+    return assertStoredState(JSON.parse(raw) as unknown)
+  } catch (cause) {
+    reportAppErrorCode('STORAGE_CORRUPTED', 'Tutorial state is invalid.', {
+      cause,
+      context: { area: 'tutorial', enableStateReset: true },
+    })
+    throw cause
   }
 }
 

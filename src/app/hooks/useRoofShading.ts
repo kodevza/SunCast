@@ -153,22 +153,32 @@ function toHeatmapFeatures(result: ComputeRoofShadeGridResult): ShadeHeatmapFeat
 
 // Purpose: Builds request from the provided inputs.
 // Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
-function makeRequest(args: UseRoofShadingArgs): RoofShadingRequest | null {
-  if (!args.enabled || !args.datetimeIso || args.roofs.length === 0 || args.gridResolutionM <= 0) {
+function makeRequest({
+  enabled,
+  datetimeIso,
+  roofs,
+  obstacles,
+  gridResolutionM,
+  interactionActive,
+}: Pick<
+  UseRoofShadingArgs,
+  'enabled' | 'datetimeIso' | 'roofs' | 'obstacles' | 'gridResolutionM' | 'interactionActive'
+>): RoofShadingRequest | null {
+  if (!enabled || !datetimeIso || roofs.length === 0 || gridResolutionM <= 0) {
     return null
   }
 
-  const computeMode = args.interactionActive ? ('coarse' as const) : ('final' as const)
+  const computeMode = interactionActive ? ('coarse' as const) : ('final' as const)
   const usedGridResolutionM =
     computeMode === 'coarse'
-      ? Math.max(MIN_COARSE_GRID_RESOLUTION_M, args.gridResolutionM * 1.9)
-      : args.gridResolutionM
+      ? Math.max(MIN_COARSE_GRID_RESOLUTION_M, gridResolutionM * 1.9)
+      : gridResolutionM
   const maxSampleCount = computeMode === 'coarse' ? MAX_INTERACTION_SAMPLE_COUNT : undefined
 
   const payload: ComputeRoofShadeGridInput = {
-    datetimeIso: args.datetimeIso,
-    roofs: args.roofs,
-    obstacles: args.obstacles.map(toShadingObstacleVolume),
+    datetimeIso,
+    roofs,
+    obstacles: obstacles.map(toShadingObstacleVolume),
     gridResolutionM: usedGridResolutionM,
     maxSampleCount,
     sampleOverflowStrategy: 'auto-increase',
@@ -200,16 +210,21 @@ const IDLE_RESULT: RoofShadingResult = {
 // Purpose: Coordinates the roof shading workflow as a reusable hook.
 // Why: Keeps orchestration logic reusable and separated from component rendering.
 export function useRoofShading(args: UseRoofShadingArgs): RoofShadingResult {
+  const { enabled, datetimeIso, roofs, obstacles, gridResolutionM, interactionActive } = args
+
   const interactionThrottleMs =
     Number.isFinite(args.interactionThrottleMs) && args.interactionThrottleMs !== undefined
       ? Math.max(20, args.interactionThrottleMs)
       : DEFAULT_INTERACTION_THROTTLE_MS
 
-  const request = makeRequest(args)
+  const request = useMemo(
+    () => makeRequest({ enabled, datetimeIso, roofs, obstacles, gridResolutionM, interactionActive }),
+    [datetimeIso, enabled, gridResolutionM, interactionActive, obstacles, roofs],
+  )
   const [throttledRequest, setThrottledRequest] = useState<RoofShadingRequest | null>(null)
 
   useEffect(() => {
-    if (!args.interactionActive || !request) {
+    if (!interactionActive || !request) {
       return
     }
 
@@ -220,9 +235,9 @@ export function useRoofShading(args: UseRoofShadingArgs): RoofShadingResult {
     return () => {
       window.clearTimeout(timerId)
     }
-  }, [args.interactionActive, interactionThrottleMs, request])
+  }, [interactionActive, interactionThrottleMs, request])
 
-  const activeRequest = args.interactionActive ? throttledRequest : request
+  const activeRequest = interactionActive ? throttledRequest : request
 
   const computedResult = useMemo(() => {
     if (!activeRequest) {
@@ -236,6 +251,13 @@ export function useRoofShading(args: UseRoofShadingArgs): RoofShadingResult {
     }
     return computed
   }, [activeRequest])
+
+  const heatmapFeatures = useMemo(() => {
+    if (!computedResult) {
+      return []
+    }
+    return toHeatmapFeatures(computedResult)
+  }, [computedResult])
 
   if (!request) {
     return IDLE_RESULT
@@ -251,7 +273,7 @@ export function useRoofShading(args: UseRoofShadingArgs): RoofShadingResult {
   }
 
   return {
-    heatmapFeatures: toHeatmapFeatures(computedResult),
+    heatmapFeatures,
     computeState: 'READY',
     computeMode: activeRequest.computeMode,
     resultStatus: computedResult.status,

@@ -13,9 +13,6 @@ function clampPitchAdjustmentPercent(value: number): number {
 }
 
 interface StatusPanelProps {
-  footprintErrors: string[]
-  interactionError: string | null
-  solverError: string | null
   warnings: SolverWarning[]
   basePitchDeg: number | null
   pitchAdjustmentPercent: number
@@ -31,9 +28,6 @@ interface StatusPanelProps {
 }
 
 export function StatusPanel({
-  footprintErrors,
-  interactionError,
-  solverError,
   warnings,
   basePitchDeg,
   pitchAdjustmentPercent,
@@ -61,14 +55,6 @@ export function StatusPanel({
           ?
         </HintTooltip>
       </h3>
-      {footprintErrors.map((error) => (
-        <p key={error} className="status-error">
-          {error}
-        </p>
-      ))}
-      {interactionError && <p className="status-error">{interactionError}</p>}
-      {solverError && <p className="status-error">{solverError}</p>}
-
       {basePitchDeg !== null &&
         adjustedPitchDeg !== null &&
         azimuthDeg !== null &&

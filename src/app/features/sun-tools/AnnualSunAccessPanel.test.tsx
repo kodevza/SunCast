@@ -54,7 +54,6 @@ function renderPanel() {
         state="READY"
         progressRatio={1}
         result={annualResult}
-        error={null}
         isAnnualHeatmapVisible={true}
         onGridResolutionChange={vi.fn()}
         onRunSimulation={vi.fn(async () => undefined)}

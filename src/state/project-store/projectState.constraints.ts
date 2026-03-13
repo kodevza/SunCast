@@ -9,14 +9,23 @@ export function setOrReplaceVertexConstraint(
   return next.sort((a, b) => a.vertexIndex - b.vertexIndex)
 }
 
-export function sanitizeVertexHeights(
+export function assertValidVertexHeights(
   vertexHeights: VertexHeightConstraint[],
   vertexCount: number,
 ): VertexHeightConstraint[] {
   const byIndex = new Map<number, number>()
   for (const constraint of vertexHeights) {
+    if (!Number.isInteger(constraint.vertexIndex)) {
+      throw new Error(`Invalid vertex constraint index: ${String(constraint.vertexIndex)}`)
+    }
     if (constraint.vertexIndex < 0 || constraint.vertexIndex >= vertexCount) {
-      continue
+      throw new Error(`Vertex constraint index ${constraint.vertexIndex} is out of range for ${vertexCount} vertices`)
+    }
+    if (!Number.isFinite(constraint.heightM)) {
+      throw new Error(`Invalid vertex constraint height for index ${constraint.vertexIndex}`)
+    }
+    if (byIndex.has(constraint.vertexIndex)) {
+      throw new Error(`Duplicate vertex constraint for index ${constraint.vertexIndex}`)
     }
     byIndex.set(constraint.vertexIndex, constraint.heightM)
   }

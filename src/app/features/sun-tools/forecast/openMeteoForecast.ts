@@ -171,11 +171,6 @@ export async function fetchOpenMeteoTiltedIrradiance({
     }
   }
 
-  if (cached) {
-    recordEvent('forecast.cache_stale_fallback', { key: requestKey })
-    return cached.samples
-  }
-
   captureException(lastError, { area: 'forecast-open-meteo', key: requestKey })
   throw (lastError ?? new Error('Forecast API request failed'))
 }

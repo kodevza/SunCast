@@ -28,9 +28,7 @@ export function PlaceSearchPanel({ onSelectResult }: PlaceSearchPanelProps) {
       />
       <div className="place-search-results" data-testid="place-search-results">
         {loading && <p className="place-search-meta">Searching...</p>}
-        {!loading && error && (
-          <p className="status-error">Could not load places. You can continue by panning/zooming the map manually.</p>
-        )}
+        {!loading && error && <p className="place-search-meta">Search unavailable. You can continue by panning/zooming.</p>}
         {!loading && !error && hasSearched && results.length === 0 && <p className="place-search-meta">No places found</p>}
         {!loading && !error && results.length > 0 && (
           <ul className="place-search-list">

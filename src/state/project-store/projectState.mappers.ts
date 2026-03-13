@@ -1,12 +1,29 @@
 import type { FootprintPolygon, StoredFootprint } from '../../types/geometry'
-import { sanitizeVertexHeights } from './projectState.constraints'
+import { assertValidVertexHeights } from './projectState.constraints'
 import type { FootprintStateEntry } from './projectState.types'
 
-export function fromStoredFootprint(stored: StoredFootprint, defaultFootprintKwp: number): FootprintStateEntry {
+export function fromStoredFootprint(stored: StoredFootprint): FootprintStateEntry {
+  if (typeof stored.id !== 'string' || stored.id.length === 0) {
+    throw new Error('Stored footprint id is invalid')
+  }
+  if (!Array.isArray(stored.polygon) || stored.polygon.length < 3) {
+    throw new Error(`Stored footprint ${stored.id} has invalid polygon`)
+  }
+  for (const [index, vertex] of stored.polygon.entries()) {
+    if (!Array.isArray(vertex) || vertex.length !== 2 || !Number.isFinite(vertex[0]) || !Number.isFinite(vertex[1])) {
+      throw new Error(`Stored footprint ${stored.id} has invalid vertex at index ${index}`)
+    }
+  }
+
+  const kwp = Number(stored.kwp)
+  if (!Number.isFinite(kwp) || kwp < 0) {
+    throw new Error(`Stored footprint ${stored.id} has invalid kwp`)
+  }
+
   const footprint: FootprintPolygon = {
     id: stored.id,
     vertices: stored.polygon,
-    kwp: Number.isFinite(stored.kwp) ? Math.max(0, stored.kwp as number) : defaultFootprintKwp,
+    kwp,
   }
 
   const vertexHeights = Object.entries(stored.vertexHeights)
@@ -14,16 +31,18 @@ export function fromStoredFootprint(stored: StoredFootprint, defaultFootprintKwp
       vertexIndex: Number(vertexIndexRaw),
       heightM,
     }))
-    .filter((c) => Number.isInteger(c.vertexIndex) && Number.isFinite(c.heightM))
+
+  const pitchAdjustmentPercent = Number(stored.pitchAdjustmentPercent)
+  if (!Number.isFinite(pitchAdjustmentPercent)) {
+    throw new Error(`Stored footprint ${stored.id} has invalid pitch adjustment`)
+  }
 
   return {
     footprint,
     constraints: {
-      vertexHeights: sanitizeVertexHeights(vertexHeights, footprint.vertices.length),
+      vertexHeights: assertValidVertexHeights(vertexHeights, footprint.vertices.length),
     },
-    pitchAdjustmentPercent: Number.isFinite(stored.pitchAdjustmentPercent)
-      ? (stored.pitchAdjustmentPercent as number)
-      : 0,
+    pitchAdjustmentPercent,
   }
 }
 

@@ -49,6 +49,7 @@
    - nearly collinear points
    - tiny/large coordinate values
    - mixed edge + vertex constraints
+   - layer rebasing precision guard (`layerRebasing.test.ts`) to ensure 1 m-scale geometry does not collapse after float32 quantization
 
 ## Coverage Policy
 

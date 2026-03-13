@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildSharePayload,
+  deserializeSharePayloadResult,
   deserializeSharePayload,
   serializeSharePayload,
   validateSharePayload,
@@ -99,7 +100,7 @@ describe('projectState.share', () => {
     ).toBe(false)
 
     expect(() => deserializeSharePayload('{"version":2}', DEFAULT_SUN, DEFAULT_KWP, DEFAULT_SHADING)).toThrow(
-      'Invalid share payload',
+      'Invalid share payload.',
     )
   })
 
@@ -116,6 +117,7 @@ describe('projectState.share', () => {
           ],
           vertexHeights: { '2': 4.1 },
           kwp: 7,
+          pitchAdjustmentPercent: 0,
         },
       ],
       activeFootprintId: 'legacy',
@@ -141,6 +143,7 @@ describe('projectState.share', () => {
           ],
           vertexHeights: { '0': 1.5 },
           kwp: 5,
+          pitchAdjustmentPercent: 0,
         },
       ],
       activeFootprintId: 'v2',
@@ -150,5 +153,15 @@ describe('projectState.share', () => {
     expect(loaded.activeFootprintId).toBe('v2')
     expect(loaded.obstacles).toEqual({})
     expect(loaded.activeObstacleId).toBeNull()
+  })
+
+  it('marks invalid share payload errors as resettable', () => {
+    const result = deserializeSharePayloadResult('{"schemaVersion":2}', DEFAULT_SUN, DEFAULT_KWP, DEFAULT_SHADING)
+    expect(result.ok).toBe(false)
+    if (result.ok) {
+      return
+    }
+    expect(result.error.code).toBe('SHARE_PAYLOAD_INVALID')
+    expect(result.error.context?.enableStateReset).toBe(true)
   })
 })

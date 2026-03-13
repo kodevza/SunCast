@@ -45,6 +45,7 @@ export interface ProjectCommands {
   setShadingEnabled: (enabled: boolean) => void
   setShadingGridResolutionM: (gridResolutionM: number) => boolean
   upsertImportedFootprints: (entries: ImportedFootprintEntry[]) => boolean
+  resetState: () => void
 }
 
 function withDispatch(dispatch: Dispatch<Action>) {
@@ -80,6 +81,7 @@ function withDispatch(dispatch: Dispatch<Action>) {
     clearObstacleSelection: () => dispatch({ type: 'CLEAR_OBSTACLE_SELECTION' }),
     deleteObstacle: (obstacleId: string) => dispatch({ type: 'DELETE_OBSTACLE', obstacleId }),
     setShadingEnabled: (enabled: boolean) => dispatch({ type: 'SET_SHADING_ENABLED', enabled }),
+    resetState: () => dispatch({ type: 'RESET_STATE' }),
   }
 }
 

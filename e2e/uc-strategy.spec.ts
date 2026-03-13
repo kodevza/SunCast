@@ -36,6 +36,11 @@ async function clickMapRatios(page: Page, points: Array<[number, number]>) {
   }
 }
 
+async function moveMouseToMapRatio(page: Page, point: [number, number]) {
+  const bounds = await getMapBounds(page)
+  await page.mouse.move(bounds.x + bounds.width * point[0], bounds.y + bounds.height * point[1])
+}
+
 async function expectTutorialSpotlightAround(page: Page, target: Locator) {
   await expect(target).toBeVisible()
   await expect(page.getByTestId('tutorial-spotlight').first()).toBeVisible()
@@ -187,6 +192,8 @@ test('UC0: bootstrap and footprint validation flow', async ({ page }) => {
     [0.26, 0.24],
     [0.56, 0.26],
   ])
+  await moveMouseToMapRatio(page, [0.44, 0.58])
+  await expect(page.getByTestId('map-draw-angle-label')).toBeVisible()
   await expect(page.getByTestId('draw-finish-button')).toBeDisabled()
 
   await clickMapRatios(page, [[0.44, 0.58]])
