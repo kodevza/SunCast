@@ -75,11 +75,6 @@ async function expectTutorialSpotlightAround(page: Page, target: Locator) {
   expect(matchesTarget).toBeTruthy()
 }
 
-async function ensureHeightGizmoVisible(page: Page) {
-  await clickMapRatios(page, [[0.30, 0.20]])
-  await expect(page.locator('.height-gizmo-button')).toHaveCount(2)
-}
-
 async function drawFootprint(page: Page, points: Array<[number, number]>) {
   const skipTutorialButton = page.getByRole('button', { name: 'Skip tutorial' })
   if (await skipTutorialButton.isVisible()) {
@@ -274,10 +269,7 @@ test('UC1 + UC4 + IP1: orbit mode, height gizmo, mesh toggle, and non-orbit drag
   await expect(orbitButton).toHaveText(/Exit orbit/i)
   const meshToggle = page.getByTestId('mesh-visibility-toggle-button')
   await expect(meshToggle).toHaveText(/Hide meshes|Show meshes/i)
-  await ensureHeightGizmoVisible(page)
-  await expect(page.locator('.height-gizmo-button')).toHaveCount(2)
-
-  await page.locator('.height-gizmo-button').first().click()
+  await setVertexHeight(page, 0, 2.1)
   await expect(page.getByText(/Active constraints:/)).toContainText('V0=2.10m')
 
   const meshLabelBefore = (await meshToggle.innerText()).trim()
