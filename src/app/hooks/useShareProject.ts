@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { buildSharePayload, serializeSharePayload } from '../../state/project-store/projectState.share'
 import type { ProjectState } from '../../state/project-store/projectState.types'
 import { encodeSharePayload } from '../../shared/utils/shareCodec'
+import { reportAppErrorCode, reportAppSuccess } from '../../shared/errors'
 
 const MAX_SHARE_URL_LENGTH = 3500
 
@@ -14,8 +15,6 @@ interface UseShareProjectArgs {
 }
 
 interface UseShareProjectResult {
-  shareError: string | null
-  shareSuccess: string | null
   onShareProject: () => Promise<void>
   resetShareStatus: () => void
 }
@@ -27,20 +26,15 @@ export function useShareProject({
   activeObstacleId,
   sunProjection,
 }: UseShareProjectArgs): UseShareProjectResult {
-  const [shareError, setShareError] = useState<string | null>(null)
-  const [shareSuccess, setShareSuccess] = useState<string | null>(null)
-
   const resetShareStatus = useCallback(() => {
-    setShareError(null)
-    setShareSuccess(null)
+    // no-op kept for API compatibility
   }, [])
 
   const onShareProject = useCallback(async () => {
-    setShareError(null)
-    setShareSuccess(null)
-
     if (Object.keys(footprints).length === 0) {
-      setShareError('Nothing to share yet. Add at least one footprint.')
+      reportAppErrorCode('SHARE_OPERATION_FAILED', 'Nothing to share yet. Add at least one footprint.', {
+        context: { area: 'share-project', reason: 'empty-project' },
+      })
       return
     }
 
@@ -58,14 +52,16 @@ export function useShareProject({
       const shareUrlValue = shareUrl.toString()
 
       if (shareUrlValue.length > MAX_SHARE_URL_LENGTH) {
-        setShareError('Project is too large to share as a URL.')
+        reportAppErrorCode('SHARE_OPERATION_FAILED', 'Project is too large to share as a URL.', {
+          context: { area: 'share-project', reason: 'url-too-long' },
+        })
         return
       }
 
       if (typeof navigator.share === 'function') {
         try {
           await navigator.share({ title: 'SunCast project', url: shareUrlValue })
-          setShareSuccess('Share dialog opened.')
+          reportAppSuccess('Share dialog opened.', { area: 'share-project' })
           return
         } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
@@ -75,20 +71,23 @@ export function useShareProject({
       }
 
       if (!navigator.clipboard?.writeText) {
-        setShareError('Clipboard sharing is not available in this browser.')
+        reportAppErrorCode('SHARE_OPERATION_FAILED', 'Clipboard sharing is not available in this browser.', {
+          context: { area: 'share-project', reason: 'clipboard-unavailable' },
+        })
         return
       }
 
       await navigator.clipboard.writeText(shareUrlValue)
-      setShareSuccess('Share URL copied to clipboard.')
-    } catch {
-      setShareError('Could not generate share URL.')
+      reportAppSuccess('Share URL copied to clipboard.', { area: 'share-project' })
+    } catch (cause) {
+      reportAppErrorCode('SHARE_OPERATION_FAILED', 'Could not generate share URL.', {
+        cause,
+        context: { area: 'share-project', reason: 'encode-failed' },
+      })
     }
   }, [activeFootprintId, activeObstacleId, footprints, obstacles, sunProjection])
 
   return {
-    shareError,
-    shareSuccess,
     onShareProject,
     resetShareStatus,
   }

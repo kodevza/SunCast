@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { readStorage, writeStorage } from './projectState.storage'
+import { readStorage, readStorageResult, writeStorage } from './projectState.storage'
 import type { ProjectState } from './projectState.types'
 
 const DEFAULT_SUN = { enabled: true, datetimeIso: null, dailyDateIso: null }
@@ -88,7 +88,20 @@ describe('projectState.storage', () => {
     expect(readStorage(DEFAULT_SUN, DEFAULT_SHADING, DEFAULT_KWP, 'uc6')).toBeNull()
   })
 
-  it('falls back to defaults for missing projection and invalid kwp', () => {
+  it('returns typed storage error for malformed payload via Result API', () => {
+    localStorage.setItem('suncast_project', '{bad json')
+    const result = readStorageResult(DEFAULT_SUN, DEFAULT_SHADING, DEFAULT_KWP, 'uc6')
+    expect(result.ok).toBe(false)
+    if (result.ok) {
+      return
+    }
+    expect(result.error.code).toBe('STORAGE_CORRUPTED')
+    expect(result.error.severity).toBe('warning')
+    expect(result.error.recoverable).toBe(true)
+    expect(result.error.context?.enableStateReset).toBe(true)
+  })
+
+  it('rejects invalid persisted footprint values', () => {
     localStorage.setItem(
       'suncast_project',
       JSON.stringify({
@@ -108,9 +121,7 @@ describe('projectState.storage', () => {
     )
 
     const loaded = readStorage(DEFAULT_SUN, DEFAULT_SHADING, DEFAULT_KWP, 'uc6')
-    expect(loaded?.footprints.b.footprint.kwp).toBe(DEFAULT_KWP)
-    expect(loaded?.sunProjection).toEqual(DEFAULT_SUN)
-    expect(loaded?.shadingSettings).toEqual(DEFAULT_SHADING)
+    expect(loaded).toBeNull()
   })
 
   it('persists solverConfigVersion field', () => {
@@ -134,6 +145,7 @@ describe('projectState.storage', () => {
             ],
             vertexHeights: { '0': 1.4 },
             kwp: 3.5,
+            pitchAdjustmentPercent: 0,
           },
         },
         activeFootprintId: 'b',
@@ -161,6 +173,7 @@ describe('projectState.storage', () => {
             ],
             vertexHeights: {},
             kwp: 3.5,
+            pitchAdjustmentPercent: 0,
           },
         },
         activeFootprintId: 'b',

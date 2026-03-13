@@ -7,7 +7,7 @@ export interface ObservabilityEvent {
   data?: Record<string, unknown>
 }
 
-const OBSERVABILITY_EVENT_NAME = 'suncast:observability'
+export const OBSERVABILITY_EVENT_NAME = 'suncast:observability'
 const MAX_BUFFERED_EVENTS = 200
 const bufferedEvents: ObservabilityEvent[] = []
 

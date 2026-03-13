@@ -3,8 +3,6 @@ import type { FootprintPolygon } from '../../types/geometry'
 import { buildLocalOrigin, localMetersToLonLat, projectPointsToLocalMeters } from '../projection/localMeters'
 import { generateRoofMesh } from './generateRoofMesh'
 
-const MIN_TRIANGLE_AREA_M2 = 1e-5
-
 function pointInPolygon(point: { x: number; y: number }, polygon: Array<{ x: number; y: number }>): boolean {
   let inside = false
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
@@ -47,21 +45,8 @@ function edgeLengthsMeters(vertices: Array<[number, number]>): number[] {
   return lengths
 }
 
-function triangleAreasMeters2(vertices: Array<[number, number]>, triangleIndices: number[]): number[] {
-  const { points2d } = projectPointsToLocalMeters(vertices)
-  const areas: number[] = []
-  for (let i = 0; i < triangleIndices.length; i += 3) {
-    const a = points2d[triangleIndices[i]]
-    const b = points2d[triangleIndices[i + 1]]
-    const c = points2d[triangleIndices[i + 2]]
-    const area = Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) * 0.5
-    areas.push(area)
-  }
-  return areas
-}
-
 describe('generateRoofMesh', () => {
-  it('removes duplicate consecutive footprint vertices before triangulation', () => {
+  it('throws when footprint has duplicate consecutive vertices', () => {
     const footprint: FootprintPolygon = {
       id: 'dup-verts',
       vertices: [
@@ -74,9 +59,9 @@ describe('generateRoofMesh', () => {
       kwp: 1,
     }
 
-    const mesh = generateRoofMesh(footprint, [4, 4, 4, 4, 4])
-    expect(mesh.vertices).toHaveLength(4)
-    expect(mesh.triangleIndices).toHaveLength(6)
+    expect(() => generateRoofMesh(footprint, [4, 4, 4, 4, 4])).toThrow(
+      'Footprint contains near-zero edge length and cannot be triangulated',
+    )
   })
 
   it('keeps triangulation triangles inside a concave footprint', () => {
@@ -140,7 +125,7 @@ describe('generateRoofMesh', () => {
     }
   })
 
-  it('filters near-zero-area sliver triangles from earcut output', () => {
+  it('throws when earcut returns near-zero-area sliver triangles', () => {
     const center: [number, number] = [20, 52]
     const origin = buildLocalOrigin([center])
     const localPolygon = [
@@ -157,19 +142,12 @@ describe('generateRoofMesh', () => {
       kwp: 1,
     }
 
-    const mesh = generateRoofMesh(footprint, [1, 1, 1, 1, 1])
-    expect(mesh.triangleIndices).toHaveLength(6)
-
-    const areas = triangleAreasMeters2(
-      mesh.vertices.map((vertex) => [vertex.lon, vertex.lat]),
-      mesh.triangleIndices,
+    expect(() => generateRoofMesh(footprint, [1, 1, 1, 1, 1])).toThrow(
+      'Roof triangulation produced degenerate triangle',
     )
-    for (const area of areas) {
-      expect(area).toBeGreaterThanOrEqual(1e-5)
-    }
   })
 
-  it('drops triangles below minimum area threshold', () => {
+  it('fails when any triangle is below minimum area threshold', () => {
     const center: [number, number] = [20, 52]
     const origin = buildLocalOrigin([center])
     const localPolygon = [
@@ -186,11 +164,8 @@ describe('generateRoofMesh', () => {
       kwp: 1,
     }
 
-    const mesh = generateRoofMesh(footprint, [1, 1, 1, 1, 1])
-    const areas = triangleAreasMeters2(
-      mesh.vertices.map((vertex) => [vertex.lon, vertex.lat]),
-      mesh.triangleIndices,
+    expect(() => generateRoofMesh(footprint, [1, 1, 1, 1, 1])).toThrow(
+      'Roof triangulation produced degenerate triangle',
     )
-    expect(Math.min(...areas)).toBeGreaterThanOrEqual(MIN_TRIANGLE_AREA_M2)
   })
 })

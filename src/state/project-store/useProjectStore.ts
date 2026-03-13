@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef } from 'react'
 import { createProjectCommands } from './projectState.commands'
 import {
   DEFAULT_FOOTPRINT_KWP,
@@ -17,17 +17,17 @@ import {
   getShadingReadyFootprintEntries,
   isFootprintSelected,
 } from './projectState.selectors'
-import { readStorage, writeStorage } from './projectState.storage'
-import { deserializeSharePayload } from './projectState.share'
-import { decodeSharePayload } from '../../shared/utils/shareCodec'
+import { readStorageResult, writeStorage } from './projectState.storage'
+import { deserializeSharePayloadResult } from './projectState.share'
+import { decodeSharePayloadResult } from '../../shared/utils/shareCodec'
 import { captureException, recordEvent } from '../../shared/observability/observability'
+import { createAppError, reportAppError } from '../../shared/errors'
 
 const SOLVER_CONFIG_VERSION = 'uc7'
 
 export function useProjectStore() {
   const [state, dispatch] = useReducer(projectStateReducer, initialProjectState)
   const hasSkippedInitialPersist = useRef(false)
-  const [startupHydrationError, setStartupHydrationError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -38,35 +38,57 @@ export function useProjectStore() {
         : window.location.hash
       const shareParam = new URLSearchParams(hashPayload).get('c')
       if (shareParam) {
-        try {
-          const decoded = await decodeSharePayload(shareParam)
-          const shared = deserializeSharePayload(
-            decoded,
+        const decoded = await decodeSharePayloadResult(shareParam)
+        if (decoded.ok) {
+          const shared = deserializeSharePayloadResult(
+            decoded.value,
             DEFAULT_SUN_PROJECTION,
             DEFAULT_FOOTPRINT_KWP,
             DEFAULT_SHADING_SETTINGS,
           )
-          if (!cancelled) {
-            dispatch({ type: 'LOAD', payload: shared })
+          if (!cancelled && shared.ok) {
+            try {
+              dispatch({ type: 'LOAD', payload: shared.value })
+            } catch (cause) {
+              reportAppError(
+                createAppError('SHARE_PAYLOAD_INVALID', 'Shared project state is invalid.', {
+                  cause,
+                  context: { area: 'startup-hydration', source: 'hash', enableStateReset: true },
+                }),
+              )
+            }
+            return
           }
-          return
-        } catch {
-          if (!cancelled) {
-            setStartupHydrationError('Invalid shared URL. Loaded saved project instead.')
-            recordEvent('startup.hydration.hash_failed')
+          if (!cancelled && !shared.ok) {
+            reportAppError(shared.error)
+            recordEvent('startup.hydration.hash_failed', { code: shared.error.code })
           }
+        } else if (!cancelled) {
+          reportAppError(decoded.error)
+          recordEvent('startup.hydration.hash_failed', { code: decoded.error.code })
         }
       }
 
-      const stored = readStorage(
+      const stored = readStorageResult(
         DEFAULT_SUN_PROJECTION,
         DEFAULT_SHADING_SETTINGS,
         DEFAULT_FOOTPRINT_KWP,
         SOLVER_CONFIG_VERSION,
       )
-      if (stored && !cancelled) {
-        dispatch({ type: 'LOAD', payload: stored })
-        recordEvent('startup.hydration.storage_loaded')
+      if (stored.ok && stored.value && !cancelled) {
+        try {
+          dispatch({ type: 'LOAD', payload: stored.value })
+          recordEvent('startup.hydration.storage_loaded')
+        } catch (cause) {
+          reportAppError(
+            createAppError('STORAGE_CORRUPTED', 'Stored project state is invalid.', {
+              cause,
+              context: { area: 'startup-hydration', source: 'storage', enableStateReset: true },
+            }),
+          )
+        }
+      } else if (!stored.ok && !cancelled) {
+        reportAppError(stored.error)
       }
     }
 
@@ -121,8 +143,7 @@ export function useProjectStore() {
       shadingReadyFootprints: getShadingReadyFootprintEntries(state),
       sunProjection: state.sunProjection,
       shadingSettings: state.shadingSettings,
-      startupHydrationError,
       ...createProjectCommands(dispatch, () => state),
     }
-  }, [startupHydrationError, state])
+  }, [state])
 }

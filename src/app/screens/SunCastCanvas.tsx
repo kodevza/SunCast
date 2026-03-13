@@ -71,7 +71,6 @@ export function SunCastCanvas({ model }: SunCastCanvasProps) {
             <SunProjectionStatus
               enabled={model.sunProjectionEnabled}
               hasDatetime={model.hasValidSunDatetime}
-              datetimeError={model.sunDatetimeError}
               onToggleEnabled={model.onToggleSunProjectionEnabled}
               result={model.sunProjectionResult}
             />

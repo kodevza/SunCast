@@ -116,9 +116,7 @@ export function ForecastPvPanel({
         <p>Select one or more solved polygons to load irradiance forecast.</p>
       )}
       {selectedDateIso && hasForecastInputs && isForecastLoading && <p>Loading forecast data...</p>}
-      {selectedDateIso && hasForecastInputs && forecastError && (
-        <p className="status-error">{forecastError} Falling back to clear-sky simulation panels only.</p>
-      )}
+      {selectedDateIso && hasForecastInputs && forecastError && <p>Falling back to clear-sky simulation panels only.</p>}
       {selectedDateIso && hasForecastInputs && !isForecastLoading && !forecastError && forecastPoints.length === 0 && (
         <p>No daylight forecast points returned for selected date.</p>
       )}

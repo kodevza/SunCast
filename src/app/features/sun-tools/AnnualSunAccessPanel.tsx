@@ -20,7 +20,6 @@ interface AnnualSunAccessPanelProps {
   state: AnnualSimulationState
   progressRatio: number
   result: AnnualSunAccessResult | null
-  error: string | null
   isAnnualHeatmapVisible: boolean
   onGridResolutionChange: (gridResolutionM: number) => void
   onRunSimulation: (options: AnnualSimulationOptions) => Promise<void>
@@ -35,7 +34,6 @@ export function AnnualSunAccessPanel({
   state,
   progressRatio,
   result,
-  error,
   isAnnualHeatmapVisible,
   onGridResolutionChange,
   onRunSimulation,
@@ -228,8 +226,6 @@ export function AnnualSunAccessPanel({
 
       {selectedRoofCount === 0 && <p>Select at least one solved roof to run annual simulation.</p>}
       {state === 'RUNNING' && <p>Simulation running: {progressPercent}%</p>}
-      {error && <p className="status-error">{error}</p>}
-
       {summary && result && (
         <div data-testid="annual-sim-results">
           <p>Sun hours / year: {summary.sunHours.toFixed(1)} h</p>

@@ -5,8 +5,9 @@ import type {
   ShadingSettings,
   StoredFootprint,
 } from '../../types/geometry'
+import { createAppError, err, ok, type AppError, type Result } from '../../shared/errors'
 import { fromStoredFootprint } from './projectState.mappers'
-import { sanitizeLoadedState } from './projectState.sanitize'
+import { validateLoadedState } from './projectState.sanitize'
 import type { ProjectState } from './projectState.types'
 
 const CURRENT_SHARE_SCHEMA_VERSION = 3
@@ -262,24 +263,62 @@ export function deserializeSharePayload(
   defaultFootprintKwp: number,
   defaultShadingSettings: ShadingSettings,
 ): ProjectState {
-  const parsed: unknown = JSON.parse(raw)
-  const migrated = migrateSharePayload(parsed)
-  if (!migrated) {
-    throw new Error('Invalid share payload')
+  const result = deserializeSharePayloadResult(raw, defaultSunProjection, defaultFootprintKwp, defaultShadingSettings)
+  if (!result.ok) {
+    throw new Error(result.error.message)
+  }
+  return result.value
+}
+
+export function deserializeSharePayloadResult(
+  raw: string,
+  defaultSunProjection: ProjectSunProjectionSettings,
+  defaultFootprintKwp: number,
+  defaultShadingSettings: ShadingSettings,
+): Result<ProjectState, AppError> {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch (cause) {
+    return err(
+      createAppError('SHARE_PAYLOAD_INVALID', 'Invalid share payload.', {
+        cause,
+        context: { area: 'share-payload', reason: 'json-parse-failed', enableStateReset: true },
+      }),
+    )
   }
 
-  const footprints = Object.fromEntries(
-    migrated.footprints.map((footprint) => {
-      const stored: StoredFootprint = {
-        id: footprint.id,
-        polygon: footprint.polygon,
-        vertexHeights: footprint.vertexHeights,
-        kwp: footprint.kwp,
-        pitchAdjustmentPercent: footprint.pitchAdjustmentPercent,
-      }
-      return [footprint.id, fromStoredFootprint(stored, defaultFootprintKwp)]
-    }),
-  )
+  const migrated = migrateSharePayload(parsed)
+  if (!migrated) {
+    return err(
+      createAppError('SHARE_PAYLOAD_INVALID', 'Invalid share payload.', {
+        context: { area: 'share-payload', reason: 'schema-invalid', enableStateReset: true },
+      }),
+    )
+  }
+
+  let footprints: ProjectState['footprints']
+  try {
+    footprints = Object.fromEntries(
+      migrated.footprints.map((footprint) => {
+        const stored: StoredFootprint = {
+          id: footprint.id,
+          polygon: footprint.polygon,
+          vertexHeights: footprint.vertexHeights,
+          kwp: footprint.kwp,
+          pitchAdjustmentPercent: footprint.pitchAdjustmentPercent,
+        }
+        return [footprint.id, fromStoredFootprint(stored)]
+      }),
+    )
+  } catch (cause) {
+    return err(
+      createAppError('SHARE_PAYLOAD_INVALID', 'Invalid share payload.', {
+        cause,
+        context: { area: 'share-payload', reason: 'mapping-invalid', enableStateReset: true },
+      }),
+    )
+  }
 
   const loaded: ProjectState = {
     footprints,
@@ -300,5 +339,14 @@ export function deserializeSharePayload(
     shadingSettings: defaultShadingSettings,
   }
 
-  return sanitizeLoadedState(loaded, defaultSunProjection, defaultFootprintKwp, defaultShadingSettings)
+  try {
+    return ok(validateLoadedState(loaded, defaultSunProjection, defaultFootprintKwp, defaultShadingSettings))
+  } catch (cause) {
+    return err(
+      createAppError('SHARE_PAYLOAD_INVALID', 'Invalid share payload.', {
+        cause,
+        context: { area: 'share-payload', reason: 'state-invalid', enableStateReset: true },
+      }),
+    )
+  }
 }

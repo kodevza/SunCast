@@ -7,11 +7,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockReadStorage = vi.fn()
 const mockWriteStorage = vi.fn()
-const mockDecodeSharePayload = vi.fn()
-const mockDeserializeSharePayload = vi.fn()
+const mockDecodeSharePayloadResult = vi.fn()
+const mockDeserializeSharePayloadResult = vi.fn()
 
 vi.mock('./projectState.storage', () => ({
-  readStorage: (...args: unknown[]) => mockReadStorage(...args),
+  readStorageResult: (...args: unknown[]) => mockReadStorage(...args),
   writeStorage: (...args: unknown[]) => mockWriteStorage(...args),
 }))
 
@@ -19,12 +19,12 @@ vi.mock('./projectState.share', async () => {
   const actual = await vi.importActual<typeof import('./projectState.share')>('./projectState.share')
   return {
     ...actual,
-    deserializeSharePayload: (...args: unknown[]) => mockDeserializeSharePayload(...args),
+    deserializeSharePayloadResult: (...args: unknown[]) => mockDeserializeSharePayloadResult(...args),
   }
 })
 
 vi.mock('../../shared/utils/shareCodec', () => ({
-  decodeSharePayload: (...args: unknown[]) => mockDecodeSharePayload(...args),
+  decodeSharePayloadResult: (...args: unknown[]) => mockDecodeSharePayloadResult(...args),
 }))
 
 import { useProjectStore } from './useProjectStore'
@@ -110,9 +110,9 @@ describe('useProjectStore startup hydration', () => {
 
   it('prefers hash c URL payload over localStorage', async () => {
     const shared = createState('shared')
-    mockDecodeSharePayload.mockResolvedValue('{"version":1}')
-    mockDeserializeSharePayload.mockReturnValue(shared)
-    mockReadStorage.mockReturnValue(createState('stored'))
+    mockDecodeSharePayloadResult.mockResolvedValue({ ok: true, value: '{"version":1}' })
+    mockDeserializeSharePayloadResult.mockReturnValue({ ok: true, value: shared })
+    mockReadStorage.mockReturnValue({ ok: true, value: createState('stored') })
 
     window.history.replaceState({}, '', '/#c=abc')
     const hook = renderStore()
@@ -125,16 +125,38 @@ describe('useProjectStore startup hydration', () => {
 
   it('falls back to localStorage and surfaces error when hash c is invalid', async () => {
     const stored = createState('stored')
-    mockDecodeSharePayload.mockRejectedValue(new Error('bad cfg'))
-    mockReadStorage.mockReturnValue(stored)
+    mockDecodeSharePayloadResult.mockResolvedValue({
+      ok: false,
+      error: { code: 'SHARE_PAYLOAD_INVALID', message: 'Invalid shared URL payload.' },
+    })
+    mockReadStorage.mockReturnValue({ ok: true, value: stored })
 
     window.history.replaceState({}, '', '/#c=broken')
     const hook = renderStore()
     await hook.waitForHydrate()
 
     expect(hook.get().state.activeFootprintId).toBe('stored')
-    expect(hook.get().startupHydrationError).toBe('Invalid shared URL. Loaded saved project instead.')
     expect(mockReadStorage).toHaveBeenCalledTimes(1)
+    hook.unmount()
+  })
+
+  it('exposes resetState command that clears project data', async () => {
+    mockDecodeSharePayloadResult.mockResolvedValue({ ok: true, value: '{"version":1}' })
+    mockDeserializeSharePayloadResult.mockReturnValue({ ok: true, value: createState('shared') })
+    mockReadStorage.mockReturnValue({ ok: true, value: null })
+
+    window.history.replaceState({}, '', '/#c=abc')
+    const hook = renderStore()
+    await hook.waitForHydrate()
+    expect(hook.get().state.activeFootprintId).toBe('shared')
+
+    act(() => {
+      hook.get().resetState()
+    })
+
+    expect(hook.get().state.activeFootprintId).toBeNull()
+    expect(Object.keys(hook.get().state.footprints)).toHaveLength(0)
+    expect(hook.get().state.obstacles).toEqual({})
     hook.unmount()
   })
 })

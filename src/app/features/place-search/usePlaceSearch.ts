@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { PhotonPlaceSearchProvider } from './providers/photonPlaceSearchProvider'
 import type { PlaceSearchProvider, PlaceSearchResult } from './placeSearch.types'
 import { captureException, recordEvent } from '../../../shared/observability/observability'
+import { reportAppErrorCode } from '../../../shared/errors'
 
 const QUERY_MIN_LENGTH = 3
 const DEFAULT_DEBOUNCE_MS = 300
@@ -56,6 +57,7 @@ export function usePlaceSearch({
   const [error, setError] = useState<string | null>(null)
   const [hasSearched, setHasSearched] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const lastReportedErrorRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (normalizedQuery.length < QUERY_MIN_LENGTH) {
@@ -65,6 +67,7 @@ export function usePlaceSearch({
       setLoading(false)
       setError(null)
       setHasSearched(false)
+      lastReportedErrorRef.current = null
       return
     }
 
@@ -75,6 +78,7 @@ export function usePlaceSearch({
       setLoading(false)
       setError(null)
       setHasSearched(true)
+      lastReportedErrorRef.current = null
       recordEvent('place-search.cache_hit', { queryLength: normalizedQuery.length })
       return
     }
@@ -102,13 +106,15 @@ export function usePlaceSearch({
         if (controller.signal.aborted) {
           return
         }
-        if (cached) {
-          setResults(cached.results)
-          setError('Search service unavailable. Showing cached results.')
-          recordEvent('place-search.cache_stale_fallback', { queryLength: normalizedQuery.length })
-        } else {
-          setResults([])
-          setError(caughtError instanceof Error ? caughtError.message : 'Search failed')
+        setResults([])
+        const message = caughtError instanceof Error ? caughtError.message : 'Search failed'
+        setError(message)
+        if (lastReportedErrorRef.current !== message) {
+          reportAppErrorCode('PLACE_SEARCH_FAILED', message, {
+            cause: caughtError,
+            context: { area: 'place-search-hook', hasCache: Boolean(cached), enableStateReset: true },
+          })
+          lastReportedErrorRef.current = message
         }
         setHasSearched(true)
         captureException(caughtError, { area: 'place-search-hook', hasCache: String(Boolean(cached)) })

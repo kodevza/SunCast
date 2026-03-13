@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SelectedRoofSunInput } from './SunOverlayColumn'
 import { fetchOpenMeteoTiltedIrradiance } from './forecast/openMeteoForecast'
 import { createRoofForecastProfile, mergeSettledRoofForecasts, type ForecastPoint } from './forecast/forecastPvTransform'
 import { extractDateIsoInTimeZone } from './sunDateTime'
 import { captureException, recordEvent } from '../../../shared/observability/observability'
+import { reportAppErrorCode, startGlobalProcessingToast, stopGlobalProcessingToast } from '../../../shared/errors'
 
 const FORECAST_TIME_ZONE = 'UTC'
 
@@ -31,6 +32,7 @@ export function useForecastPv({
   const [isForecastLoading, setIsForecastLoading] = useState(false)
   const [forecastError, setForecastError] = useState<string | null>(null)
   const [forecastPoints, setForecastPoints] = useState<ForecastPoint[]>([])
+  const lastReportedErrorRef = useRef<string | null>(null)
 
   const selectedDateIso = useMemo(() => extractDateIsoInTimeZone(datetimeIso, FORECAST_TIME_ZONE), [datetimeIso])
   const selectedCount = selectedRoofs.length
@@ -74,25 +76,48 @@ export function useForecastPv({
         setForecastPoints(merged.points)
 
         if (merged.succeededRoofCount === 0 && merged.failedRoofCount > 0) {
-          setForecastError('Forecast unavailable for all selected polygons.')
+          const message = 'Forecast unavailable for all selected polygons.'
+          setForecastError(message)
+          if (lastReportedErrorRef.current !== message) {
+            reportAppErrorCode('FORECAST_FAILED', message, {
+              context: { area: 'forecast-hook', failedRoofCount: merged.failedRoofCount, mode: 'all' },
+            })
+            lastReportedErrorRef.current = message
+          }
           recordEvent('forecast.unavailable_all', { failedRoofCount: merged.failedRoofCount })
           return
         }
 
         if (merged.failedRoofCount > 0) {
-          setForecastError(`Forecast unavailable for ${merged.failedRoofCount} selected polygon(s).`)
+          const message = `Forecast unavailable for ${merged.failedRoofCount} selected polygon(s).`
+          setForecastError(message)
+          if (lastReportedErrorRef.current !== message) {
+            reportAppErrorCode('FORECAST_FAILED', message, {
+              context: { area: 'forecast-hook', failedRoofCount: merged.failedRoofCount, mode: 'partial', enableStateReset: true },
+            })
+            lastReportedErrorRef.current = message
+          }
           recordEvent('forecast.unavailable_partial', { failedRoofCount: merged.failedRoofCount })
           return
         }
 
         setForecastError(null)
+        lastReportedErrorRef.current = null
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') {
           return
         }
         setForecastPoints([])
-        setForecastError(error instanceof Error ? error.message : 'Unknown forecast API error')
+        const message = error instanceof Error ? error.message : 'Unknown forecast API error'
+        setForecastError(message)
+        if (lastReportedErrorRef.current !== message) {
+          reportAppErrorCode('FORECAST_FAILED', message, {
+            cause: error,
+            context: { area: 'forecast-hook', mode: 'exception', enableStateReset: true },
+          })
+          lastReportedErrorRef.current = message
+        }
         captureException(error, { area: 'forecast-hook' })
       })
       .finally(() => {
@@ -107,6 +132,16 @@ export function useForecastPv({
   const effectiveIsForecastLoading = hasForecastInputs ? isForecastLoading : false
   const effectiveForecastError = hasForecastInputs ? forecastError : null
   const effectiveForecastPoints = hasForecastInputs ? forecastPoints : []
+
+  useEffect(() => {
+    const source = 'forecast.compute'
+    if (effectiveIsForecastLoading) {
+      startGlobalProcessingToast(source, 'Processing forecast...')
+    } else {
+      stopGlobalProcessingToast(source)
+    }
+    return () => stopGlobalProcessingToast(source)
+  }, [effectiveIsForecastLoading])
 
   return {
     selectedDateIso,

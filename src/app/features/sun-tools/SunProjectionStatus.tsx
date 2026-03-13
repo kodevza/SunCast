@@ -3,12 +3,11 @@ import type { SunProjectionResult } from '../../../geometry/sun/sunProjection'
 interface SunProjectionStatusProps {
   enabled: boolean
   hasDatetime: boolean
-  datetimeError: string | null
   onToggleEnabled: (enabled: boolean) => void
   result: SunProjectionResult | null
 }
 
-export function SunProjectionStatus({ enabled, hasDatetime, datetimeError, onToggleEnabled, result }: SunProjectionStatusProps) {
+export function SunProjectionStatus({ enabled, hasDatetime, onToggleEnabled, result }: SunProjectionStatusProps) {
   return (
     <section className="panel-section">
       <h3>Sun Projection</h3>
@@ -23,7 +22,6 @@ export function SunProjectionStatus({ enabled, hasDatetime, datetimeError, onTog
           Enable sun projection
         </label>
       </div>
-      {datetimeError && <p className="status-error">{datetimeError}</p>}
       {!enabled && <p>Sun projection is disabled.</p>}
       {enabled && !hasDatetime && <p data-testid="sun-status-set-datetime">Set datetime</p>}
       {enabled && hasDatetime && result && (

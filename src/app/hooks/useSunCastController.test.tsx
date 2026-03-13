@@ -230,6 +230,7 @@ describe('useSunCastController', () => {
       clearObstacleSelection: vi.fn(),
       upsertImportedFootprints: vi.fn(),
       startupHydrationError: null,
+      startupDegradedMessages: [],
     })
 
     mockUseSolvedRoofEntries.mockReturnValue({
@@ -306,6 +307,7 @@ describe('useSunCastController', () => {
       clearObstacleSelection: vi.fn(),
       upsertImportedFootprints: vi.fn(),
       startupHydrationError: null,
+      startupDegradedMessages: [],
     })
 
     mockUseSolvedRoofEntries.mockReturnValue({ entries: [], activeSolved: null, activeError: null })

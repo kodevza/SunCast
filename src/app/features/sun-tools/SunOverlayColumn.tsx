@@ -100,7 +100,6 @@ export function SunOverlayColumn({
                 state={annualSunAccess.state}
                 progressRatio={annualSunAccess.progressRatio}
                 result={annualSunAccess.result}
-                error={annualSunAccess.error}
                 isAnnualHeatmapVisible={annualSunAccess.isAnnualHeatmapVisible}
                 onGridResolutionChange={annualSunAccess.onGridResolutionChange}
                 onRunSimulation={annualSunAccess.onRunSimulation}

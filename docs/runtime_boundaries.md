@@ -75,7 +75,7 @@ Responsibilities:
 Rules:
 - rendering must not redefine business/solver rules
 - renderer instances should be shared per WebGL context when layering custom 3D layers
-- worker paths require safe synchronous fallback behavior
+- worker paths must report typed errors and avoid silent fallback behavior
 
 ## Sun Tools And Forecast (`src/app/features/sun-tools/*`)
 
@@ -87,7 +87,7 @@ Responsibilities:
 Rules:
 - forecast output is advisory and non-authoritative for geometry
 - simulation outputs are derived (non-canonical) artifacts
-- external/API failures degrade to non-fatal status with local editing preserved
+- external/API failures must be surfaced explicitly as typed app errors
 
 ## Tutorial (`src/app/features/tutorial/*`)
 

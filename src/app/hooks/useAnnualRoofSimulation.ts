@@ -10,6 +10,7 @@ import {
 import { toShadingObstacleVolume } from '../../geometry/obstacles/obstacleModels'
 import type { ObstacleStateEntry } from '../../types/geometry'
 import type { ShadeHeatmapFeature } from './useRoofShading'
+import { reportAppErrorCode } from '../../shared/errors'
 
 const ANNUAL_CACHE_LIMIT = 24
 const annualSimulationCache = new Map<string, AnnualSunAccessResult>()
@@ -217,6 +218,7 @@ export function useAnnualRoofSimulation(args: UseAnnualRoofSimulationArgs): Annu
   const simulationContextKey = useMemo(() => `${geometryKey}::${args.timeZone}`, [args.timeZone, geometryKey])
 
   const runTokenRef = useRef(0)
+  const lastReportedErrorRef = useRef<string | null>(null)
   const [store, setStore] = useState<{
     contextKey: string
     state: AnnualSimulationState
@@ -235,6 +237,7 @@ export function useAnnualRoofSimulation(args: UseAnnualRoofSimulationArgs): Annu
 
   const clearSimulation = useCallback(() => {
     runTokenRef.current += 1
+    lastReportedErrorRef.current = null
     setStore({
       contextKey: simulationContextKey,
       state: 'IDLE',
@@ -247,45 +250,41 @@ export function useAnnualRoofSimulation(args: UseAnnualRoofSimulationArgs): Annu
 
   const runSimulation = useCallback(
     async (options: AnnualSimulationOptions) => {
-      const runToken = runTokenRef.current + 1
-      runTokenRef.current = runToken
-
-      if (args.roofs.length === 0 || args.gridResolutionM <= 0) {
+      const setSimulationError = (message: string, reason: string): void => {
         setStore({
           contextKey: simulationContextKey,
           state: 'ERROR',
-          error: 'Select at least one solved roof to run annual simulation.',
+          error: message,
           result: null,
           heatmapFeatures: [],
           progress: IDLE_PROGRESS,
         })
+        if (lastReportedErrorRef.current !== message) {
+          reportAppErrorCode('ANNUAL_SIMULATION_FAILED', message, {
+            context: { area: 'annual-simulation', reason },
+          })
+          lastReportedErrorRef.current = message
+        }
+      }
+
+      const runToken = runTokenRef.current + 1
+      runTokenRef.current = runToken
+
+      if (args.roofs.length === 0 || args.gridResolutionM <= 0) {
+        setSimulationError('Select at least one solved roof to run annual simulation.', 'missing-roofs')
         return
       }
       const hasDateStart = typeof options.dateStartIso === 'string' && options.dateStartIso.trim().length > 0
       const hasDateEnd = typeof options.dateEndIso === 'string' && options.dateEndIso.trim().length > 0
       if (hasDateStart !== hasDateEnd) {
-        setStore({
-          contextKey: simulationContextKey,
-          state: 'ERROR',
-          error: 'Provide both start and end dates to run a date-range simulation.',
-          result: null,
-          heatmapFeatures: [],
-          progress: IDLE_PROGRESS,
-        })
+        setSimulationError('Provide both start and end dates to run a date-range simulation.', 'missing-date-pair')
         return
       }
       if (hasDateStart && hasDateEnd) {
         const dateStartIso = options.dateStartIso?.trim() ?? ''
         const dateEndIso = options.dateEndIso?.trim() ?? ''
         if (!isValidDateIso(dateStartIso) || !isValidDateIso(dateEndIso) || dateStartIso > dateEndIso) {
-          setStore({
-            contextKey: simulationContextKey,
-            state: 'ERROR',
-            error: 'Provide a valid date range where start date is not after end date.',
-            result: null,
-            heatmapFeatures: [],
-            progress: IDLE_PROGRESS,
-          })
+          setSimulationError('Provide a valid date range where start date is not after end date.', 'invalid-date-range')
           return
         }
       }
@@ -302,6 +301,7 @@ export function useAnnualRoofSimulation(args: UseAnnualRoofSimulationArgs): Annu
           totalSampledDays: 1,
         },
       })
+      lastReportedErrorRef.current = null
 
       const runKey = buildRunKey(geometryKey, args.timeZone, options)
       const cached = annualSimulationCache.get(runKey)
@@ -340,14 +340,7 @@ export function useAnnualRoofSimulation(args: UseAnnualRoofSimulationArgs): Annu
         if (runTokenRef.current !== runToken) {
           return
         }
-        setStore({
-          contextKey: simulationContextKey,
-          state: 'ERROR',
-          error: 'Unable to prepare shading scene for annual simulation.',
-          result: null,
-          heatmapFeatures: [],
-          progress: IDLE_PROGRESS,
-        })
+        setSimulationError('Unable to prepare shading scene for annual simulation.', 'scene-prepare-failed')
         return
       }
 
@@ -388,14 +381,10 @@ export function useAnnualRoofSimulation(args: UseAnnualRoofSimulationArgs): Annu
       }
 
       if (!computed) {
-        setStore({
-          contextKey: simulationContextKey,
-          state: 'ERROR',
-          error: 'Annual simulation failed. Verify simulation parameters and selected roofs.',
-          result: null,
-          heatmapFeatures: [],
-          progress: IDLE_PROGRESS,
-        })
+        setSimulationError(
+          'Annual simulation failed. Verify simulation parameters and selected roofs.',
+          'compute-returned-null',
+        )
         return
       }
 
@@ -412,6 +401,7 @@ export function useAnnualRoofSimulation(args: UseAnnualRoofSimulationArgs): Annu
           totalSampledDays: computed.meta.sampledDayCount,
         },
       })
+      lastReportedErrorRef.current = null
     },
     [args.gridResolutionM, args.roofs, args.timeZone, geometryKey, shadingObstacles, simulationContextKey],
   )

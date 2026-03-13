@@ -14,6 +14,7 @@ import { MAX_ORBIT_PITCH_DEG } from './mapViewConstants'
 import { createMapStyle } from './createMapStyle'
 import { parseMapCenterFromHash } from './mapCenterFromHash'
 import { useLatest } from './useLatest'
+import { reportAppErrorCode } from '../../../../shared/errors'
 
 interface UseMapInstanceArgs {
   onInitialized?: () => void
@@ -26,7 +27,6 @@ interface UseMapInstanceResult {
   obstacleLayerRef: RefObject<WorldMeshLayer | null>
   heatmapLayerRef: RefObject<RoofHeatmapLayer | null>
   mapLoaded: boolean
-  mapError: string | null
 }
 
 // Purpose: Updates heatmap group in a controlled way.
@@ -85,6 +85,9 @@ class RoofHeatmapLayer implements maplibregl.CustomLayerInterface {
   private layerAnchorX = 0
   private layerAnchorY = 0
   private layerRebaseMatrix = new THREE.Matrix4()
+  private reportedWorkerUnavailable = false
+  private reportedWorkerFailure = false
+  private reportedWorkerDispatchFailure = false
 
   constructor(id = 'roof-heatmap-layer') {
     this.id = id
@@ -173,6 +176,11 @@ class RoofHeatmapLayer implements maplibregl.CustomLayerInterface {
 
   private initWorker(): void {
     if (typeof Worker === 'undefined') {
+      this.setDegraded(
+        'Heatmap worker is unavailable. Heatmap processing stopped.',
+        'worker-unavailable',
+        'Worker constructor is not available in this runtime.',
+      )
       return
     }
     this.worker = new Worker(new URL('../../../../rendering/roof-layer/roofHeatmapOverlay.worker.ts', import.meta.url), {
@@ -182,9 +190,9 @@ class RoofHeatmapLayer implements maplibregl.CustomLayerInterface {
       const { requestId, geometry, error } = event.data
       if (error) {
         console.error(`Roof heatmap worker failed: ${error}`)
+        this.setDegraded('Heatmap worker failed. Heatmap processing stopped.', 'worker-failed', error)
         if (requestId === this.rebuildRequestId) {
-          const fallback = buildRoofHeatmapOverlayGeometry(this.roofMeshes, this.heatmapFeatures, this.zExaggeration)
-          this.applyOverlayGeometry(requestId, fallback)
+          this.applyOverlayGeometry(requestId, null)
         }
         return
       }
@@ -210,13 +218,35 @@ class RoofHeatmapLayer implements maplibregl.CustomLayerInterface {
         return
       } catch (error) {
         console.error('Failed to dispatch roof heatmap worker job', error)
+        this.setDegraded('Heatmap worker dispatch failed. Heatmap processing stopped.', 'dispatch-failed', error)
         this.worker.terminate()
         this.worker = null
       }
     }
 
-    const fallback = buildRoofHeatmapOverlayGeometry(this.roofMeshes, this.heatmapFeatures, this.zExaggeration)
-    this.applyOverlayGeometry(requestId, fallback)
+    this.applyOverlayGeometry(requestId, null)
+  }
+
+  private setDegraded(message: string, reason: 'worker-unavailable' | 'worker-failed' | 'dispatch-failed', cause: unknown): void {
+    const shouldReport =
+      (reason === 'worker-unavailable' && !this.reportedWorkerUnavailable) ||
+      (reason === 'worker-failed' && !this.reportedWorkerFailure) ||
+      (reason === 'dispatch-failed' && !this.reportedWorkerDispatchFailure)
+    if (!shouldReport) {
+      return
+    }
+
+    if (reason === 'worker-unavailable') {
+      this.reportedWorkerUnavailable = true
+    } else if (reason === 'worker-failed') {
+      this.reportedWorkerFailure = true
+    } else {
+      this.reportedWorkerDispatchFailure = true
+    }
+    reportAppErrorCode('HEATMAP_WORKER_UNAVAILABLE', message, {
+      cause,
+      context: { area: 'roof-heatmap-layer', reason, enableStateReset: true },
+    })
   }
 
   private applyOverlayGeometry(requestId: number, overlay: RoofHeatmapOverlayGeometry | null): void {
@@ -251,7 +281,7 @@ export function useMapInstance({ onInitialized }: UseMapInstanceArgs): UseMapIns
   const heatmapLayerRef = useRef<RoofHeatmapLayer | null>(null)
   const mapLoadedRef = useRef(false)
   const [mapLoaded, setMapLoaded] = useState(false)
-  const [mapError, setMapError] = useState<string | null>(null)
+  const hasReportedMapInitErrorRef = useRef(false)
   const onInitializedRef = useLatest(onInitialized)
 
   useEffect(() => {
@@ -278,7 +308,6 @@ export function useMapInstance({ onInitialized }: UseMapInstanceArgs): UseMapIns
 
     const handleLoad = () => {
       mapLoadedRef.current = true
-      setMapError(null)
       setMapLoaded(true)
       const obstacleLayer = new WorldMeshLayer('obstacle-mesh-layer', {
         topColorHex: 0x9ca3af,
@@ -313,13 +342,24 @@ export function useMapInstance({ onInitialized }: UseMapInstanceArgs): UseMapIns
     }
     const handleError = (event: { error?: Error }) => {
       if (!mapLoadedRef.current && event.error) {
-        setMapError('Map failed to load. Check connection and tile availability.')
+        if (!hasReportedMapInitErrorRef.current) {
+          hasReportedMapInitErrorRef.current = true
+          reportAppErrorCode('MAP_INIT_FAILED', 'Map failed to load.', {
+            cause: event.error,
+            context: { area: 'map-view', reason: 'maplibre-load-error', enableStateReset: true },
+          })
+        }
       }
     }
 
     const loadTimeout = window.setTimeout(() => {
       if (!mapLoadedRef.current) {
-        setMapError('Map is taking too long to load. You can continue with sidebar-only actions.')
+        if (!hasReportedMapInitErrorRef.current) {
+          hasReportedMapInitErrorRef.current = true
+          reportAppErrorCode('MAP_INIT_FAILED', 'Map load timed out.', {
+            context: { area: 'map-view', reason: 'maplibre-load-timeout', enableStateReset: true },
+          })
+        }
       }
     }, 12000)
 
@@ -338,8 +378,9 @@ export function useMapInstance({ onInitialized }: UseMapInstanceArgs): UseMapIns
       heatmapLayerRef.current = null
       mapLoadedRef.current = false
       setMapLoaded(false)
+      hasReportedMapInitErrorRef.current = false
     }
   }, [onInitializedRef])
 
-  return { containerRef, mapRef, roofLayerRef, obstacleLayerRef, heatmapLayerRef, mapLoaded, mapError }
+  return { containerRef, mapRef, roofLayerRef, obstacleLayerRef, heatmapLayerRef, mapLoaded }
 }

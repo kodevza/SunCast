@@ -3,8 +3,10 @@
 ## Active Handover Docs
 
 - `ARCHITECTURE.md`
+- `bug/README.md`
 - `RUNBOOK.md`
 - `DECISIONS.md`
+- `ERROR_HANDLING.md`
 - `FEATURES.md`
 - `VENDOR_HANDOVER.md`
 - `runtime_boundaries.md`

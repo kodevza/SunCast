@@ -72,8 +72,6 @@ export interface SunCastSidebarModel {
   fitRmsErrorM: number | null
   activeFootprintLatDeg: number | null
   activeFootprintLonDeg: number | null
-  shareError: string | null
-  shareSuccess: string | null
   onSetEditMode: (mode: 'roof' | 'obstacle') => void
   onStartDrawing: () => void
   onUndoDrawing: () => void
