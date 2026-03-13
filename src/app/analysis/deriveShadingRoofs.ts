@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
 import type { ShadingRoofInput } from '../../geometry/shading'
+import { toShadingObstacleVolume } from '../../geometry/obstacles/obstacleModels'
 import type { FootprintStateEntry } from '../../state/project-store/projectState.types'
+import type { ObstacleStateEntry } from '../../types/geometry'
+import { buildObstacleGeometryCacheKey, buildRoofGeometryCacheKey } from '../../shared/utils/shadingCacheKey'
 import type { SolvedEntry } from './solvedRoof.types'
 
 interface DeriveShadingRoofsArgs {
@@ -8,6 +11,8 @@ interface DeriveShadingRoofsArgs {
   activeFootprintId: string | null
   footprintEntries: Record<string, FootprintStateEntry>
   solvedEntries: SolvedEntry[]
+  obstacles: ObstacleStateEntry[]
+  datetimeIso: string | null
 }
 
 export function useDerivedShadingRoofs({
@@ -15,13 +20,15 @@ export function useDerivedShadingRoofs({
   activeFootprintId,
   footprintEntries,
   solvedEntries,
+  obstacles,
+  datetimeIso,
 }: DeriveShadingRoofsArgs): ShadingRoofInput[] {
   return useMemo(() => {
     const solvedByFootprintId = new Map(solvedEntries.map((entry) => [entry.footprintId, entry]))
     const roofIdsForShading =
       selectedFootprintIds.length > 0 ? selectedFootprintIds : activeFootprintId ? [activeFootprintId] : []
 
-    return roofIdsForShading
+    const baseRoofs = roofIdsForShading
       .map((footprintId) => {
         const footprintEntry = footprintEntries[footprintId]
         const solvedEntry = solvedByFootprintId.get(footprintId)
@@ -42,5 +49,14 @@ export function useDerivedShadingRoofs({
         }
       })
       .filter((entry): entry is ShadingRoofInput => Boolean(entry))
-  }, [activeFootprintId, footprintEntries, selectedFootprintIds, solvedEntries])
+
+    const roofGeometryKey = buildRoofGeometryCacheKey(baseRoofs)
+    const obstacleGeometryKey = buildObstacleGeometryCacheKey(obstacles.map(toShadingObstacleVolume))
+    const contextKey = [roofGeometryKey, obstacleGeometryKey, datetimeIso ?? ''].join('::')
+
+    return baseRoofs.map((roof) => ({
+      ...roof,
+      roofId: `${roof.roofId}::${contextKey}`,
+    }))
+  }, [activeFootprintId, datetimeIso, footprintEntries, obstacles, selectedFootprintIds, solvedEntries])
 }

@@ -16,24 +16,24 @@ const mockUseLiveShading = vi.fn()
 const mockUseAnnualSimulation = vi.fn()
 const mockUseSunProjectionPanel = vi.fn()
 
-vi.mock('./deriveSolvedRoofs', () => ({
-  deriveSolvedRoofs: (...args: unknown[]) => mockDeriveSolvedRoofs(...args),
+vi.mock('./useSolvedRoofEntries', () => ({
+  useSolvedRoofEntries: (...args: unknown[]) => mockDeriveSolvedRoofs(...args),
 }))
 
-vi.mock('./deriveSelectedRoofInputs', () => ({
-  deriveSelectedRoofInputs: (...args: unknown[]) => mockDeriveSelectedRoofInputs(...args),
+vi.mock('../hooks/useSelectedRoofInputs', () => ({
+  useSelectedRoofInputs: (...args: unknown[]) => mockDeriveSelectedRoofInputs(...args),
 }))
 
 vi.mock('./deriveShadingRoofs', () => ({
   useDerivedShadingRoofs: (...args: unknown[]) => mockUseDerivedShadingRoofs(...args),
 }))
 
-vi.mock('./useLiveShading', () => ({
-  useLiveShading: (...args: unknown[]) => mockUseLiveShading(...args),
+vi.mock('../hooks/useRoofShading', () => ({
+  useRoofShading: (...args: unknown[]) => mockUseLiveShading(...args),
 }))
 
-vi.mock('./useAnnualSimulation', () => ({
-  useAnnualSimulation: (...args: unknown[]) => mockUseAnnualSimulation(...args),
+vi.mock('../hooks/useAnnualRoofSimulation', () => ({
+  useAnnualRoofSimulation: (...args: unknown[]) => mockUseAnnualSimulation(...args),
 }))
 
 vi.mock('../features/sun-tools/useSunProjectionPanel', () => ({

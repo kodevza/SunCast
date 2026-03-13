@@ -359,7 +359,7 @@ Revert squash commit. No data migration / Requires reverting follow-up PR / etc.
 
 ## Final recommendation
 
-For your case:
+Always use verify, stop when build is failing, stop when lint is failing, stop if tests are failing.
 
 **Use small stacked PRs, squash merge, strict single-intent scope, and separate handover into infra → refactor → docs → resilience → performance.**
 
