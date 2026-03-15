@@ -631,7 +631,7 @@ button:disabled {
   position: absolute;
   top: 56px;
   left: 54px;
-  z-index: 10;
+  z-index: 15;
   display: grid;
   grid-template-columns: repeat(2, auto);
   gap: 6px;
