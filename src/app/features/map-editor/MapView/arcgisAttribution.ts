@@ -1,7 +1,5 @@
 import { captureException, recordEvent } from '../../../../shared/observability/observability'
-
-const ARCGIS_WORLD_IMAGERY_METADATA_URL =
-  'https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer?f=pjson'
+import { getArcgisWorldImageryMetadata } from '../../../clients/arcgisWorldImageryClient'
 
 let cachedProviderAttribution: string | null | undefined
 let inflightRequest: Promise<string | null> | null = null
@@ -22,12 +20,7 @@ export async function fetchArcgisProviderAttribution(signal?: AbortSignal): Prom
   if (!inflightRequest) {
     inflightRequest = (async () => {
       try {
-        const response = await fetch(ARCGIS_WORLD_IMAGERY_METADATA_URL, { signal })
-        if (!response.ok) {
-          throw new Error(`ArcGIS metadata request failed with status ${response.status}`)
-        }
-
-        const payload = (await response.json()) as { attribution?: unknown; copyrightText?: unknown }
+        const payload = await getArcgisWorldImageryMetadata({ signal })
         const providerText = asNonEmptyString(payload.attribution) ?? asNonEmptyString(payload.copyrightText)
         if (!providerText) {
           recordEvent('map.arcgis_attribution_missing')

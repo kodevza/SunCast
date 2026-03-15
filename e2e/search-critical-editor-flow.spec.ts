@@ -9,10 +9,45 @@ test.beforeEach(async ({ page }) => {
 
 test('search and critical editor flow', async ({ page }) => {
   await mockWarsawSearch(page)
+  await page.addInitScript(() => {
+    const metadataUrl = 'https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer?f=pjson'
+    const originalFetch = window.fetch.bind(window)
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const requestUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      if (requestUrl === metadataUrl) {
+        return new Response(
+          JSON.stringify({
+            attribution: 'Maxar, Airbus DS',
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
+      }
+      return originalFetch(input, init)
+    }
+  })
   await openApp(page)
 
   await searchLocation(page, 'Warsaw')
   await expect(page).toHaveURL(/#.*lat=52.229700.*lon=21.012200/)
+
+  const satelliteBasemapButton = page.getByTestId('basemap-satellite-button')
+  const streetsBasemapButton = page.getByTestId('basemap-streets-button')
+  const attributionText = page.getByTestId('map-attribution-text')
+
+  await expect(satelliteBasemapButton).toHaveClass(/map-basemap-button-active/)
+  await expect(streetsBasemapButton).not.toHaveClass(/map-basemap-button-active/)
+  await expect(attributionText).toContainText('Powered by')
+  await expect(attributionText).toContainText('Esri')
+  await expect(attributionText).toContainText('Maxar, Airbus DS')
+
+  await streetsBasemapButton.click()
+  await expect(streetsBasemapButton).toHaveClass(/map-basemap-button-active/)
+  await expect(satelliteBasemapButton).not.toHaveClass(/map-basemap-button-active/)
+  await expect(attributionText).toHaveText('© OpenStreetMap contributors')
+
 
   await drawRoofSizedRectangle(page, 6, 4)
   await expect(page.getByText('CONSTRAINTS_INSUFFICIENT')).toBeVisible()
