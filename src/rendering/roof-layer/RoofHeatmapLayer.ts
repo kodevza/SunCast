@@ -2,9 +2,9 @@ import maplibregl from 'maplibre-gl'
 import * as THREE from 'three'
 import type { RoofMeshData } from '../../types/geometry'
 import type { ShadeHeatmapFeature } from '../../app/analysis/analysis.types'
-import type { RoofHeatmapOverlayWorkerResponse } from '../../app/features/map-editor/MapView/roof-layer/roofHeatmapOverlayWorker.types'
-import type { RoofHeatmapOverlayGeometry } from '../../app/features/map-editor/MapView/roof-layer/roofHeatmapOverlay'
-import { acquireSharedThreeRenderer, releaseSharedThreeRenderer } from '../../app/features/map-editor/MapView/roof-layer/sharedThreeRenderer'
+import type { RoofHeatmapOverlayWorkerResponse } from '../../app/features/map-editor/MapObjects/geometry/roofHeatmapOverlayWorker.types'
+import type { RoofHeatmapOverlayGeometry } from '../../app/features/map-editor/MapObjects/geometry/roofHeatmapOverlay'
+import { acquireSharedThreeRenderer, releaseSharedThreeRenderer } from '../../app/features/map-editor/MapObjects/geometry/sharedThreeRenderer'
 import { reportAppErrorCode } from '../../shared/errors'
 import { clearHeatmapGroup, toThreeHeatmapGeometry } from './heatmapGeometry'
 
@@ -127,7 +127,7 @@ export class RoofHeatmapLayer implements maplibregl.CustomLayerInterface {
       return
     }
     this.worker = new Worker(
-      new URL('../../app/features/map-editor/MapView/roof-layer/roofHeatmapOverlay.worker.ts', import.meta.url),
+      new URL('../../app/features/map-editor/MapObjects/geometry/roofHeatmapOverlay.worker.ts', import.meta.url),
       {
         type: 'module',
       },

@@ -90,25 +90,62 @@ Rules:
 - no direct geometry algorithm implementations
 - long-running work must preserve UI responsiveness
 
+### `src/app/clients/*` (External HTTP transport)
+
+Responsibilities:
+- external endpoint URL ownership
+- query param assembly
+- HTTP request execution and response status validation
+- return raw provider payloads
+
+Rules:
+- no business/domain mapping
+- no retry/cache policy (feature modules own policy)
+- no UI concerns or toasts
+
 ### `src/app/features/map-editor/*` (Map interaction + rendering integration)
 
 Responsibilities:
 - MapLibre lifecycle and interaction handling
 - drawing/edit intents and hit-testing
 - camera/navigation/orbit integration
-- custom 3D layer rendering integration under `MapView/roof-layer/*`
+- custom 3D layer synchronization under `MapObjects/*`
+- basemap visibility switching + attribution display
 
 Rules:
 - emit/edit intents; do not redefine domain/solver rules
 - geometry consumed from derived outputs only
 - rendering math here is adapter/render plumbing, not canonical geometry solving
 
-### `src/app/features/sun-tools/*` (Sun-tools UI + external forecast integration)
+### `src/app/features/map-editor/MapView/*` (Map runtime boundary)
+
+Responsibilities:
+- map init/dispose (`useMapInstance`)
+- style/sources and map controls
+- interactions, orbit/sun camera sync, map navigation sync
+
+Rules:
+- does not own roof/obstacle/heatmap custom-layer lifecycle
+- does not implement domain geometry algorithms
+
+### `src/app/features/map-editor/MapObjects/*` (Map object rendering boundary)
+
+Responsibilities:
+- custom 3D layers for roof meshes, obstacle meshes, roof heatmap overlay
+- layer-relative rebasing and render-geometry adapters
+- visibility synchronization from presentation/analysis state
+
+Rules:
+- consumes derived meshes/heatmap features only
+- no ownership of canonical persisted state
+- no map interaction intent handling
+
+### `src/app/features/sun-tools/*` (Sun-tools UI + forecast integration)
 
 Responsibilities:
 - sun/date controls and projection UI
 - annual simulation UI orchestration
-- forecast fetch/presentation
+- forecast fetch/presentation (via `app/clients`)
 
 Rules:
 - external data is advisory, non-canonical
@@ -117,10 +154,12 @@ Rules:
 ### `src/app/features/place-search/*` (Search integration)
 
 Responsibilities:
-- Photon search request/response integration
+- provider orchestration for place search
+- request retry/observability policy
 - search panel UI and typed mapping
 
 Rules:
+- uses `src/app/clients/photonClient.ts` for transport
 - provider failures must degrade gracefully
 - search results must not mutate canonical geometry implicitly
 
@@ -165,16 +204,18 @@ Allowed imports by boundary:
 - `app/analysis/*` -> `geometry/*`, `types/*`, `state/project-store/*`, `shared/*`, selected `app/hooks/*`
 - `app/presentation/*` -> `app/analysis/*`, `state/project-store/*`, `app/editor-session/*`, `app/hooks/*`, `shared/*`
 - `app/hooks/*` -> `state/project-store/*`, `geometry/*`, `shared/*`, feature contracts
-- `app/features/*` + `app/screens/*` -> presentation/hook contracts + platform libraries
+- `app/clients/*` -> browser platform APIs + `shared/*`/`types/*` only
+- `app/features/*` + `app/screens/*` -> presentation/hook contracts + clients + platform libraries
 
 Disallowed:
 - `geometry/*` importing React/MapLibre/browser APIs
 - UI/features/screens implementing solver or shading algorithms
 - rendering/map layers becoming canonical state owners
 - persistence/share storing derived meshes/planes/heatmap grids
+- features bypassing `app/clients/*` and inlining provider HTTP transport
 
 ## Runtime Notes
 
-- Browser-only/platform APIs (`window`, clipboard, share, compression streams, MapLibre, WebGL workers) stay in app/features/hooks layers.
+- Browser-only/platform APIs (`window`, clipboard, share, compression streams, MapLibre, WebGL workers) stay in app/features/hooks/clients layers.
 - Worker boundaries must return typed errors and fail closed for unsupported/failed worker operations.
 - Schema/share migrations must reject unknown future versions to prevent silent corruption.

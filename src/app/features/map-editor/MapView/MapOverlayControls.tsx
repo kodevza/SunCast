@@ -4,6 +4,8 @@ import { PlaceSearchPanel } from '../../place-search/PlaceSearchPanel'
 import type { PlaceSearchResult } from '../../place-search/placeSearch.types'
 
 interface MapOverlayControlsProps {
+  basemapMode: 'satellite' | 'streets'
+  onBasemapModeChange: (mode: 'satellite' | 'streets') => void
   orbitEnabled: boolean
   onToggleOrbit: () => void
   sunPerspectiveEnabled: boolean
@@ -28,6 +30,8 @@ interface MapOverlayControlsProps {
 }
 
 export function MapOverlayControls({
+  basemapMode,
+  onBasemapModeChange,
   orbitEnabled,
   onToggleOrbit,
   sunPerspectiveEnabled,
@@ -54,6 +58,24 @@ export function MapOverlayControls({
     <>
       <div className="map-place-search">
         <PlaceSearchPanel onSelectResult={onPlaceSearchSelect} />
+      </div>
+      <div className="map-basemap-controls" role="group" aria-label="Basemap mode">
+        <button
+          type="button"
+          className={basemapMode === 'satellite' ? 'map-basemap-button map-basemap-button-active' : 'map-basemap-button'}
+          onClick={() => onBasemapModeChange('satellite')}
+          data-testid="basemap-satellite-button"
+        >
+          Satellite
+        </button>
+        <button
+          type="button"
+          className={basemapMode === 'streets' ? 'map-basemap-button map-basemap-button-active' : 'map-basemap-button'}
+          onClick={() => onBasemapModeChange('streets')}
+          data-testid="basemap-streets-button"
+        >
+          Streets
+        </button>
       </div>
       <button
         type="button"

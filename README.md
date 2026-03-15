@@ -1,282 +1,102 @@
+# SunCast - Geometry-First Roof Modeling and Solar Analysis
 
-# SunCast - Solar Estimator and Short Time Forecast
-
-Interactive web application for **modeling roof geometry and estimating photovoltaic production** based on:
-
-* roof polygon footprint
-* vertex heights (roof slope)
-* orientation and pitch
-* installed PV capacity (kWp)
-* solar position calculations
-
-The app allows users to draw roofs, configure geometry, and visualize **estimated PV output over the day and year**.
+SunCast is a React + TypeScript app for drawing roof/obstacle geometry on a map and computing deterministic roof metrics, shading preview, and annual sun-access outputs.
 
 Live demo: [SunCast Demo](https://konradzawadka.github.io/SunCast/)
 
----
+## Core Principles
 
-# Main Features
+- geometry + constraints are canonical state
+- meshes/heatmaps are derived artifacts
+- solvers run in local metric coordinates (not raw lon/lat)
 
-### Roof modeling
+## Main Capabilities
 
-* draw roof polygons on the map
-* edit vertex positions
-* define vertex heights to determine roof pitch
-* view the roof in **orbit / 3D perspective**
+- roof footprint drawing and editing
+- obstacle drawing/editing (type + height)
+- vertex/edge height constraints
+- planar roof solve with pitch/azimuth metrics
+- orbit 3D mesh visualization
+- live roof shading preview
+- annual sun-access simulation and heatmap
+- basemap switch (`Satellite` / `Streets`)
+- visible basemap attribution control
+- place search (Photon)
+- weather forecast integration (Open-Meteo)
+- multi-footprint persistence and shareable URL payload
 
-### PV estimation
+## Tech Stack
 
-* assign **kWp** capacity to each roof polygon
-* compute **daily solar output profile**
-* compute **annual aggregated production profile**
+- React
+- TypeScript
+- Vite
+- MapLibre GL + Three.js custom layers
+- Vitest
+- Playwright
 
-### Multi-polygon support
+## Requirements
 
-* multiple roof sections can be modeled
-* charts aggregate selected polygons
-* each polygon contributes based on its own geometry and kWp
+- Node.js >= 20
+- npm >= 9
 
-### Visualization
-
-* orbit camera view for roof inspection
-* solar irradiance calculations
-* Chart.js charts for PV output estimation
-
----
-
-# Tech Stack
-
-Frontend:
-
-* **React**
-* **TypeScript**
-* **Vite**
-* **Chart.js**
-* **Playwright** for E2E testing
-
-Architecture concepts:
-
-* geometry-first solver model
-* deterministic clear-sky estimation (local computation)
-* weather-based short-term forecast (Open-Meteo API)
-
----
-
-# Requirements
-
-Install:
-
-* **Node.js ≥ 20**
-* **npm ≥ 9**
-
-Verify:
+## Setup
 
 ```bash
-node -v
-npm -v
-```
-
----
-
-# Install
-
-Clone repository and install dependencies.
-
-```bash
-git clone <repo-url>
-cd <project-folder>
-npm install
-```
-
----
-
-# Run locally
-
-Start development server:
-
-```bash
+npm ci
 npm run dev
 ```
 
-Vite will start the application:
+Default local URL: `http://localhost:5173`
 
-```
-http://localhost:5173
-```
-
-Hot reload is enabled.
-
----
-
-# Build
-
-Create production build:
+## Validation Commands
 
 ```bash
-npm run build
-```
-
-Preview production build locally:
-
-```bash
-npm run preview
-```
-
----
-
-# Tests
-
-### Unit tests
-
-```bash
+npm run lint
 npm run test
-```
-
-### End-to-end tests
-
-```bash
 npm run test:e2e
+npm run build
+npm run validate:repo
 ```
 
-### E2E coverage
+Coverage-oriented e2e run:
 
 ```bash
 npm run coverage:e2e
 ```
 
-Playwright tests run the full application in a browser and validate user workflows.
-
----
-
-# Basic Workflow in the App
-
-Typical usage flow:
-
-1. **Draw roof polygon**
-
-   * click on map to add vertices
-   * minimum 3 vertices required
-
-2. **Finish polygon**
-
-   * click *Finish* once the last vertex is placed
-
-3. **Set installed PV capacity**
-
-   * enter `kWp` for the roof
-
-4. **Define roof heights**
-
-   * set heights for at least three vertices
-   * roof pitch is calculated automatically
-
-5. **Inspect roof**
-
-   * switch to **orbit view**
-   * verify roof orientation and slope visually
-
-6. **View PV charts**
-
-   * daily PV production estimate
-   * annual aggregated PV production profile
-
-7. **Navigate sun date quickly**
-
-   * in **Sun Date & Time**, use arrow keys to change date by 1 day
-   * `↓` = next day, `↑` = previous day
-   * `Shift + ↑` = +1 hour, `Shift + ↓` = -1 hour
-
-8. **Useful shortcuts**
-
-   * `Escape` while drawing cancels active drawing
-   * `Shift` while drawing temporarily disables right-angle snap
-   * `Ctrl/Cmd + A` selects all footprints (when not focused in an input)
-
-9. **Use tutorial onboarding**
-
-   * click `?` in sidebar title row to open quick guide + shortcuts
-   * click **Start interactive tutorial** to run spotlight walkthrough
-
----
-
-# Project Structure
-
-Simplified structure:
+## Project Structure (High Level)
 
 ```text
 src/
   app/
-    components/
-      FootprintPanel.tsx
-      GlobalErrorToasts.tsx
-      AppErrorBoundary.tsx
+    clients/
     features/
       map-editor/
-      sun-tools/
+        DrawTools/
+        MapView/
+        MapObjects/
       place-search/
-      sidebar/
-      tutorial/
-    screens/
-      SunCastScreen.tsx
-      SunCastSidebar.tsx
-      SunCastCanvas.tsx
-    hooks/
+      sun-tools/
+    analysis/
+    editor-session/
+    presentation/
   geometry/
-    projection/
-    solver/
-    mesh/
-    obstacles/
-    shading/
-    sun/
+  rendering/
   state/
-    project-store/
-  types/
   shared/
+  types/
 docs/
 ```
 
----
+## Documentation Order
 
-# Documentation
+Read these first before changing behavior:
 
-Detailed product design and roadmap live in:
+1. `docs/VENDOR_EXECUTION_GUARDRAILS.md`
+2. `docs/ARCHITECTURE.md`
+3. `docs/runtime_boundaries.md`
+4. `docs/DECISIONS.md`
+5. `docs/TEST_STRATEGY.md`
+6. `docs/PR.md`
 
-```
-docs/
-```
-
-Primary handover docs:
-
-- `docs/ARCHITECTURE.md`
-- `docs/runtime_boundaries.md`
-- `docs/RUNBOOK.md`
-- `docs/DECISIONS.md`
-- `docs/ERROR_HANDLING.md`
-- `docs/FEATURES.md`
-- `docs/VENDOR_HANDOVER.md`
-
-Additional `UC*` / `IP*` docs capture iteration history and feature notes.
-
----
-
-# Development Notes
-
-Important design principles:
-
-* **geometry first** — roof plane derived from vertex heights
-* **capacity weighted estimation** — polygons contribute according to kWp
-* **clear-sky estimate** — deterministic local irradiance model used by geometric charts
-* **weather forecast estimate** — short-term forecast panel uses Open-Meteo weather inputs
-* **editor state driven UI**
-
----
-
-# Contributing
-
-Recommended development workflow:
-
-1. read canonical docs first (`docs/ARCHITECTURE.md`, `docs/runtime_boundaries.md`, `docs/DECISIONS.md`)
-2. use `docs/product/UC*` / `docs/product/IP*` as historical context only
-3. update logic or UI
-4. add or update tests
-5. verify with Playwright E2E
+Iteration docs (`docs/product/UC*`, `docs/product/IP*`) are context, not the canonical contract.

@@ -6,8 +6,13 @@
 - Vertex and edge height constraints.
 - Planar roof solve, mesh generation, pitch/azimuth metrics.
 - Multi-footprint selection and aggregation.
-- Orbit/3D map view with roof mesh overlay.
+- Obstacle drawing/editing with height/type inputs.
+- Orbit/3D map view with roof/obstacle mesh overlay.
+- Basemap switch (`Satellite` / `Streets`) via visibility toggle in a single style.
+- Visible attribution control (OSM fixed wording; Esri + dynamic provider metadata).
+- Draw workflow hints and keyboard shortcuts (`Backspace`/`Ctrl|Cmd+Z` undo, `Enter` finish).
 - Sun projection and daily/annual production charts.
+- Live roof-shading heatmap + annual sun-access simulation.
 - Weather-forecast daily estimate (Open-Meteo).
 - Address/place search (Photon).
 - Shareable project payload in URL.
@@ -16,8 +21,8 @@
 ## Planned Next (P1)
 
 - Per-footprint solve caching.
-- API resilience (retry/cache/backoff) for search/forecast.
-- Observability and telemetry surface.
+- Stronger provider resilience policy (retry/cache/backoff tuning per integration).
+- Expanded observability and telemetry surfaces.
 - Stronger schema migration/version enforcement.
 
 ## Out Of Scope (Current Stage)

@@ -6,15 +6,20 @@ import { useMapInteractions } from './hooks/useMapInteractions'
 import { useMapSources } from './hooks/useMapSources'
 import { useOrbitCamera } from './hooks/useOrbitCamera'
 import { pointAtDistanceMeters } from './drawingAssist'
-import { useMapLayerSync } from './hooks/useMapLayerSync'
+import { useMapObjects } from '../MapObjects/MapObjects'
 import { useMapNavigationSync } from './hooks/useMapNavigationSync'
 import { useSunPerspectiveSync } from './hooks/useSunPerspectiveSync'
+import { SATELLITE_LAYER_ID, STREETS_LAYER_ID } from './mapViewConstants'
+import { MapAttributionControl } from './MapAttributionControl'
+import { fetchArcgisProviderAttribution } from './arcgisAttribution'
 import type { SunCastCanvasModel } from '../../../presentation/presentationModel.types'
 
 interface MapViewProps {
   model: SunCastCanvasModel
   onInitialized?: () => void
 }
+
+type BasemapMode = 'satellite' | 'streets'
 
 export function MapView({ model, onInitialized }: MapViewProps) {
   const {
@@ -66,6 +71,8 @@ export function MapView({ model, onInitialized }: MapViewProps) {
   const drawDraft = editMode === 'roof' ? drawDraftRoof : drawDraftObstacle
   const [meshesVisible, setMeshesVisible] = useState(true)
   const [sunPerspectiveEnabled, setSunPerspectiveEnabled] = useState(false)
+  const [basemapMode, setBasemapMode] = useState<BasemapMode>('satellite')
+  const [arcgisProviderAttribution, setArcgisProviderAttribution] = useState<string | null>(null)
   const [drawLengthInput, setDrawLengthInput] = useState('')
   const [constrainedDrawLengthM, setConstrainedDrawLengthM] = useState<number | null>(null)
   const effectiveDrawLengthInput = isDrawing ? drawLengthInput : ''
@@ -173,8 +180,7 @@ export function MapView({ model, onInitialized }: MapViewProps) {
     ],
   )
 
-  const { containerRef, mapRef, roofLayerRef, obstacleLayerRef, heatmapLayerRef, mapLoaded } =
-    useMapInstance({ onInitialized })
+  const { containerRef, mapRef, mapLoaded } = useMapInstance({ onInitialized })
 
   const { hoveredEdgeLength, drawingAngleHint, vertexDragAngleHint, draftPreviewPoint } = useMapInteractions({
     mapRef,
@@ -182,6 +188,36 @@ export function MapView({ model, onInitialized }: MapViewProps) {
     refs: interactionRefs,
     constrainedDrawLengthM: effectiveConstrainedDrawLengthM,
   })
+
+  useEffect(() => {
+    const abortController = new AbortController()
+    void fetchArcgisProviderAttribution(abortController.signal)
+      .then((providerAttribution) => {
+        setArcgisProviderAttribution(providerAttribution)
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return
+        }
+      })
+    return () => abortController.abort()
+  }, [])
+
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) {
+      return
+    }
+
+    const satelliteVisibility = basemapMode === 'satellite' ? 'visible' : 'none'
+    const streetsVisibility = basemapMode === 'streets' ? 'visible' : 'none'
+
+    if (mapRef.current.getLayer(SATELLITE_LAYER_ID)) {
+      mapRef.current.setLayoutProperty(SATELLITE_LAYER_ID, 'visibility', satelliteVisibility)
+    }
+    if (mapRef.current.getLayer(STREETS_LAYER_ID)) {
+      mapRef.current.setLayoutProperty(STREETS_LAYER_ID, 'visibility', streetsVisibility)
+    }
+  }, [basemapMode, mapLoaded, mapRef])
 
   useEffect(() => {
     if (!isDrawing || orbitEnabled || !drawingAngleHint) {
@@ -248,11 +284,9 @@ export function MapView({ model, onInitialized }: MapViewProps) {
     selectedEdgeIndex,
   })
 
-  useMapLayerSync({
+  useMapObjects({
+    mapRef,
     mapLoaded,
-    roofLayerRef,
-    obstacleLayerRef,
-    heatmapLayerRef,
     roofMeshes,
     obstacleMeshes,
     heatmapFeatures: shadingHeatmapFeatures,
@@ -278,6 +312,8 @@ export function MapView({ model, onInitialized }: MapViewProps) {
     <div className="map-root-wrap">
       <div ref={containerRef} className="map-root" data-testid="map-canvas" />
       <MapOverlayControls
+        basemapMode={basemapMode}
+        onBasemapModeChange={setBasemapMode}
         orbitEnabled={orbitEnabled}
         onToggleOrbit={onToggleOrbit}
         sunPerspectiveEnabled={effectiveSunPerspectiveEnabled}
@@ -305,6 +341,7 @@ export function MapView({ model, onInitialized }: MapViewProps) {
         onAdjustOrbitCamera={adjustOrbitCamera}
         onPlaceSearchSelect={onPlaceSearchSelect}
       />
+      <MapAttributionControl basemapMode={basemapMode} arcgisProviderAttribution={arcgisProviderAttribution} />
     </div>
   )
 }

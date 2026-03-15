@@ -13,7 +13,12 @@ import {
   OBSTACLE_EDGE_HIT_LAYER_ID,
   OBSTACLE_HIT_LAYER_ID,
   OBSTACLE_VERTEX_HIT_LAYER_ID,
+  SATELLITE_LAYER_ID,
+  SATELLITE_SOURCE_ID,
   SATELLITE_TILES,
+  STREETS_LAYER_ID,
+  STREETS_SOURCE,
+  STREETS_SOURCE_ID,
   VERTEX_HIT_LAYER_ID,
 } from './mapViewConstants'
 
@@ -21,12 +26,12 @@ export function createMapStyle(): maplibregl.StyleSpecification {
   return {
     version: 8,
     sources: {
-      satellite: {
+      [SATELLITE_SOURCE_ID]: {
         type: 'raster',
         tiles: [SATELLITE_TILES],
         tileSize: 256,
-        attribution: 'Esri, Maxar, Earthstar Geographics, and the GIS User Community',
       },
+      [STREETS_SOURCE_ID]: STREETS_SOURCE,
       [FOOTPRINTS_SOURCE_ID]: {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
@@ -61,7 +66,18 @@ export function createMapStyle(): maplibregl.StyleSpecification {
       },
     },
     layers: [
-      { id: 'satellite', type: 'raster', source: 'satellite' },
+      {
+        id: SATELLITE_LAYER_ID,
+        type: 'raster',
+        source: SATELLITE_SOURCE_ID,
+        layout: { visibility: 'visible' },
+      },
+      {
+        id: STREETS_LAYER_ID,
+        type: 'raster',
+        source: STREETS_SOURCE_ID,
+        layout: { visibility: 'none' },
+      },
       {
         id: 'footprints-fill',
         type: 'fill',

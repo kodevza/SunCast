@@ -1,5 +1,18 @@
 export const SATELLITE_TILES =
   'https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+export const SATELLITE_SOURCE_ID = 'satellite'
+export const SATELLITE_LAYER_ID = 'satellite-base'
+
+export const STREETS_SOURCE_ID = 'osm-streets'
+export const STREETS_LAYER_ID = 'osm-streets-base'
+export const STREETS_SOURCE = {
+  type: 'raster',
+  tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+  tileSize: 256,
+  minzoom: 0,
+  maxzoom: 19,
+  attribution: '© OpenStreetMap contributors',
+} as const
 
 export const ORBIT_PITCH_DEG = 60
 export const ORBIT_BEARING_DEG = -20

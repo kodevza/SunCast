@@ -1,8 +1,8 @@
 import maplibregl from 'maplibre-gl'
 import * as THREE from 'three'
-import type { WorldMeshGeometry } from './meshWorldGeometry'
-import { resolveLayerAnchor, toLayerRelativePoint, type LayerAnchor } from './layerRebasing'
-import { acquireSharedThreeRenderer, releaseSharedThreeRenderer } from './sharedThreeRenderer'
+import type { WorldMeshGeometry } from '../geometry/meshWorldGeometry'
+import { resolveLayerAnchor, toLayerRelativePoint, type LayerAnchor } from '../geometry/layerRebasing'
+import { acquireSharedThreeRenderer, releaseSharedThreeRenderer } from '../geometry/sharedThreeRenderer'
 
 const RENDER_EPSILON_M = 0.0002
 const DEFAULT_TOP_COLOR_HEX = 0xff6155

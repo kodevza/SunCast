@@ -1,15 +1,9 @@
 import { captureException, recordEvent, recordMetric } from '../../../../shared/observability/observability'
+import { getOpenMeteoForecast, type OpenMeteoForecastResponse } from '../../../clients/openMeteoClient'
 
 export interface OpenMeteoTiltedIrradianceSample {
   timestampIso: string
   irradianceWm2: number
-}
-
-interface OpenMeteoForecastResponse {
-  hourly?: {
-    time?: unknown
-    global_tilted_irradiance?: unknown
-  }
 }
 
 interface FetchOpenMeteoTiltedIrradianceArgs {
@@ -131,27 +125,22 @@ export async function fetchOpenMeteoTiltedIrradiance({
     return cached.samples
   }
 
-  const url = new URL('https://api.open-meteo.com/v1/forecast')
-  url.searchParams.set('latitude', latDeg.toFixed(6))
-  url.searchParams.set('longitude', lonDeg.toFixed(6))
-  url.searchParams.set('hourly', 'global_tilted_irradiance')
-  url.searchParams.set('tilt', toOpenMeteoTiltDeg(roofPitchDeg).toFixed(2))
-  url.searchParams.set('azimuth', toOpenMeteoAzimuthDeg(roofAzimuthDeg).toFixed(2))
-  url.searchParams.set('timezone', timeZone)
-  url.searchParams.set('start_date', dateIso)
-  url.searchParams.set('end_date', dateIso)
-
   let lastError: unknown = null
   const startedAt = performance.now()
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
-      const response = await fetchImpl(url, { signal })
-      if (!response.ok) {
-        throw new Error(`Forecast API request failed with HTTP ${response.status}`)
-      }
-
-      const payload = (await response.json()) as unknown
+      const payload = await getOpenMeteoForecast({
+        latDeg,
+        lonDeg,
+        tiltDeg: toOpenMeteoTiltDeg(roofPitchDeg),
+        azimuthDeg: toOpenMeteoAzimuthDeg(roofAzimuthDeg),
+        timeZone,
+        startDateIso: dateIso,
+        endDateIso: dateIso,
+        signal,
+        fetchImpl,
+      })
       const samples = parseOpenMeteoTiltedIrradiancePayload(payload)
       forecastCache.set(requestKey, { samples, fetchedAtMs: Date.now() })
       recordMetric('forecast.request.duration_ms', performance.now() - startedAt, { attempt })
