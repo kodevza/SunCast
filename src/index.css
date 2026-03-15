@@ -627,6 +627,62 @@ button:disabled {
   margin-top: 4px;
 }
 
+.map-basemap-controls {
+  position: absolute;
+  top: 56px;
+  left: 54px;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 6px;
+}
+
+.map-basemap-button {
+  border: 1px solid #51666f;
+  background: rgba(17, 24, 25, 0.94);
+}
+
+.map-basemap-button-active {
+  border-color: #6ea6b8;
+  background: rgba(31, 56, 66, 0.96);
+}
+
+.map-attribution-control {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 12;
+  margin: 0;
+  border: 1px solid #5f6970;
+  border-radius: 8px;
+  background: rgba(17, 24, 25, 0.92);
+  color: #d0d9de;
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+.map-attribution-summary {
+  display: none;
+  list-style: none;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.map-attribution-summary::-webkit-details-marker {
+  display: none;
+}
+
+.map-attribution-text {
+  margin: 0;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.map-attribution-text a {
+  color: #cde7ff;
+  text-decoration: underline;
+}
+
 .map-mesh-toggle {
   position: absolute;
   top: 14px;
@@ -946,6 +1002,25 @@ button:disabled {
     top: 56px;
     left: 14px;
     width: min(360px, calc(100% - 28px));
+  }
+
+  .map-basemap-controls {
+    top: 14px;
+    left: auto;
+    right: 14px;
+  }
+
+  .map-attribution-control {
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .map-attribution-summary {
+    display: block;
+  }
+
+  .map-attribution-control:not([open]) .map-attribution-text {
+    display: none;
   }
 
   .tutorial-intro-actions {

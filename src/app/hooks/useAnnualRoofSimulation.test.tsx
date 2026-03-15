@@ -5,51 +5,30 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useEffect, useRef } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AnnualSunAccessResult } from '../../geometry/shading'
+import type { ObstacleStateEntry } from '../../types/geometry'
 import { useAnnualRoofSimulation, type AnnualSimulationOptions, type UseAnnualRoofSimulationArgs } from './useAnnualRoofSimulation'
 
-const mockPrepareShadingScene = vi.fn()
-const mockComputeAnnualSunAccessBatched = vi.fn()
+const METERS_PER_DEG = 111_319.49079327358
 
-vi.mock('../../geometry/shading', () => ({
-  prepareShadingScene: (...args: unknown[]) => mockPrepareShadingScene(...args),
-  computeAnnualSunAccessBatched: (...args: unknown[]) => mockComputeAnnualSunAccessBatched(...args),
-}))
+function metersToLonLat(xM: number, yM: number): [number, number] {
+  return [xM / METERS_PER_DEG, yM / METERS_PER_DEG]
+}
 
-function makeAnnualResult(): AnnualSunAccessResult {
-  return {
-    roofs: [
-      {
-        roofId: 'roof-1',
-        sunHours: 1234,
-        daylightHours: 1500,
-        frontSideHours: 1450,
-        sunAccessRatio: 0.82,
-        litCellCountWeighted: 400,
-        totalCellCountWeighted: 500,
-      },
-    ],
-    heatmapCells: [
-      {
-        roofId: 'roof-1',
-        cellPolygon: [
-          [10, 10],
-          [10.0001, 10],
-          [10.0001, 10.0001],
-          [10, 10.0001],
-        ],
-        litRatio: 0.82,
-      },
-    ],
-    meta: {
-      sampledDayCount: 40,
-      simulatedHalfYear: true,
-      stepMinutes: 30,
-      sampleWindowDays: 5,
-      dateStartIso: '2031-01-01',
-      dateEndIso: '2031-12-31',
-    },
-  }
+const FLAT_ROOF_POLYGON: Array<[number, number]> = [
+  metersToLonLat(-2, -2),
+  metersToLonLat(2, -2),
+  metersToLonLat(2, 2),
+  metersToLonLat(-2, 2),
+]
+
+const FULL_BLOCKER_OBSTACLE: ObstacleStateEntry = {
+  id: 'ob-1',
+  kind: 'building',
+  shape: {
+    type: 'polygon-prism',
+    polygon: FLAT_ROOF_POLYGON,
+  },
+  heightAboveGroundM: 12,
 }
 
 function makeArgs(overrides: Partial<UseAnnualRoofSimulationArgs> = {}): UseAnnualRoofSimulationArgs {
@@ -58,16 +37,12 @@ function makeArgs(overrides: Partial<UseAnnualRoofSimulationArgs> = {}): UseAnnu
     roofs: [
       {
         roofId: 'roof-1',
-        polygon: [
-          [10, 10],
-          [11, 10],
-          [11, 11],
-        ],
-        vertexHeightsM: [1, 1, 1],
+        polygon: FLAT_ROOF_POLYGON,
+        vertexHeightsM: [1, 1, 1, 1],
       },
     ],
     obstacles: [],
-    gridResolutionM: 0.5,
+    gridResolutionM: 1,
     timeZone: 'UTC',
     ...overrides,
   }
@@ -119,225 +94,163 @@ function renderHook(initialArgs: UseAnnualRoofSimulationArgs) {
   }
 }
 
+const SINGLE_DAY_OPTIONS: AnnualSimulationOptions = {
+  dateStartIso: '2026-06-21',
+  dateEndIso: '2026-06-21',
+  sampleWindowDays: 1,
+  stepMinutes: 60,
+  halfYearMirror: false,
+}
+
 describe('useAnnualRoofSimulation', () => {
   beforeEach(() => {
-    mockPrepareShadingScene.mockReset()
-    mockComputeAnnualSunAccessBatched.mockReset()
-    mockPrepareShadingScene.mockReturnValue({
-      origin: { lon0: 10, lat0: 10, cosLat0: 0.99 },
-      roofs: [],
-      obstacles: [],
-      maxObstacleHeightM: 0,
-      maxShadowDistanceClampM: 120,
-      diagnostics: {
-        roofsProcessed: 1,
-        roofsSkipped: 0,
-        obstaclesProcessed: 0,
-        sampleCount: 1,
-        obstacleCandidatesChecked: 0,
-      },
-    })
-    mockComputeAnnualSunAccessBatched.mockImplementation(async (_input, options?: { onProgress?: (progress: { sampledDays: number; totalSampledDays: number }) => void }) => {
-      options?.onProgress?.({ sampledDays: 1, totalSampledDays: 2 })
-      options?.onProgress?.({ sampledDays: 2, totalSampledDays: 2 })
-      return makeAnnualResult()
-    })
+    vi.useRealTimers()
   })
 
-  it('runs simulation manually and exposes ready result + heatmap features', async () => {
+  it('computes deterministic annual metrics with real shading engine', async () => {
     vi.useFakeTimers()
-    const hook = renderHook(makeArgs())
-    const options: AnnualSimulationOptions = {
-      year: 2031,
-      dateStartIso: '2031-01-01',
-      dateEndIso: '2031-12-31',
-      sampleWindowDays: 5,
-      stepMinutes: 30,
-      halfYearMirror: true,
-    }
+    const hook = renderHook(makeArgs({ cacheRevision: 31 }))
 
     await act(async () => {
-      const promise = hook.get().runSimulation(options)
+      const promise = hook.get().runSimulation(SINGLE_DAY_OPTIONS)
       await vi.runAllTimersAsync()
       await promise
     })
 
+    const result = hook.get().result
     expect(hook.get().state).toBe('READY')
-    expect(hook.get().result?.roofs[0].sunAccessRatio).toBeCloseTo(0.82, 8)
-    expect(hook.get().heatmapFeatures).toHaveLength(1)
-    expect(hook.get().heatmapFeatures[0].properties.intensity).toBeCloseTo(0.82, 8)
-    expect(hook.get().progress.ratio).toBe(1)
-    expect(mockPrepareShadingScene).toHaveBeenCalledTimes(1)
-    expect(mockComputeAnnualSunAccessBatched).toHaveBeenCalledTimes(1)
+    expect(result).not.toBeNull()
+    if (!result) {
+      throw new Error('Expected simulation result')
+    }
+
+    expect(result.roofs).toHaveLength(1)
+    expect(result.roofs[0].sunHours).toBe(11)
+    expect(result.roofs[0].daylightHours).toBe(11)
+    expect(result.roofs[0].frontSideHours).toBe(11)
+    expect(result.roofs[0].sunAccessRatio).toBe(1)
+    expect(result.roofs[0].litCellCountWeighted).toBe(176)
+    expect(result.roofs[0].totalCellCountWeighted).toBe(176)
+
+    expect(result.meta.sampledDayCount).toBe(1)
+    expect(result.meta.simulatedHalfYear).toBe(false)
+    expect(result.meta.stepMinutes).toBe(60)
+    expect(result.meta.sampleWindowDays).toBe(1)
+    expect(result.meta.dateStartIso).toBe('2026-06-21')
+    expect(result.meta.dateEndIso).toBe('2026-06-21')
+
+    expect(hook.get().heatmapFeatures).toHaveLength(16)
+    expect(hook.get().heatmapFeatures.every((feature) => feature.properties.intensity === 1)).toBe(true)
+    expect(hook.get().progress).toEqual({ ratio: 1, sampledDays: 1, totalSampledDays: 1 })
 
     hook.unmount()
     vi.useRealTimers()
   })
 
-  it('reuses cached results for identical geometry and options', async () => {
+  it('uses cached result for identical geometry and options', async () => {
     vi.useFakeTimers()
-    const hook = renderHook(makeArgs())
-    const options: AnnualSimulationOptions = {
-      year: 2026,
-      dateStartIso: '2026-01-01',
-      dateEndIso: '2026-12-31',
-      sampleWindowDays: 5,
-      stepMinutes: 30,
-      halfYearMirror: true,
-    }
+    const hook = renderHook(makeArgs({ cacheRevision: 32 }))
 
     await act(async () => {
-      const first = hook.get().runSimulation(options)
+      const first = hook.get().runSimulation(SINGLE_DAY_OPTIONS)
       await vi.runAllTimersAsync()
       await first
     })
 
+    const firstResult = hook.get().result
+    const firstHeatmap = hook.get().heatmapFeatures
+
     await act(async () => {
-      const second = hook.get().runSimulation(options)
-      await second
+      await hook.get().runSimulation(SINGLE_DAY_OPTIONS)
     })
 
-    expect(mockPrepareShadingScene).toHaveBeenCalledTimes(1)
-    expect(mockComputeAnnualSunAccessBatched).toHaveBeenCalledTimes(1)
     expect(hook.get().state).toBe('READY')
+    expect(hook.get().result).toBe(firstResult)
+    expect(hook.get().heatmapFeatures).toStrictEqual(firstHeatmap)
+    expect(hook.get().result?.roofs[0].sunAccessRatio).toBe(1)
 
     hook.unmount()
     vi.useRealTimers()
   })
 
-  it('recomputes when cache revision changes', async () => {
+  it('invalidates cache when cache revision changes', async () => {
     vi.useFakeTimers()
-    const options: AnnualSimulationOptions = {
-      year: 2028,
-      dateStartIso: '2028-01-01',
-      dateEndIso: '2028-12-31',
-      sampleWindowDays: 5,
-      stepMinutes: 30,
-      halfYearMirror: true,
-    }
-    const firstHook = renderHook(makeArgs({ cacheRevision: 1 }))
 
+    const firstHook = renderHook(makeArgs({ cacheRevision: 33 }))
     await act(async () => {
-      const first = firstHook.get().runSimulation(options)
+      const firstRun = firstHook.get().runSimulation(SINGLE_DAY_OPTIONS)
       await vi.runAllTimersAsync()
-      await first
+      await firstRun
     })
+    const firstResult = firstHook.get().result
     firstHook.unmount()
 
-    const secondHook = renderHook(makeArgs({ cacheRevision: 2 }))
-
+    const secondHook = renderHook(makeArgs({ cacheRevision: 34 }))
     await act(async () => {
-      const second = secondHook.get().runSimulation(options)
+      const secondRun = secondHook.get().runSimulation(SINGLE_DAY_OPTIONS)
       await vi.runAllTimersAsync()
-      await second
+      await secondRun
     })
 
-    expect(mockPrepareShadingScene).toHaveBeenCalledTimes(2)
-    expect(mockComputeAnnualSunAccessBatched).toHaveBeenCalledTimes(2)
+    expect(secondHook.get().state).toBe('READY')
+    expect(secondHook.get().result).not.toBe(firstResult)
+    expect(secondHook.get().result?.roofs[0].sunHours).toBe(11)
+    expect(secondHook.get().result?.roofs[0].sunAccessRatio).toBe(1)
 
     secondHook.unmount()
     vi.useRealTimers()
   })
 
   it('returns validation error when date range is invalid', async () => {
-    const hook = renderHook(makeArgs())
-    const options: AnnualSimulationOptions = {
-      dateStartIso: '2026-12-31',
-      dateEndIso: '2026-01-01',
-      sampleWindowDays: 5,
-      stepMinutes: 30,
-      halfYearMirror: true,
-    }
+    const hook = renderHook(makeArgs({ cacheRevision: 35 }))
 
     await act(async () => {
-      await hook.get().runSimulation(options)
+      await hook.get().runSimulation({
+        dateStartIso: '2026-12-31',
+        dateEndIso: '2026-01-01',
+        sampleWindowDays: 1,
+        stepMinutes: 60,
+        halfYearMirror: false,
+      })
     })
 
     expect(hook.get().state).toBe('ERROR')
     expect(hook.get().error).toContain('valid date range')
-    expect(mockPrepareShadingScene).not.toHaveBeenCalled()
-    expect(mockComputeAnnualSunAccessBatched).not.toHaveBeenCalled()
+    expect(hook.get().result).toBeNull()
+    expect(hook.get().heatmapFeatures).toEqual([])
+    expect(hook.get().progress).toEqual({ ratio: 0, sampledDays: 0, totalSampledDays: 0 })
 
     hook.unmount()
   })
 
-  it('recomputes when roof or obstacle geometry changes', async () => {
+  it('updates business metrics when obstacle geometry blocks direct sun access', async () => {
     vi.useFakeTimers()
-    const hook = renderHook(
-      makeArgs({
-        obstacles: [
-          {
-            id: 'obs-1',
-            kind: 'building',
-            shape: {
-              type: 'polygon-prism',
-              polygon: [
-                [9.9, 10.1],
-                [9.95, 10.1],
-                [9.95, 10.15],
-              ],
-            },
-            heightAboveGroundM: 6,
-          },
-        ],
-      }),
-    )
-    const options: AnnualSimulationOptions = {
-      year: 2029,
-      dateStartIso: '2029-01-01',
-      dateEndIso: '2029-12-31',
-      sampleWindowDays: 5,
-      stepMinutes: 30,
-      halfYearMirror: true,
-    }
+    const clearHook = renderHook(makeArgs({ cacheRevision: 36, obstacles: [] }))
 
     await act(async () => {
-      const first = hook.get().runSimulation(options)
+      const run = clearHook.get().runSimulation(SINGLE_DAY_OPTIONS)
       await vi.runAllTimersAsync()
-      await first
+      await run
     })
 
-    hook.rerender(
-      makeArgs({
-        roofs: [
-          {
-            roofId: 'roof-1',
-            polygon: [
-              [10, 10],
-              [11, 10],
-              [11, 11],
-            ],
-            vertexHeightsM: [1, 1.25, 1],
-          },
-        ],
-        obstacles: [
-          {
-            id: 'obs-1',
-            kind: 'building',
-            shape: {
-              type: 'polygon-prism',
-              polygon: [
-                [9.88, 10.12],
-                [9.95, 10.1],
-                [9.95, 10.15],
-              ],
-            },
-            heightAboveGroundM: 6.5,
-          },
-        ],
-      }),
-    )
+    expect(clearHook.get().result?.roofs[0].sunHours).toBe(11)
+    expect(clearHook.get().result?.roofs[0].sunAccessRatio).toBe(1)
+    clearHook.unmount()
 
+    const blockedHook = renderHook(makeArgs({ cacheRevision: 37, obstacles: [FULL_BLOCKER_OBSTACLE] }))
     await act(async () => {
-      const second = hook.get().runSimulation(options)
+      const run = blockedHook.get().runSimulation(SINGLE_DAY_OPTIONS)
       await vi.runAllTimersAsync()
-      await second
+      await run
     })
 
-    expect(mockPrepareShadingScene).toHaveBeenCalledTimes(2)
-    expect(mockComputeAnnualSunAccessBatched).toHaveBeenCalledTimes(2)
+    expect(blockedHook.get().state).toBe('READY')
+    expect(blockedHook.get().result?.roofs[0].sunHours).toBe(0)
+    expect(blockedHook.get().result?.roofs[0].frontSideHours).toBe(11)
+    expect(blockedHook.get().result?.roofs[0].sunAccessRatio).toBe(0)
+    expect(blockedHook.get().heatmapFeatures.every((feature) => feature.properties.intensity === 0)).toBe(true)
 
-    hook.unmount()
+    blockedHook.unmount()
     vi.useRealTimers()
   })
 })

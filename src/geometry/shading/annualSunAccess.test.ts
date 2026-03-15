@@ -75,15 +75,15 @@ function makeSteepNorthFacingScene() {
 }
 
 describe('computeAnnualSunAccess', () => {
-  it('returns fully lit metrics for an unobstructed roof', () => {
+  it('returns deterministic full-sun metrics for unobstructed flat roof fixture', () => {
     const scene = makeScene(false)
     const result = computeAnnualSunAccess({
       scene,
       year: 2026,
       timeZone: 'UTC',
       halfYearMirror: true,
-      sampleWindowDays: 30,
-      stepMinutes: 120,
+      sampleWindowDays: 20,
+      stepMinutes: 90,
     })
 
     expect(result).not.toBeNull()
@@ -92,29 +92,31 @@ describe('computeAnnualSunAccess', () => {
     }
 
     expect(result.roofs).toHaveLength(1)
-    expect(result.roofs[0].daylightHours).toBeGreaterThan(0)
-    expect(result.roofs[0].frontSideHours).toBeGreaterThan(0)
-    expect(result.roofs[0].sunAccessRatio).toBeCloseTo(1, 8)
-    expect(result.heatmapCells.length).toBe(scene.roofs[0].samples.length)
-    for (const cell of result.heatmapCells) {
-      expect(cell.litRatio).toBeCloseTo(1, 8)
-    }
+    expect(result.roofs[0]).toMatchObject({
+      roofId: 'roof-1',
+      sunHours: 3832.5,
+      daylightHours: 3832.5,
+      frontSideHours: 3832.5,
+      litCellCountWeighted: 61320,
+      totalCellCountWeighted: 61320,
+      sunAccessRatio: 1,
+    })
+
+    expect(result.heatmapCells).toHaveLength(16)
+    expect(result.heatmapCells.every((cell) => cell.litRatio === 1)).toBe(true)
+    expect(result.meta).toEqual({
+      sampledDayCount: 10,
+      simulatedHalfYear: true,
+      stepMinutes: 90,
+      sampleWindowDays: 20,
+      dateStartIso: '2026-01-01',
+      dateEndIso: '2026-12-31',
+    })
   })
 
-  it('reports lower sun access when a blocking obstacle is present', () => {
-    const clearScene = makeScene(false)
-    const obstructedScene = makeScene(true)
-
-    const clear = computeAnnualSunAccess({
-      scene: clearScene,
-      year: 2026,
-      timeZone: 'UTC',
-      halfYearMirror: true,
-      sampleWindowDays: 20,
-      stepMinutes: 90,
-    })
-    const obstructed = computeAnnualSunAccess({
-      scene: obstructedScene,
+  it('returns deterministic zero-sun metrics for fully blocked flat roof fixture', () => {
+    const result = computeAnnualSunAccess({
+      scene: makeScene(true),
       year: 2026,
       timeZone: 'UTC',
       halfYearMirror: true,
@@ -122,17 +124,26 @@ describe('computeAnnualSunAccess', () => {
       stepMinutes: 90,
     })
 
-    expect(clear).not.toBeNull()
-    expect(obstructed).not.toBeNull()
-    if (!clear || !obstructed) {
+    expect(result).not.toBeNull()
+    if (!result) {
       return
     }
 
-    expect(obstructed.roofs[0].sunAccessRatio).toBeLessThan(clear.roofs[0].sunAccessRatio)
-    expect(obstructed.roofs[0].sunAccessRatio).toBeLessThan(0.5)
+    expect(result.roofs).toHaveLength(1)
+    expect(result.roofs[0]).toMatchObject({
+      roofId: 'roof-1',
+      sunHours: 0,
+      daylightHours: 3832.5,
+      frontSideHours: 3832.5,
+      litCellCountWeighted: 0,
+      totalCellCountWeighted: 61320,
+      sunAccessRatio: 0,
+    })
+    expect(result.heatmapCells).toHaveLength(16)
+    expect(result.heatmapCells.every((cell) => cell.litRatio === 0)).toBe(true)
   })
 
-  it('keeps mirrored-half-year estimation close to a full-year run', () => {
+  it('produces deterministic outputs for mirrored-half-year and full-year fixtures', () => {
     const scene = makeScene(false)
 
     const mirrored = computeAnnualSunAccess({
@@ -159,14 +170,24 @@ describe('computeAnnualSunAccess', () => {
       return
     }
 
-    const frontSideDelta = Math.abs(mirrored.roofs[0].frontSideHours - full.roofs[0].frontSideHours)
-    expect(frontSideDelta / full.roofs[0].frontSideHours).toBeLessThan(0.15)
+    expect(mirrored.roofs[0].sunHours).toBe(4015)
+    expect(mirrored.roofs[0].frontSideHours).toBe(4015)
+    expect(mirrored.roofs[0].sunAccessRatio).toBe(1)
+    expect(mirrored.meta.sampledDayCount).toBe(19)
+
+    expect(full.roofs[0].sunHours).toBe(4015)
+    expect(full.roofs[0].frontSideHours).toBe(4015)
+    expect(full.roofs[0].sunAccessRatio).toBe(1)
+    expect(full.meta.sampledDayCount).toBe(37)
+
+    expect(mirrored.roofs[0].sunHours).toBe(full.roofs[0].sunHours)
+    expect(mirrored.heatmapCells).toHaveLength(16)
+    expect(full.heatmapCells).toHaveLength(16)
   })
 
-  it('excludes all daylight when low-sun threshold is set above possible elevations', () => {
-    const scene = makeScene(false)
+  it('excludes all daylight when low-sun threshold is above all possible elevations', () => {
     const result = computeAnnualSunAccess({
-      scene,
+      scene: makeScene(false),
       year: 2026,
       timeZone: 'UTC',
       halfYearMirror: false,
@@ -180,27 +201,22 @@ describe('computeAnnualSunAccess', () => {
       return
     }
 
-    expect(result.roofs[0].daylightHours).toBe(0)
-    expect(result.roofs[0].frontSideHours).toBe(0)
-    expect(result.roofs[0].sunHours).toBe(0)
-    expect(result.roofs[0].sunAccessRatio).toBe(0)
-    expect(result.heatmapCells.every((cell) => cell.litRatio === 0)).toBeTruthy()
+    expect(result.roofs[0]).toMatchObject({
+      sunHours: 0,
+      daylightHours: 0,
+      frontSideHours: 0,
+      litCellCountWeighted: 0,
+      totalCellCountWeighted: 0,
+      sunAccessRatio: 0,
+    })
+    expect(result.heatmapCells).toHaveLength(16)
+    expect(result.heatmapCells.every((cell) => cell.litRatio === 0)).toBe(true)
+    expect(result.meta.sampledDayCount).toBe(13)
   })
 
-  it('supports explicit date range simulation between date1 and date2', () => {
-    const scene = makeScene(false)
-
-    const fullYear = computeAnnualSunAccess({
-      scene,
-      year: 2026,
-      timeZone: 'UTC',
-      halfYearMirror: false,
-      sampleWindowDays: 1,
-      stepMinutes: 120,
-    })
-
+  it('supports deterministic explicit date-range simulation fixture', () => {
     const dateRange = computeAnnualSunAccess({
-      scene,
+      scene: makeScene(false),
       dateStartIso: '2026-06-01',
       dateEndIso: '2026-06-30',
       timeZone: 'UTC',
@@ -209,22 +225,34 @@ describe('computeAnnualSunAccess', () => {
       stepMinutes: 120,
     })
 
-    expect(fullYear).not.toBeNull()
     expect(dateRange).not.toBeNull()
-    if (!fullYear || !dateRange) {
+    if (!dateRange) {
       return
     }
 
-    expect(dateRange.meta.dateStartIso).toBe('2026-06-01')
-    expect(dateRange.meta.dateEndIso).toBe('2026-06-30')
-    expect(dateRange.roofs[0].frontSideHours).toBeLessThan(fullYear.roofs[0].frontSideHours)
-    expect(dateRange.roofs[0].sunAccessRatio).toBeGreaterThan(0)
+    expect(dateRange.meta).toEqual({
+      sampledDayCount: 30,
+      simulatedHalfYear: false,
+      stepMinutes: 120,
+      sampleWindowDays: 1,
+      dateStartIso: '2026-06-01',
+      dateEndIso: '2026-06-30',
+    })
+    expect(dateRange.roofs[0]).toMatchObject({
+      sunHours: 300,
+      daylightHours: 300,
+      frontSideHours: 300,
+      litCellCountWeighted: 4800,
+      totalCellCountWeighted: 4800,
+      sunAccessRatio: 1,
+    })
+    expect(dateRange.heatmapCells).toHaveLength(16)
+    expect(dateRange.heatmapCells.every((cell) => cell.litRatio === 1)).toBe(true)
   })
 
-  it('does not count non-front-side daylight in annual denominator', () => {
-    const scene = makeSteepNorthFacingScene()
+  it('does not count non-front-side daylight in denominator for north-facing winter fixture', () => {
     const result = computeAnnualSunAccess({
-      scene,
+      scene: makeSteepNorthFacingScene(),
       dateStartIso: '2026-12-21',
       dateEndIso: '2026-12-21',
       timeZone: 'Europe/Warsaw',
@@ -240,10 +268,42 @@ describe('computeAnnualSunAccess', () => {
     }
 
     expect(result.roofs).toHaveLength(1)
-    expect(result.roofs[0].sunHours).toBe(0)
-    expect(result.roofs[0].daylightHours).toBeGreaterThan(0)
-    expect(result.roofs[0].frontSideHours).toBe(0)
-    expect(result.roofs[0].sunAccessRatio).toBe(0)
-    expect(result.heatmapCells.every((cell) => cell.litRatio === 0)).toBeTruthy()
+    expect(result.roofs[0]).toMatchObject({
+      roofId: 'roof-north',
+      sunHours: 0,
+      daylightHours: 12.5,
+      frontSideHours: 0,
+      litCellCountWeighted: 0,
+      totalCellCountWeighted: 200,
+      sunAccessRatio: 0,
+    })
+    expect(result.heatmapCells).toHaveLength(16)
+    expect(result.heatmapCells.every((cell) => cell.litRatio === 0)).toBe(true)
+  })
+
+  it('returns identical deterministic outputs for repeated same-input simulation', () => {
+    const scene = makeScene(false)
+    const first = computeAnnualSunAccess({
+      scene,
+      dateStartIso: '2026-06-21',
+      dateEndIso: '2026-06-21',
+      timeZone: 'UTC',
+      halfYearMirror: false,
+      sampleWindowDays: 1,
+      stepMinutes: 60,
+    })
+    const second = computeAnnualSunAccess({
+      scene,
+      dateStartIso: '2026-06-21',
+      dateEndIso: '2026-06-21',
+      timeZone: 'UTC',
+      halfYearMirror: false,
+      sampleWindowDays: 1,
+      stepMinutes: 60,
+    })
+
+    expect(first).toEqual(second)
+    expect(first?.roofs[0].sunHours).toBe(11)
+    expect(first?.roofs[0].sunAccessRatio).toBe(1)
   })
 })

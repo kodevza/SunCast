@@ -4,58 +4,31 @@ import { act } from 'react'
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 import { createRoot } from 'react-dom/client'
 import { useEffect, useRef } from 'react'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import type { ComputeRoofShadeGridInput, ComputeRoofShadeGridResult } from '../../geometry/shading'
-import { useRoofShading, type UseRoofShadingArgs } from './useRoofShading'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ObstacleStateEntry } from '../../types/geometry'
+import { useRoofShading, type ShadeHeatmapFeature, type UseRoofShadingArgs } from './useRoofShading'
 
-const mockComputeRoofShadeGrid = vi.fn<(input: ComputeRoofShadeGridInput) => ComputeRoofShadeGridResult>()
+const METERS_PER_DEG = 111_319.49079327358
 
-vi.mock('../../geometry/shading', () => ({
-  computeRoofShadeGrid: (input: ComputeRoofShadeGridInput) => mockComputeRoofShadeGrid(input),
-}))
+function metersToLonLat(xM: number, yM: number): [number, number] {
+  return [xM / METERS_PER_DEG, yM / METERS_PER_DEG]
+}
 
-function makeComputeResult(input: ComputeRoofShadeGridInput): ComputeRoofShadeGridResult {
-  return {
-    status: 'OK',
-    statusMessage: 'ok',
-    origin: null,
-    sunAzimuthDeg: 180,
-    sunElevationDeg: 35,
-    sunDirection: { x: 0, y: 1, z: 1 },
-    roofs: [
-      {
-        roofId: input.roofs[0]?.roofId ?? 'r1',
-        shadedCellCount: 1,
-        litCellCount: 0,
-        cells: [
-          {
-            roofId: input.roofs[0]?.roofId ?? 'r1',
-            sample: { x: 0, y: 0, z: 1 },
-            shadeFactor: 1,
-            cellPolygonLocal: [
-              { x: 0, y: 0 },
-              { x: 1, y: 0 },
-              { x: 1, y: 1 },
-              { x: 0, y: 1 },
-            ],
-            cellPolygon: [
-              [10, 10],
-              [11, 10],
-              [11, 11],
-              [10, 11],
-            ],
-          },
-        ],
-      },
-    ],
-    diagnostics: {
-      roofsProcessed: 1,
-      roofsSkipped: 0,
-      obstaclesProcessed: input.obstacles.length,
-      sampleCount: 1,
-      obstacleCandidatesChecked: 1,
-    },
-  }
+const FLAT_ROOF_POLYGON: Array<[number, number]> = [
+  metersToLonLat(-2, -2),
+  metersToLonLat(2, -2),
+  metersToLonLat(2, 2),
+  metersToLonLat(-2, 2),
+]
+
+const FULL_BLOCKER_OBSTACLE: ObstacleStateEntry = {
+  id: 'ob-1',
+  kind: 'building',
+  shape: {
+    type: 'polygon-prism',
+    polygon: FLAT_ROOF_POLYGON,
+  },
+  heightAboveGroundM: 12,
 }
 
 function renderUseRoofShading(initialArgs: UseRoofShadingArgs) {
@@ -111,177 +84,125 @@ function makeArgs(overrides: Partial<UseRoofShadingArgs> = {}): UseRoofShadingAr
     roofs: [
       {
         roofId: 'roof-1',
-        polygon: [
-          [10, 10],
-          [11, 10],
-          [11, 11],
-        ],
-        vertexHeightsM: [1, 1.2, 1.1],
+        polygon: FLAT_ROOF_POLYGON,
+        vertexHeightsM: [1, 1, 1, 1],
       },
     ],
-    obstacles: [
-      {
-        id: 'obs-1',
-        kind: 'tree',
-        shape: {
-          type: 'tree',
-          center: [9.85, 10.25],
-          crownRadiusM: 1.6,
-          trunkRadiusM: 0.35,
-        },
-        heightAboveGroundM: 8,
-      },
-    ],
-    datetimeIso: '2026-03-08T11:00',
-    gridResolutionM: 0.5,
+    obstacles: [],
+    datetimeIso: '2026-03-20T10:00:00Z',
+    gridResolutionM: 1,
     interactionActive: false,
     interactionThrottleMs: 100,
     ...overrides,
   }
 }
 
+function allFeatureIntensities(features: ShadeHeatmapFeature[]): number[] {
+  return features.map((feature) => feature.properties.intensity)
+}
+
 describe('useRoofShading', () => {
   beforeEach(() => {
-    mockComputeRoofShadeGrid.mockReset()
-    mockComputeRoofShadeGrid.mockImplementation((input) => makeComputeResult(input))
+    vi.useRealTimers()
   })
 
-  it('throttles recompute during interaction and switches coarse/final grid modes', () => {
+  it('throttles recompute during interaction and resolves to final mode with stable lit output', () => {
     vi.useFakeTimers()
     const hook = renderUseRoofShading(makeArgs({ interactionActive: true }))
 
-    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(0)
     expect(hook.get().computeState).toBe('SCHEDULED')
+    expect(hook.get().computeMode).toBe('coarse')
 
     act(() => {
       vi.advanceTimersByTime(99)
     })
-    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(0)
+    expect(hook.get().computeState).toBe('SCHEDULED')
 
     act(() => {
       vi.advanceTimersByTime(1)
     })
 
-    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(1)
-    expect(mockComputeRoofShadeGrid.mock.calls[0][0].gridResolutionM).toBeGreaterThan(0.5)
-    expect(mockComputeRoofShadeGrid.mock.calls[0][0].maxSampleCount).toBe(3500)
+    expect(hook.get().computeState).toBe('READY')
     expect(hook.get().computeMode).toBe('coarse')
-    expect(hook.get().usedGridResolutionM).toBeGreaterThan(0.5)
+    expect(hook.get().usedGridResolutionM).toBeGreaterThan(1)
+    expect(hook.get().heatmapFeatures).toHaveLength(4)
+    expect(allFeatureIntensities(hook.get().heatmapFeatures)).toEqual([1, 1, 1, 1])
 
     hook.rerender(makeArgs({ interactionActive: false }))
 
-    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(2)
-    expect(mockComputeRoofShadeGrid.mock.calls[1][0].gridResolutionM).toBeCloseTo(0.5)
-    expect(mockComputeRoofShadeGrid.mock.calls[1][0].maxSampleCount).toBeUndefined()
+    expect(hook.get().computeState).toBe('READY')
     expect(hook.get().computeMode).toBe('final')
-    expect(hook.get().heatmapFeatures).toHaveLength(1)
-    expect(hook.get().heatmapFeatures[0].geometry.coordinates[0][0]).toEqual(
-      hook.get().heatmapFeatures[0].geometry.coordinates[0].at(-1),
-    )
+    expect(hook.get().usedGridResolutionM).toBeCloseTo(1)
+    expect(hook.get().heatmapFeatures).toHaveLength(16)
+    expect(allFeatureIntensities(hook.get().heatmapFeatures)).toEqual(new Array(16).fill(1))
 
     hook.unmount()
     vi.useRealTimers()
   })
 
-  it('uses cached result when fingerprints are unchanged', () => {
-    const hook = renderUseRoofShading(makeArgs({ datetimeIso: '2026-03-08T12:30' }))
-    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(1)
+  it('returns fully lit cells for clear roof and fully shaded cells for a full blocker', () => {
+    const clearHook = renderUseRoofShading(makeArgs({ obstacles: [] }))
+    expect(clearHook.get().computeState).toBe('READY')
+    expect(clearHook.get().resultStatus).toBe('OK')
+    expect(clearHook.get().heatmapFeatures).toHaveLength(16)
+    expect(allFeatureIntensities(clearHook.get().heatmapFeatures)).toEqual(new Array(16).fill(1))
+    clearHook.unmount()
+
+    const blockedHook = renderUseRoofShading(makeArgs({ obstacles: [FULL_BLOCKER_OBSTACLE] }))
+    expect(blockedHook.get().computeState).toBe('READY')
+    expect(blockedHook.get().resultStatus).toBe('OK')
+    expect(blockedHook.get().heatmapFeatures).toHaveLength(16)
+    expect(allFeatureIntensities(blockedHook.get().heatmapFeatures)).toEqual(new Array(16).fill(0))
+    blockedHook.unmount()
+  })
+
+  it('uses cached result when geometry/time fingerprints are unchanged', () => {
+    const hook = renderUseRoofShading(makeArgs({ datetimeIso: '2026-03-20T10:00:00Z' }))
+    const firstFeatures = hook.get().heatmapFeatures
 
     hook.rerender(
       makeArgs({
-        datetimeIso: '2026-03-08T12:30',
+        datetimeIso: '2026-03-20T10:00:00Z',
         roofs: [
           {
             roofId: 'roof-1',
-            polygon: [
-              [10, 10],
-              [11, 10],
-              [11, 11],
-            ],
-            vertexHeightsM: [1, 1.2, 1.1],
+            polygon: [...FLAT_ROOF_POLYGON],
+            vertexHeightsM: [1, 1, 1, 1],
           },
         ],
       }),
     )
 
-    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(1)
     expect(hook.get().computeState).toBe('READY')
+    expect(hook.get().heatmapFeatures).toBe(firstFeatures)
+    expect(allFeatureIntensities(hook.get().heatmapFeatures)).toEqual(new Array(16).fill(1))
+
     hook.unmount()
   })
 
-  it('recomputes when cache revision changes', () => {
-    const hook = renderUseRoofShading(makeArgs({ cacheRevision: 1, datetimeIso: '2026-03-08T13:45' }))
-    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(1)
+  it('invalidates cache when cache revision changes', () => {
+    const hook = renderUseRoofShading(makeArgs({ cacheRevision: 1 }))
+    const firstFeatures = hook.get().heatmapFeatures
 
-    hook.rerender(makeArgs({ cacheRevision: 2, datetimeIso: '2026-03-08T13:45' }))
+    hook.rerender(makeArgs({ cacheRevision: 2 }))
 
-    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(2)
+    expect(hook.get().computeState).toBe('READY')
+    expect(hook.get().heatmapFeatures).not.toBe(firstFeatures)
+    expect(allFeatureIntensities(hook.get().heatmapFeatures)).toEqual(new Array(16).fill(1))
+
     hook.unmount()
   })
 
-  it('recomputes when roof or obstacle geometry heights change', () => {
-    const datetimeIso = '2026-03-08T14:10'
-    const baseObstacle = {
-      id: 'obs-prism-1',
-      kind: 'building' as const,
-      shape: {
-        type: 'polygon-prism' as const,
-        polygon: [
-          [9.9, 10.1] as [number, number],
-          [9.95, 10.1] as [number, number],
-          [9.95, 10.15] as [number, number],
-        ],
-      },
-      heightAboveGroundM: 6,
-    }
+  it('recomputes and changes output when obstacle geometry changes', () => {
+    const hook = renderUseRoofShading(makeArgs({ obstacles: [] }))
+    expect(allFeatureIntensities(hook.get().heatmapFeatures)).toEqual(new Array(16).fill(1))
 
-    const hook = renderUseRoofShading(
-      makeArgs({
-        datetimeIso,
-        obstacles: [baseObstacle],
-      }),
-    )
-    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(1)
+    hook.rerender(makeArgs({ obstacles: [FULL_BLOCKER_OBSTACLE] }))
 
-    hook.rerender(
-      makeArgs({
-        datetimeIso,
-        roofs: [
-          {
-            roofId: 'roof-1',
-            polygon: [
-              [10, 10],
-              [11, 10],
-              [11, 11],
-            ],
-            vertexHeightsM: [1, 1.35, 1.1],
-          },
-        ],
-        obstacles: [baseObstacle],
-      }),
-    )
-    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(2)
+    expect(hook.get().computeState).toBe('READY')
+    expect(hook.get().heatmapFeatures).toHaveLength(16)
+    expect(allFeatureIntensities(hook.get().heatmapFeatures)).toEqual(new Array(16).fill(0))
 
-    hook.rerender(
-      makeArgs({
-        datetimeIso,
-        obstacles: [
-          {
-            ...baseObstacle,
-            shape: {
-              type: 'polygon-prism' as const,
-              polygon: [
-                [9.88, 10.12],
-                [9.95, 10.1],
-                [9.95, 10.15],
-              ],
-            },
-            heightAboveGroundM: 7.25,
-          },
-        ],
-      }),
-    )
-    expect(mockComputeRoofShadeGrid).toHaveBeenCalledTimes(3)
     hook.unmount()
   })
 })

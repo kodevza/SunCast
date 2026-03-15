@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { RoofMeshData } from '../../../../../types/geometry'
 import type { ShadeHeatmapFeature } from '../../../../analysis/analysis.types'
-import { buildHeatmapGeometry } from './useMapInstance'
+import { buildHeatmapGeometry } from '../../../../../rendering/roof-layer/heatmapGeometry'
 
 vi.mock('maplibre-gl', () => ({
   default: {},

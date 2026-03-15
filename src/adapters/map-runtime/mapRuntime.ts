@@ -18,6 +18,7 @@ export function createMapRuntime({ container, style, center, maxPitchDeg }: Crea
     canvasContextAttributes: {
       antialias: true,
     },
+    attributionControl: false,
     style,
     center,
     zoom: 18,

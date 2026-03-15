@@ -1,152 +1,81 @@
 import { HintTooltip } from '../../../components/HintTooltip'
+import { DrawToolsHints } from './DrawToolsHints'
+import { DrawToolsToolbar } from './DrawToolsToolbar'
+import type { DrawToolsProps } from './DrawTools.types'
+import { useDrawKeyboardShortcuts } from './hooks/useDrawKeyboardShortcuts'
+import { useDrawToolsState } from './hooks/useDrawToolsState'
 
-export type DrawEditMode = 'roof' | 'obstacle'
+export function DrawTools(props: DrawToolsProps) {
+  const { editMode, onSetEditMode } = props
+  const state = useDrawToolsState(props)
+  const isObstacleMode = editMode === 'obstacle'
+  const currentState = isObstacleMode ? state.obstacle : state.roof
 
-interface DrawToolsProps {
-  editMode: DrawEditMode
-  isDrawingRoof: boolean
-  isDrawingObstacle: boolean
-  roofPointCount: number
-  obstaclePointCount: number
-  onSetEditMode: (mode: DrawEditMode) => void
-  onStartRoofDrawing: () => void
-  onUndoRoofDrawing: () => void
-  onCancelRoofDrawing: () => void
-  onCommitRoofDrawing: () => void
-  onStartObstacleDrawing: () => void
-  onUndoObstacleDrawing: () => void
-  onCancelObstacleDrawing: () => void
-  onCommitObstacleDrawing: () => void
-}
+  const onStart = isObstacleMode ? props.onStartObstacleDrawing : props.onStartRoofDrawing
+  const onUndo = isObstacleMode ? props.onUndoObstacleDrawing : props.onUndoRoofDrawing
+  const onCancel = isObstacleMode ? props.onCancelObstacleDrawing : props.onCancelRoofDrawing
+  const onCommit = isObstacleMode ? props.onCommitObstacleDrawing : props.onCommitRoofDrawing
 
-// Purpose: Encapsulates draw mode buttons behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
-function DrawModeButtons({ editMode, onSetEditMode }: Pick<DrawToolsProps, 'editMode' | 'onSetEditMode'>) {
-  return (
-    <div className="draw-mode-toggle" role="group" aria-label="Drawing mode">
-      <button
-        type="button"
-        className={`draw-mode-button${editMode === 'roof' ? ' draw-mode-button-active' : ''}`}
-        onClick={() => onSetEditMode('roof')}
-      >
-        Roof Mode
-      </button>
-      <button
-        type="button"
-        className={`draw-mode-button${editMode === 'obstacle' ? ' draw-mode-button-active' : ''}`}
-        onClick={() => onSetEditMode('obstacle')}
-      >
-        Obstacle Mode
-      </button>
-    </div>
-  )
-}
-
-export function DrawTools({
-  editMode,
-  isDrawingRoof,
-  isDrawingObstacle,
-  roofPointCount,
-  obstaclePointCount,
-  onSetEditMode,
-  onStartRoofDrawing,
-  onUndoRoofDrawing,
-  onCancelRoofDrawing,
-  onCommitRoofDrawing,
-  onStartObstacleDrawing,
-  onUndoObstacleDrawing,
-  onCancelObstacleDrawing,
-  onCommitObstacleDrawing,
-}: DrawToolsProps) {
-  if (editMode === 'obstacle') {
-    return (
-      <section className="panel-section">
-        <h3 className="panel-heading-with-hint">
-          Obstacle Polygon{' '}
-          <HintTooltip hint="Draw obstacle footprints for trees/buildings/poles. Set type and height in Obstacle panel.">
-            ?
-          </HintTooltip>
-        </h3>
-        <DrawModeButtons editMode={editMode} onSetEditMode={onSetEditMode} />
-        {!isDrawingObstacle ? (
-          <button
-            type="button"
-            onClick={onStartObstacleDrawing}
-            title="Start obstacle polygon drawing mode."
-            data-testid="draw-obstacle-button"
-          >
-            Draw Obstacle Polygon
-          </button>
-        ) : (
-          <div className="draw-actions">
-            <p>Click on map to add obstacle vertices ({obstaclePointCount})</p>
-            <button
-              type="button"
-              onClick={onUndoObstacleDrawing}
-              disabled={obstaclePointCount === 0}
-              title="Remove the last obstacle draft vertex."
-              data-testid="draw-obstacle-undo-button"
-            >
-              Undo
-            </button>
-            <button
-              type="button"
-              onClick={onCommitObstacleDrawing}
-              disabled={obstaclePointCount < 3}
-              title="Commit obstacle polygon to project."
-              data-testid="draw-obstacle-finish-button"
-            >
-              Finish Obstacle
-            </button>
-            <button
-              type="button"
-              onClick={onCancelObstacleDrawing}
-              title="Cancel obstacle drawing (Escape)."
-              data-testid="draw-obstacle-cancel-button"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-      </section>
-    )
-  }
+  useDrawKeyboardShortcuts({
+    enabled: currentState.isDrawing,
+    canFinish: currentState.canFinish,
+    onUndo,
+    onFinish: onCommit,
+  })
 
   return (
     <section className="panel-section">
       <h3 className="panel-heading-with-hint">
-        Roof Polygon{' '}
-        <HintTooltip hint="Click map to add vertices. Finish requires at least 3 points. Escape cancels drawing.">
+        {isObstacleMode ? 'Obstacle Polygon ' : 'Roof Polygon '}
+        <HintTooltip
+          hint={
+            isObstacleMode
+              ? 'Draw obstacle footprints for trees/buildings/poles. Set type and height in Obstacle panel.'
+              : 'Click map to add vertices. Finish requires at least 3 points. Escape cancels drawing.'
+          }
+        >
           ?
         </HintTooltip>
       </h3>
-      <DrawModeButtons editMode={editMode} onSetEditMode={onSetEditMode} />
-      {!isDrawingRoof ? (
-        <button type="button" onClick={onStartRoofDrawing} title="Start polygon drawing mode." data-testid="draw-footprint-button">
-          Draw Roof Polygon
+
+      <DrawToolsToolbar editMode={editMode} onSetEditMode={onSetEditMode} />
+
+      {!currentState.isDrawing ? (
+        <button
+          type="button"
+          onClick={onStart}
+          title={isObstacleMode ? 'Start obstacle polygon drawing mode.' : 'Start polygon drawing mode.'}
+          data-testid={isObstacleMode ? 'draw-obstacle-button' : 'draw-footprint-button'}
+        >
+          {isObstacleMode ? 'Draw Obstacle Polygon' : 'Draw Roof Polygon'}
         </button>
       ) : (
         <div className="draw-actions">
-          <p>Click on map to add vertices ({roofPointCount})</p>
+          <DrawToolsHints editMode={editMode} isDrawing={currentState.isDrawing} pointCount={currentState.pointCount} />
           <button
             type="button"
-            onClick={onUndoRoofDrawing}
-            disabled={roofPointCount === 0}
-            title="Remove the last draft vertex."
-            data-testid="draw-undo-button"
+            onClick={onUndo}
+            disabled={currentState.pointCount === 0}
+            title={isObstacleMode ? 'Remove the last obstacle draft vertex.' : 'Remove the last draft vertex.'}
+            data-testid={isObstacleMode ? 'draw-obstacle-undo-button' : 'draw-undo-button'}
           >
             Undo
           </button>
           <button
             type="button"
-            onClick={onCommitRoofDrawing}
-            disabled={roofPointCount < 3}
-            title="Commit polygon to project."
-            data-testid="draw-finish-button"
+            onClick={onCommit}
+            disabled={!currentState.canFinish}
+            title={isObstacleMode ? 'Commit obstacle polygon to project.' : 'Commit polygon to project.'}
+            data-testid={isObstacleMode ? 'draw-obstacle-finish-button' : 'draw-finish-button'}
           >
-            Finish Polygon
+            {isObstacleMode ? 'Finish Obstacle' : 'Finish Polygon'}
           </button>
-          <button type="button" onClick={onCancelRoofDrawing} title="Cancel drawing (Escape)." data-testid="draw-cancel-button">
+          <button
+            type="button"
+            onClick={onCancel}
+            title={isObstacleMode ? 'Cancel obstacle drawing (Escape).' : 'Cancel drawing (Escape).'}
+            data-testid={isObstacleMode ? 'draw-obstacle-cancel-button' : 'draw-cancel-button'}
+          >
             Cancel
           </button>
         </div>

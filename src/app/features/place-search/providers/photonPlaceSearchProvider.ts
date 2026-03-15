@@ -1,23 +1,6 @@
 import type { PlaceSearchProvider, PlaceSearchResult } from '../placeSearch.types'
 import { captureException, recordEvent, recordMetric } from '../../../../shared/observability/observability'
-
-interface PhotonFeature {
-  geometry?: {
-    coordinates?: unknown
-  }
-  properties?: {
-    name?: string
-    street?: string
-    housenumber?: string
-    city?: string
-    state?: string
-    country?: string
-  }
-}
-
-interface PhotonResponse {
-  features?: PhotonFeature[]
-}
+import { searchPhotonPlaces, type PhotonFeature } from '../../../clients/photonClient'
 
 function asFiniteNumber(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -70,29 +53,17 @@ export class PhotonPlaceSearchProvider implements PlaceSearchProvider {
     query: string,
     options?: { limit?: number; lang?: string; signal?: AbortSignal },
   ): Promise<PlaceSearchResult[]> {
-    const params = new URLSearchParams({
-      q: query,
-      limit: String(options?.limit ?? 5),
-    })
-    if (options?.lang) {
-      params.set('lang', options.lang)
-    }
-
     let lastError: unknown = null
     const startedAt = performance.now()
 
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {
-        const response = await fetch(`https://photon.komoot.io/api/?${params.toString()}`, {
-          method: 'GET',
+        const data = await searchPhotonPlaces({
+          query,
+          limit: options?.limit ?? 5,
+          lang: options?.lang,
           signal: options?.signal,
         })
-
-        if (!response.ok) {
-          throw new Error(`Photon request failed (${response.status})`)
-        }
-
-        const data = (await response.json()) as PhotonResponse
         const results: PlaceSearchResult[] = []
 
         for (const [index, feature] of (data.features ?? []).entries()) {

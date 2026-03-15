@@ -2,29 +2,39 @@
 
 ## Scope Delivered
 
-Stage 1 editor is production-like for single-plane roof modeling from map footprints with deterministic regeneration from persisted constraints.
+Stage 1 editor is production-like for deterministic single-plane roof modeling and shading workflows, with map-editor boundaries now split into:
+- `DrawTools` (draw workflow + shortcuts)
+- `MapView` (map runtime + interactions + basemap controls)
+- `MapObjects` (roof/obstacle/heatmap custom layer sync)
 
 ## Acceptance Criteria
 
-1. User can draw at least one polygon footprint.
+1. User can draw one or many roof footprints.
 2. User can set vertex/edge height constraints.
 3. Solver computes planar roof pitch and azimuth.
-4. Roof mesh renders in orbit mode.
-5. Project can be reloaded with identical solved geometry and metrics.
+4. Roof/obstacle meshes render in orbit mode.
+5. Basemap can switch between satellite and streets without losing editor state.
+6. Attribution is visible for active basemap (OSM fixed wording; Esri plus provider metadata when available).
+7. Project can be reloaded with identical solved geometry and metrics.
+8. Annual shading simulation runs and produces roof heatmap + summary metrics.
 
 ## Operational Notes
 
-- Geometry source data lives in project store (`footprints + constraints`).
-- Meshes are generated from solved planes; do not persist meshes as source.
+- Geometry source data lives in project store (`footprints + constraints + obstacles + shading settings`).
+- Meshes and heatmaps are derived artifacts; never persist them as canonical state.
+- Transport-level HTTP calls are isolated to `src/app/clients/*`.
 - Degraded mode behavior:
   - runtime crash -> `AppErrorBoundary` fallback panel
   - map startup error -> map overlay fallback message
   - search/forecast failures -> feature-level non-fatal status
+  - ArcGIS attribution metadata failure -> keep map usable, show `Powered by Esri`
 
 ## Code Hotspots
 
-- `src/app/hooks/useSunCastController.ts`: top-level orchestration; split into sub-hooks already started.
-- `src/app/features/map-editor/MapView/useMapInteractions.ts`: interaction coordinator; handlers extracted into dedicated module.
+- `src/app/presentation/useSunCastPresentationState.ts`: composition and action/event bridge.
+- `src/app/features/map-editor/MapView/hooks/useMapInteractions.ts`: interaction coordinator.
+- `src/app/features/map-editor/MapObjects/hooks/useMapObjectsSync.ts`: custom-layer lifecycle and visibility sync.
+- `src/geometry/shading/*`: deterministic sun/shade business logic and annual aggregation.
 - `src/state/project-store/projectState.reducer.ts`: central state transitions.
 
 ## CI / Delivery
@@ -35,13 +45,13 @@ Stage 1 editor is production-like for single-plane roof modeling from map footpr
 
 ## Known Risks
 
-- External API uptime (Photon, Open-Meteo, map tiles).
+- External API uptime (Photon, Open-Meteo, ArcGIS metadata endpoint, map tiles).
 - Browser API differences for share/clipboard/compression.
-- Large project solve performance without per-footprint cache.
+- Large project solve/simulation performance without per-footprint caching.
 
 ## Post-Handover Priority Backlog
 
 1. Add solve-result caching keyed by footprint/constraint fingerprint.
-2. Add retry + cache strategy for search/forecast providers.
-3. Add observability hooks (runtime errors, provider failures, performance timings).
+2. Add provider fallback strategy and stronger circuit-breaker policy.
+3. Expand observability for shading compute and map-object rendering cost.
 4. Harden share/import payload size and schema migration rules.

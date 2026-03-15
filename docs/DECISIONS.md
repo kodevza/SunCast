@@ -95,3 +95,21 @@
 - Status: accepted
 - Decision: model operational failures with typed `AppError` (`code`, `severity`, `recoverable`, `context`) and `Result<T, E>` at key boundaries; report through central `reportAppError*` services; present user-facing operational failures via one global toast channel (`app.error`) and success notifications via the same channel (`app.success`).
 - Why: removes silent failure erasure, standardizes telemetry, and gives users a single consistent notification surface while keeping local feature fallback logic explicit.
+
+## D17. MapObjects Owns Custom Layer Lifecycle (MapView Owns Map Runtime)
+
+- Status: accepted
+- Decision: `MapView` is responsible for base-map runtime, sources, interactions, and camera state; `MapObjects` exclusively owns custom roof/obstacle/heatmap layer creation, disposal, and geometry sync.
+- Why: removes mixed responsibilities from `useMapInstance`, enforces map-runtime vs object-render boundary, and makes rendering lifecycle testable in isolation.
+
+## D18. Single-Style Basemap Switching With Explicit Attribution Control
+
+- Status: accepted
+- Decision: keep satellite and streets basemaps in one MapLibre style and switch basemap by toggling layer visibility only; disable default MapLibre attribution control and render one explicit attribution control in app UI (`OSM fixed text`, `Esri + dynamic provider attribution`).
+- Why: avoids `map.setStyle` churn and state loss, keeps map interactions stable, and satisfies provider-attribution obligations with clear user-visible text.
+
+## D19. External Provider Transport Isolated In `src/app/clients/*`
+
+- Status: accepted
+- Decision: Photon and Open-Meteo transport concerns (URL/query/build/request/status/raw JSON) live in dedicated clients; feature providers/hooks keep retry/cache/mapping/observability policy.
+- Why: centralizes endpoint ownership, removes duplicated low-level HTTP code, and keeps business logic separate from transport concerns.

@@ -4,7 +4,7 @@ import type { ShadeHeatmapFeature } from '../../app/analysis/analysis.types'
 import {
   buildRoofHeatmapOverlayGeometry,
   type RoofHeatmapOverlayGeometry,
-} from '../../app/features/map-editor/MapView/roof-layer/roofHeatmapOverlay'
+} from '../../app/features/map-editor/MapObjects/geometry/roofHeatmapOverlay'
 
 export function toThreeHeatmapGeometry(data: RoofHeatmapOverlayGeometry): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry()

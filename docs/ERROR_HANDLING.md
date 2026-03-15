@@ -45,7 +45,7 @@ Implementation:
 - `src/shared/errors/result.ts`
 
 Rule:
-- Domain/application boundaries should prefer `Result` for expected failures instead of throw-or-null.
+- domain/application boundaries should prefer `Result` for expected failures instead of throw-or-null.
 
 ## 4. Central Reporting
 
@@ -131,10 +131,15 @@ This is intentionally separate from operational toasts.
 - return typed failures for expected invalid input/state
 - never import UI
 
-### Application orchestration (`src/app/presentation/*`, `src/app/hooks/*`)
+### Application orchestration (`src/app/presentation/*`, `src/app/hooks/*`, feature providers)
 - converts domain/app failures into user flow decisions
 - reports with `reportAppError*`
 - avoids silent fallback
+
+### Clients (`src/app/clients/*`)
+- may throw transport/status errors
+- no toasts/reporting directly
+- callers own retry/degrade/report policy
 
 ### UI (`src/app/components/*`, `src/app/screens/*`, feature panels)
 - does not invent failure semantics
@@ -153,6 +158,7 @@ Implemented high-value boundaries:
 - shared payload deserialize: `deserializeSharePayloadResult(...)`
 - obstacle mesh generation: `generateObstacleMeshResult(...)`
 - map heatmap worker failure reporting: `HEATMAP_WORKER_UNAVAILABLE`
+- ArcGIS attribution metadata fetch failure reporting (`map-view` / `arcgis-attribution`)
 - compute-progress reporting with shared lifecycle and bounded visibility
 
 Representative files:
@@ -160,7 +166,8 @@ Representative files:
 - `src/shared/utils/shareCodec.ts`
 - `src/state/project-store/projectState.share.ts`
 - `src/geometry/mesh/generateObstacleMesh.ts`
-- `src/app/features/map-editor/MapView/hooks/useMapInstance.ts`
+- `src/app/features/map-editor/MapObjects/hooks/useMapObjectsSync.ts`
+- `src/app/features/map-editor/MapView/arcgisAttribution.ts`
 - `src/shared/errors/reportAppError.ts`
 - `src/app/components/GlobalErrorToasts.tsx`
 
@@ -194,28 +201,29 @@ When processing fails:
 2. report a typed error with contextual metadata
 3. avoid silent recovery or hidden fallback behavior
 
-Example:
+Examples:
 - Heatmap worker unavailable -> stop heatmap processing + `HEATMAP_WORKER_UNAVAILABLE` report.
+- ArcGIS attribution metadata request fails -> keep basemap usable, display `Powered by Esri`, capture exception.
 
 ## 11. Testing Strategy For Error Handling
 
 ### Unit-level expectations
 - `Result` APIs return typed failures for invalid inputs.
-- Error code/severity/recoverable fields are correct.
-- Failure paths are deterministic.
+- error code/severity/recoverable fields are correct.
+- failure paths are deterministic.
 
 ### Integration/E2E expectations
-- Provider failures surface explicit errors instead of stale-data fallback.
-- Failures surface through global toasts (not silent failure).
-- Long-running compute surfaces processing toast with bounded lifetime behavior.
-- Crash path still routes through `AppErrorBoundary`.
+- provider failures surface explicit errors instead of stale-data fallback.
+- failures surface through global toasts (not silent failure).
+- long-running compute surfaces processing toast with bounded lifetime behavior.
+- crash path still routes through `AppErrorBoundary`.
 
 Recommended test areas:
 - storage parse/migration failure
 - shared URL decode/schema failure
 - mesh build invalid geometry
 - worker unavailable/dispatch failure
-- provider API failures (place search/forecast)
+- provider API failures (place search/forecast/attribution metadata)
 - processing toast lifecycle: start, sticky, min/max visibility, dismiss key behavior
 
 ## 12. Implementation Checklist (PR)
