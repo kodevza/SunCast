@@ -3,8 +3,12 @@ import { getOpenMeteoForecast } from './openMeteoClient'
 
 describe('openMeteoClient', () => {
   it('builds query params and returns raw payload', async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(
+    let capturedUrl: URL | null = null
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      if (input instanceof URL) {
+        capturedUrl = input
+      }
+      return new Response(
         JSON.stringify({
           hourly: {
             time: ['2026-03-07T11:00'],
@@ -12,8 +16,8 @@ describe('openMeteoClient', () => {
           },
         }),
         { status: 200 },
-      ),
-    )
+      )
+    })
 
     const payload = await getOpenMeteoForecast({
       latDeg: 52.2297,
@@ -28,8 +32,8 @@ describe('openMeteoClient', () => {
 
     expect(payload.hourly?.time).toEqual(['2026-03-07T11:00'])
     expect(fetchImpl).toHaveBeenCalledTimes(1)
-    const [requestUrl] = fetchImpl.mock.calls[0] as [URL, RequestInit]
-    const serializedUrl = requestUrl.toString()
+    expect(capturedUrl).toBeInstanceOf(URL)
+    const serializedUrl = capturedUrl!.toString()
     expect(serializedUrl).toContain('https://api.open-meteo.com/v1/forecast?')
     expect(serializedUrl).toContain('latitude=52.229700')
     expect(serializedUrl).toContain('longitude=21.012200')
