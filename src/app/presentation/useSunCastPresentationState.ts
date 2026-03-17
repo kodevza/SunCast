@@ -1,15 +1,12 @@
-import { useMapNavigationTarget } from '../hooks/useMapNavigationTarget'
-import { useProjectDocument } from '../../state/project-store/useProjectDocument'
+import { useProjectDocument } from '../project-store/useProjectDocument'
 import { useEditorSession } from '../editor-session/useEditorSession'
 import { useAnalysis } from '../analysis/useAnalysis'
-import { useShareProject } from '../hooks/useShareProject'
-import { generateObstacleMeshResult } from '../../geometry/mesh/generateObstacleMesh'
+import { useObstacleMeshResults } from '../hooks/useObstacleMeshResults'
+import { useSunCastRuntimeActions } from '../hooks/useSunCastRuntimeActions'
+import { useSunCastRuntimeEffects } from '../hooks/useSunCastRuntimeEffects'
 import { useActiveFootprintState } from './hooks/useActiveFootprintState'
-import { useObstacleMeshes } from './hooks/useObstacleMeshes'
-import { useComputeProcessingToast } from './hooks/useComputeProcessingToast'
-import { usePresentationKeyboardShortcuts } from './hooks/usePresentationKeyboardShortcuts'
-import { useGlobalToastActions } from './hooks/useGlobalToastActions'
-import { usePresentationErrorReporting } from './hooks/usePresentationErrorReporting'
+import { prepareActiveFootprintGeometry } from '../hooks/activeFootprintGeometry'
+import { clampPitchAdjustmentPercent } from './presentationModel.types'
 
 export interface SunCastPresentationState {
   projectDocument: ReturnType<typeof useProjectDocument>
@@ -19,10 +16,10 @@ export interface SunCastPresentationState {
   activeFootprintCentroid: [number, number] | null
   activePitchAdjustmentPercent: number
   adjustedPitchDeg: number | null
-  obstacleMeshes: ReturnType<typeof generateObstacleMeshResult>[]
+  obstacleMeshes: ReturnType<typeof useObstacleMeshResults>['obstacleMeshResults']
   selectedObstacleIds: string[]
-  mapNavigationTarget: ReturnType<typeof useMapNavigationTarget>['mapNavigationTarget']
-  onPlaceSearchSelect: ReturnType<typeof useMapNavigationTarget>['onPlaceSearchSelect']
+  mapNavigationTarget: ReturnType<typeof useSunCastRuntimeActions>['mapNavigationTarget']
+  onPlaceSearchSelect: ReturnType<typeof useSunCastRuntimeActions>['onPlaceSearchSelect']
   onShareProject: () => Promise<void>
 }
 
@@ -70,26 +67,29 @@ export function useSunCastPresentationState(): SunCastPresentationState {
     setSunProjectionDatetimeIso: store.setSunProjectionDatetimeIso,
     setSunProjectionDailyDateIso: store.setSunProjectionDailyDateIso,
   })
+  const { obstacleMeshResults } = useObstacleMeshResults(obstacles)
 
-  const { onShareProject } = useShareProject({
-    footprints: store.state.footprints,
-    activeFootprintId: null,
-    obstacles: store.state.obstacles,
-    activeObstacleId: null,
-    sunProjection: store.state.sunProjection,
-  })
+  const { mapNavigationTarget, onPlaceSearchSelect, onShareProject } = useSunCastRuntimeActions(projectDocument)
 
+  const activeFootprintState = prepareActiveFootprintGeometry(activeFootprint)
+  const precomputedActivePitchAdjustmentPercent = activeFootprint
+    ? clampPitchAdjustmentPercent(store.state.footprints[activeFootprint.id]?.pitchAdjustmentPercent ?? 0)
+    : 0
   const { activeFootprintErrors, activeFootprintCentroid, activePitchAdjustmentPercent, adjustedPitchDeg } =
-    useActiveFootprintState(projectDocument, analysis)
+    useActiveFootprintState({
+      ...activeFootprintState,
+      activePitchAdjustmentPercent: precomputedActivePitchAdjustmentPercent,
+      basePitchDeg: analysis.solvedMetrics.basePitchDeg,
+    })
 
-  const { obstacleMeshResults } = useObstacleMeshes(obstacles)
-
-  useComputeProcessingToast(analysis.computeProcessingActive)
-  usePresentationKeyboardShortcuts(projectDocument, editorSession)
-  useGlobalToastActions({ projectDocument, editorSession, analysis, onShareProject })
-  usePresentationErrorReporting({ activeFootprintErrors, editorSession, analysis })
-
-  const { mapNavigationTarget, onPlaceSearchSelect } = useMapNavigationTarget()
+  useSunCastRuntimeEffects({
+    projectDocument,
+    editorSession,
+    analysis,
+    activeFootprintErrors,
+    obstacleMeshResults,
+    onShareProject,
+  })
 
   return {
     projectDocument: {

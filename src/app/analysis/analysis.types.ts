@@ -1,5 +1,5 @@
 import type { ShadingRoofInput } from '../../geometry/shading'
-import type { RoofShadeDiagnostics } from '../../geometry/shading'
+import type { RoofShadeDiagnosticsResults } from '../../geometry/shading'
 import type { ShadeComputationStatus } from '../../geometry/shading/types'
 import type { AnnualSunAccessResult } from '../../geometry/shading'
 import type { SunProjectionResult } from '../../geometry/sun/sunProjection'
@@ -54,7 +54,7 @@ export interface AnalysisDiagnostics {
   warnings: string[]
   shadingResultStatus: ShadeComputationStatus | null
   shadingStatusMessage: string | null
-  shadingDiagnostics: RoofShadeDiagnostics | null
+  shadingDiagnostics: RoofShadeDiagnosticsResults | null
 }
 
 export interface AnalysisHeatmapState {
@@ -91,7 +91,7 @@ export interface AnalysisState {
     computeMode: 'final' | 'coarse'
     resultStatus: ShadeComputationStatus | null
     statusMessage: string | null
-    diagnostics: RoofShadeDiagnostics | null
+    diagnostics: RoofShadeDiagnosticsResults | null
     usedGridResolutionM: number | null
   }
   annualSimulation: AnnualSimulationResult

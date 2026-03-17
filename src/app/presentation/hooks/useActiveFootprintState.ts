@@ -1,7 +1,3 @@
-import { validateFootprint } from '../../../geometry/solver/validation'
-import { clampPitchAdjustmentPercent, computeFootprintCentroid } from '../presentationModel.types'
-import type { ReturnTypeUseAnalysis, ReturnTypeUseProjectDocument } from './usePresentationTypes'
-
 export interface ActiveFootprintState {
   activeFootprintErrors: string[]
   activeFootprintCentroid: [number, number] | null
@@ -9,21 +5,19 @@ export interface ActiveFootprintState {
   adjustedPitchDeg: number | null
 }
 
-export function useActiveFootprintState(
-  projectDocument: ReturnTypeUseProjectDocument,
-  analysis: ReturnTypeUseAnalysis,
-): ActiveFootprintState {
-  const { store, activeFootprint } = projectDocument
+interface UseActiveFootprintStateParams {
+  activeFootprintErrors: string[]
+  activeFootprintCentroid: [number, number] | null
+  activePitchAdjustmentPercent: number
+  basePitchDeg: number | null
+}
 
-  const activeFootprintErrors = validateFootprint(activeFootprint)
-  const activeFootprintCentroid = computeFootprintCentroid(activeFootprint?.vertices ?? [])
-  const activePitchAdjustmentPercent = activeFootprint
-    ? clampPitchAdjustmentPercent(store.state.footprints[activeFootprint.id]?.pitchAdjustmentPercent ?? 0)
-    : 0
+export function useActiveFootprintState(
+  params: UseActiveFootprintStateParams,
+): ActiveFootprintState {
+  const { activeFootprintErrors, activeFootprintCentroid, activePitchAdjustmentPercent, basePitchDeg } = params
   const adjustedPitchDeg =
-    analysis.solvedMetrics.basePitchDeg === null
-      ? null
-      : analysis.solvedMetrics.basePitchDeg * (1 + activePitchAdjustmentPercent / 100)
+    basePitchDeg === null ? null : basePitchDeg * (1 + activePitchAdjustmentPercent / 100)
 
   return {
     activeFootprintErrors,

@@ -1,10 +1,9 @@
 import maplibregl from 'maplibre-gl'
 import * as THREE from 'three'
-import type { RoofMeshData } from '../../types/geometry'
-import type { ShadeHeatmapFeature } from '../../app/analysis/analysis.types'
-import type { RoofHeatmapOverlayWorkerResponse } from '../../app/features/map-editor/MapObjects/geometry/roofHeatmapOverlayWorker.types'
-import type { RoofHeatmapOverlayGeometry } from '../../app/features/map-editor/MapObjects/geometry/roofHeatmapOverlay'
-import { acquireSharedThreeRenderer, releaseSharedThreeRenderer } from '../../app/features/map-editor/MapObjects/geometry/sharedThreeRenderer'
+import type { RoofHeatmapFeature, RoofMeshData } from '../../types/geometry'
+import type { RoofHeatmapOverlayWorkerResponse } from './roofHeatmapOverlayWorker.types'
+import type { RoofHeatmapOverlayGeometry } from './roofHeatmapOverlay'
+import { acquireSharedThreeRenderer, releaseSharedThreeRenderer } from '../shared/sharedThreeRenderer'
 import { reportAppErrorCode } from '../../shared/errors'
 import { clearHeatmapGroup, toThreeHeatmapGeometry } from './heatmapGeometry'
 
@@ -20,7 +19,7 @@ export class RoofHeatmapLayer implements maplibregl.CustomLayerInterface {
   private group: THREE.Group | null = null
   private material: THREE.MeshBasicMaterial | null = null
   private roofMeshes: RoofMeshData[] = []
-  private heatmapFeatures: ShadeHeatmapFeature[] = []
+  private heatmapFeatures: RoofHeatmapFeature[] = []
   private zExaggeration = 1
   private visible = false
   private worker: Worker | null = null
@@ -83,7 +82,7 @@ export class RoofHeatmapLayer implements maplibregl.CustomLayerInterface {
     this.requestGeometryRebuild()
   }
 
-  setHeatmapFeatures(features: ShadeHeatmapFeature[]): void {
+  setHeatmapFeatures(features: RoofHeatmapFeature[]): void {
     this.heatmapFeatures = features
     this.requestGeometryRebuild()
   }
@@ -127,7 +126,7 @@ export class RoofHeatmapLayer implements maplibregl.CustomLayerInterface {
       return
     }
     this.worker = new Worker(
-      new URL('../../app/features/map-editor/MapObjects/geometry/roofHeatmapOverlay.worker.ts', import.meta.url),
+      new URL('./roofHeatmapOverlay.worker.ts', import.meta.url),
       {
         type: 'module',
       },

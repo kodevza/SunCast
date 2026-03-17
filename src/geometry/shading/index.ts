@@ -31,7 +31,7 @@ export type {
   PrepareShadingSceneInput,
   RoofSamplePoint,
   RoofShadeCell,
-  RoofShadeDiagnostics,
+  RoofShadeDiagnosticsResults,
   RoofShadeResult,
   RoofShadeSnapshotResult,
   ShadingObstacleInput,

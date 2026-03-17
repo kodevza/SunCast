@@ -70,6 +70,7 @@ npm run coverage:e2e
 src/
   app/
     clients/
+    project-store/
     features/
       map-editor/
         DrawTools/

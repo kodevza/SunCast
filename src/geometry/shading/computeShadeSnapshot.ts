@@ -3,8 +3,8 @@ import { computeMaxShadowDistanceM, sunDirectionFromAzimuthElevation } from './s
 import { DEFAULT_LOW_SUN_THRESHOLD_DEG, DIRECT_SUN_FRONT_SIDE_EPSILON } from './constants'
 import type { ComputeShadeSnapshotInput, ComputeShadeSnapshotResult } from './types'
 
-// Purpose: Encapsulates empty diagnostics behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function emptyDiagnostics() {
   return {
     roofsProcessed: 0,
@@ -15,8 +15,8 @@ function emptyDiagnostics() {
   }
 }
 
-// Purpose: Encapsulates roof facing sun behavior in one reusable function.
-// Why: Keeps direct-sun semantics consistent for live shading and annual simulation.
+
+
 function isRoofFrontSideLit(plane: { p: number; q: number }, sunDirection: { x: number; y: number; z: number }): boolean {
   const normalLength = Math.sqrt(plane.p * plane.p + plane.q * plane.q + 1)
   if (!Number.isFinite(normalLength) || normalLength <= 1e-9) {
@@ -31,8 +31,8 @@ function isRoofFrontSideLit(plane: { p: number; q: number }, sunDirection: { x: 
   return cosIncidence > DIRECT_SUN_FRONT_SIDE_EPSILON
 }
 
-// Purpose: Computes compute shade snapshot deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
+
+
 export function computeShadeSnapshot(input: ComputeShadeSnapshotInput): ComputeShadeSnapshotResult {
   if (input.sunElevationDeg <= 0) {
     return {

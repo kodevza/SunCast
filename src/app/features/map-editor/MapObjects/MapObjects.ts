@@ -1,7 +1,6 @@
 import type { RefObject } from 'react'
 import type maplibregl from 'maplibre-gl'
-import type { ObstacleMeshData, RoofMeshData } from '../../../../types/geometry'
-import type { ShadeHeatmapFeature } from '../../../analysis/analysis.types'
+import type { ObstacleMeshData, RoofHeatmapFeature, RoofMeshData } from '../../../../types/geometry'
 import { useMapObjectsSync } from './hooks/useMapObjectsSync'
 
 export interface MapObjectsModel {
@@ -9,7 +8,7 @@ export interface MapObjectsModel {
   mapLoaded: boolean
   roofMeshes: RoofMeshData[]
   obstacleMeshes: ObstacleMeshData[]
-  heatmapFeatures: ShadeHeatmapFeature[]
+  heatmapFeatures: RoofHeatmapFeature[]
   orbitEnabled: boolean
   meshesVisible: boolean
   shadingEnabled: boolean

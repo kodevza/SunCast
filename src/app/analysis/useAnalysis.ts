@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react'
 import { useDerivedHeatmapMode } from './deriveHeatmapMode'
 import { useDerivedShadingRoofs } from './deriveShadingRoofs'
 import { useSolvedRoofEntries } from './useSolvedRoofEntries'
-import { useSunProjectionPanel } from '../features/sun-tools/useSunProjectionPanel'
-import { useAnnualRoofSimulation } from '../hooks/useAnnualRoofSimulation'
-import { useRoofShading } from '../hooks/useRoofShading'
-import { useSelectedRoofInputs } from '../hooks/useSelectedRoofInputs'
+import { useAnnualRoofSimulation } from './useAnnualRoofSimulation'
+import { useRoofShading } from './useRoofShading'
+import { useSelectedRoofInputs } from './useSelectedRoofInputs'
+import { useSunProjectionState } from './useSunProjectionState'
 import type { ObstacleStateEntry, ProjectSunProjectionSettings, ShadingSettings } from '../../types/geometry'
 import type { FootprintStateEntry } from '../../state/project-store/projectState.types'
 import type { AnalysisState } from './analysis.types'
@@ -54,7 +54,7 @@ export function useAnalysis(args: UseAnalysisArgs) {
     hasValidSunDatetime,
     sunProjectionResult,
     onSunDatetimeInputChange,
-  } = useSunProjectionPanel({
+  } = useSunProjectionState({
     sunProjection: args.sunProjection,
     activeVertices: args.activeFootprintVertices ?? null,
     activePlane: solved.activeSolved?.solution.plane ?? null,

@@ -88,8 +88,8 @@ export function toFootprintFeatures(
     }))
 }
 
-// Purpose: Encapsulates to obstacle features behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function toObstacleFeatures(
   obstacles: ObstacleStateEntry[],
   activeObstacleId: string | null,
@@ -192,8 +192,8 @@ export function toEdgeHeightLabelFeatures(
   return features
 }
 
-// Purpose: Encapsulates to obstacle vertex source features behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function toObstacleVertexSourceFeatures(
   obstacle: ObstacleStateEntry | null,
 ): GeoJSON.Feature<GeoJSON.Point>[] {
@@ -214,8 +214,8 @@ export function toObstacleVertexSourceFeatures(
   }))
 }
 
-// Purpose: Encapsulates to obstacle edge source features behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function toObstacleEdgeSourceFeatures(
   obstacle: ObstacleStateEntry | null,
 ): GeoJSON.Feature<GeoJSON.LineString>[] {

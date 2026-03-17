@@ -5,7 +5,6 @@ import {
   DEFAULT_FOOTPRINT_KWP,
   projectDocumentReducer,
 } from './projectDocument.reducer'
-import { editorSessionReducer } from '../../app/editor-session/editorSession.reducer'
 
 export { DEFAULT_FOOTPRINT_KWP }
 
@@ -40,9 +39,6 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
     return validateLoadedState(action.payload, DEFAULT_SUN_PROJECTION, DEFAULT_FOOTPRINT_KWP, DEFAULT_SHADING_SETTINGS)
   }
 
-  const withDocument = projectDocumentReducer(state, action)
-  const withSession = editorSessionReducer(withDocument, action)
-
   if (action.type === 'RESET_STATE') {
     return {
       ...initialProjectState,
@@ -51,5 +47,5 @@ export function projectStateReducer(state: ProjectState, action: Action): Projec
     }
   }
 
-  return withSession
+  return projectDocumentReducer(state, action)
 }

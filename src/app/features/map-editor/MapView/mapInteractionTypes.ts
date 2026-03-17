@@ -34,33 +34,45 @@ export interface DrawingAngleHint {
   snapped: boolean
 }
 
-export interface MapInteractionRefs {
-  drawingRef: RefObject<boolean>
-  drawDraftRef: RefObject<Array<[number, number]>>
-  editModeRef: RefObject<'roof' | 'obstacle'>
-  orbitEnabledRef: RefObject<boolean>
-  activeFootprintRef: RefObject<FootprintPolygon | null>
-  activeObstacleRef: RefObject<ObstacleStateEntry | null>
-  onMapClickRef: RefObject<(point: [number, number]) => void>
-  onCloseDrawingRef: RefObject<() => void>
-  onSelectVertexRef: RefObject<(vertexIndex: number) => void>
-  onSelectEdgeRef: RefObject<(edgeIndex: number) => void>
-  onSelectFootprintRef: RefObject<(footprintId: string, multiSelect: boolean) => void>
-  onSelectObstacleRef: RefObject<(obstacleId: string, multiSelect: boolean) => void>
-  onClearSelectionRef: RefObject<() => void>
-  onMoveVertexRef: RefObject<(vertexIndex: number, point: [number, number]) => boolean>
-  onMoveEdgeRef: RefObject<(edgeIndex: number, delta: [number, number]) => boolean>
-  onMoveObstacleVertexRef: RefObject<(obstacleId: string, vertexIndex: number, point: [number, number]) => boolean>
-  onMoveRejectedRef: RefObject<() => void>
-  onBearingChangeRef: RefObject<(bearingDeg: number) => void>
-  onPitchChangeRef: RefObject<(pitchDeg: number) => void>
-  onGeometryDragStateChangeRef: RefObject<(dragging: boolean) => void>
+export interface MapViewDrawingModel {
+  editMode: 'roof' | 'obstacle'
+  drawDraft: Array<[number, number]>
+  isDrawing: boolean
+  activeFootprint: FootprintPolygon | null
+  activeObstacle: ObstacleStateEntry | null
+  commitDrawPoint: (point: [number, number]) => void
+  closeDrawing: () => void
+}
+
+export interface MapViewSelectionModel {
+  onSelectVertex: (vertexIndex: number) => void
+  onSelectEdge: (edgeIndex: number) => void
+  onSelectFootprint: (footprintId: string, multiSelect: boolean) => void
+  onSelectObstacle: (obstacleId: string, multiSelect: boolean) => void
+  onClearSelection: () => void
+  onMoveVertex: (vertexIndex: number, point: [number, number]) => boolean
+  onMoveEdge: (edgeIndex: number, delta: [number, number]) => boolean
+  onMoveObstacleVertex: (obstacleId: string, vertexIndex: number, point: [number, number]) => boolean
+  onMoveRejected: () => void
+}
+
+export interface MapViewCameraModel {
+  orbitEnabled: boolean
+  onBearingChange: (bearingDeg: number) => void
+  onPitchChange: (pitchDeg: number) => void
+  onGeometryDragStateChange: (dragging: boolean) => void
+}
+
+export interface MapInteractionModel {
+  drawing: MapViewDrawingModel
+  selection: MapViewSelectionModel
+  camera: MapViewCameraModel
 }
 
 export interface UseMapInteractionsArgs {
   mapRef: RefObject<maplibregl.Map | null>
   mapLoaded: boolean
-  refs: MapInteractionRefs
+  model: MapInteractionModel
   constrainedDrawLengthM: number | null
 }
 

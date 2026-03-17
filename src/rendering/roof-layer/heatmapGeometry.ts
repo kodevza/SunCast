@@ -1,10 +1,9 @@
 import * as THREE from 'three'
-import type { RoofMeshData } from '../../types/geometry'
-import type { ShadeHeatmapFeature } from '../../app/analysis/analysis.types'
+import type { RoofHeatmapFeature, RoofMeshData } from '../../types/geometry'
 import {
   buildRoofHeatmapOverlayGeometry,
   type RoofHeatmapOverlayGeometry,
-} from '../../app/features/map-editor/MapObjects/geometry/roofHeatmapOverlay'
+} from './roofHeatmapOverlay'
 
 export function toThreeHeatmapGeometry(data: RoofHeatmapOverlayGeometry): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry()
@@ -16,7 +15,7 @@ export function toThreeHeatmapGeometry(data: RoofHeatmapOverlayGeometry): THREE.
 
 export function buildHeatmapGeometry(
   roofMeshes: RoofMeshData[],
-  features: ShadeHeatmapFeature[],
+  features: RoofHeatmapFeature[],
   zExaggeration: number,
 ): { geometry: THREE.BufferGeometry; anchorX: number; anchorY: number } | null {
   const overlay = buildRoofHeatmapOverlayGeometry(roofMeshes, features, zExaggeration)

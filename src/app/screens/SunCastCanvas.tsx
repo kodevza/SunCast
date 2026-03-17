@@ -11,7 +11,7 @@ interface SunCastCanvasProps {
 export function SunCastCanvas({ model }: SunCastCanvasProps) {
   return (
     <main className="sun-cast-canvas">
-      <MapView model={model} onInitialized={model.onInitialized} />
+      <MapView model={model.mapView} onInitialized={model.onInitialized} />
 
       <SunOverlayColumn
         datetimeIso={model.sunDatetimeRaw}
@@ -20,7 +20,7 @@ export function SunCastCanvas({ model }: SunCastCanvasProps) {
         onDatetimeInputChange={model.onSunDatetimeInputChange}
         productionComputationEnabled={model.productionComputationEnabled}
         annualSunAccess={model.annualSunAccess}
-        expanded={model.hasSolvedActiveRoof && !model.isDrawingRoof && !model.isDrawingObstacle}
+        expanded={model.hasSolvedActiveRoof && !model.mapView.drawing.isDrawingRoof && !model.mapView.drawing.isDrawingObstacle}
       >
         {model.hasSolvedActiveRoof ? (
           <>
@@ -28,7 +28,7 @@ export function SunCastCanvas({ model }: SunCastCanvasProps) {
               enabled={model.sunProjectionEnabled}
               hasDatetime={model.hasValidSunDatetime}
               onToggleEnabled={model.onToggleSunProjectionEnabled}
-              result={model.sunProjectionResult}
+              result={model.mapView.view.sunProjectionResult}
             />
             <SunDailyChartPanel
               dateIso={model.sunDailyDateRaw}

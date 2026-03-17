@@ -3,13 +3,14 @@ import { act } from 'react'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 import { createRoot } from 'react-dom/client'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GlobalErrorToasts } from './GlobalErrorToasts'
 import {
-  GLOBAL_ERROR_TOAST_ACTION_EVENT_NAME,
-  type GlobalErrorToastActionEventDetail,
-} from './globalErrorToastActions'
-import { OBSERVABILITY_EVENT_NAME, type ObservabilityEvent } from '../../shared/observability/observability'
+  type ObservabilityEvent,
+  recordEvent,
+  resetObservabilityStoreForTests,
+} from '../../shared/observability/observability'
+import { toastActionService } from '../globalServices/toastActionService'
 
 function renderToasts() {
   const container = document.createElement('div')
@@ -33,7 +34,7 @@ function renderToasts() {
 
 function emitObservabilityEvent(event: ObservabilityEvent) {
   act(() => {
-    window.dispatchEvent(new CustomEvent<ObservabilityEvent>(OBSERVABILITY_EVENT_NAME, { detail: event }))
+    recordEvent(event.name, event.data)
   })
 }
 
@@ -41,11 +42,15 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
+beforeEach(() => {
+  resetObservabilityStoreForTests()
+})
+
 describe('GlobalErrorToasts', () => {
   it('shows reset and share buttons for reset-enabled errors', () => {
     const onAction = vi.fn()
     const view = renderToasts()
-    window.addEventListener(GLOBAL_ERROR_TOAST_ACTION_EVENT_NAME, onAction as EventListener)
+    const unsubscribe = toastActionService.subscribe(onAction)
 
     emitObservabilityEvent({
       kind: 'event',
@@ -71,12 +76,10 @@ describe('GlobalErrorToasts', () => {
     })
 
     expect(onAction).toHaveBeenCalledTimes(2)
-    const resetEvent = onAction.mock.calls[0][0] as CustomEvent<GlobalErrorToastActionEventDetail>
-    const shareEvent = onAction.mock.calls[1][0] as CustomEvent<GlobalErrorToastActionEventDetail>
-    expect(resetEvent.detail.action).toBe('reset-state')
-    expect(shareEvent.detail.action).toBe('share-state')
+    expect(onAction.mock.calls[0][0]).toBe('reset-state')
+    expect(onAction.mock.calls[1][0]).toBe('share-state')
 
-    window.removeEventListener(GLOBAL_ERROR_TOAST_ACTION_EVENT_NAME, onAction as EventListener)
+    unsubscribe()
     view.unmount()
   })
 

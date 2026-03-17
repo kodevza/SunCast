@@ -39,42 +39,40 @@ function withFootprints(state: ProjectState): ProjectState {
 }
 
 describe('projectStateReducer', () => {
-  it('handles draw flow and commit', () => {
-    let state = projectStateReducer(initialProjectState, { type: 'START_DRAW' })
-    state = projectStateReducer(state, { type: 'ADD_DRAFT_POINT', point: [1, 1] })
-    state = projectStateReducer(state, { type: 'ADD_DRAFT_POINT', point: [2, 1] })
-    state = projectStateReducer(state, { type: 'ADD_DRAFT_POINT', point: [2, 2] })
-    state = projectStateReducer(state, { type: 'COMMIT_FOOTPRINT' })
+  it('commits a footprint from the current draft without mutating session state', () => {
+    const state = projectStateReducer(
+      {
+        ...initialProjectState,
+        activeFootprintId: 'before',
+        selectedFootprintIds: ['before'],
+        drawDraft: [
+          [1, 1],
+          [2, 1],
+          [2, 2],
+        ],
+        isDrawing: true,
+      },
+      { type: 'COMMIT_FOOTPRINT' },
+    )
 
-    expect(state.isDrawing).toBe(false)
-    expect(state.drawDraft).toEqual([])
     expect(Object.keys(state.footprints)).toHaveLength(1)
-    expect(state.activeFootprintId).toBeTruthy()
-    expect(state.selectedFootprintIds).toEqual([state.activeFootprintId])
+    expect(state.activeFootprintId).toBe('before')
+    expect(state.selectedFootprintIds).toEqual(['before'])
+    expect(state.drawDraft).toEqual([
+      [1, 1],
+      [2, 1],
+      [2, 2],
+    ])
+    expect(state.isDrawing).toBe(true)
   })
 
-  it('handles selection flow', () => {
+  it('deletes footprint geometry without reconciling session selection', () => {
     let state = withFootprints(initialProjectState)
-    state = projectStateReducer(state, { type: 'TOGGLE_FOOTPRINT_SELECTION', footprintId: 'b' })
-    expect(state.selectedFootprintIds).toEqual(['a', 'b'])
-    expect(state.activeFootprintId).toBe('b')
-
-    state = projectStateReducer(state, { type: 'SELECT_ONLY_FOOTPRINT', footprintId: 'a' })
-    expect(state.selectedFootprintIds).toEqual(['a'])
-    expect(state.activeFootprintId).toBe('a')
-
-    state = projectStateReducer(state, { type: 'CLEAR_FOOTPRINT_SELECTION' })
-    expect(state.selectedFootprintIds).toEqual([])
-  })
-
-  it('clears active footprint when active entry is deleted', () => {
-    let state = withFootprints(initialProjectState)
-    state = { ...state, selectedFootprintIds: ['a', 'b'], activeFootprintId: 'a' }
     state = projectStateReducer(state, { type: 'DELETE_FOOTPRINT', footprintId: 'a' })
 
     expect(Object.keys(state.footprints)).toEqual(['b'])
-    expect(state.activeFootprintId).toBeNull()
-    expect(state.selectedFootprintIds).toEqual(['b'])
+    expect(state.activeFootprintId).toBe('a')
+    expect(state.selectedFootprintIds).toEqual(['a'])
   })
 
   it('moves vertex and edge on active footprint', () => {
@@ -110,36 +108,43 @@ describe('projectStateReducer', () => {
     expect(state.footprints.a.pitchAdjustmentPercent).toBe(999)
   })
 
-  it('handles obstacle draw/edit/selection flow', () => {
-    let state = projectStateReducer(initialProjectState, { type: 'START_OBSTACLE_DRAW' })
-    state = projectStateReducer(state, { type: 'ADD_OBSTACLE_DRAFT_POINT', point: [1, 1] })
-    state = projectStateReducer(state, { type: 'ADD_OBSTACLE_DRAFT_POINT', point: [2, 1] })
-    state = projectStateReducer(state, { type: 'ADD_OBSTACLE_DRAFT_POINT', point: [2, 2] })
+  it('commits and edits obstacle geometry without session selection side effects', () => {
+    let state = {
+      ...initialProjectState,
+      obstacleDrawDraft: [
+        [1, 1],
+        [2, 1],
+        [2, 2],
+      ],
+      isDrawingObstacle: true,
+    }
     state = projectStateReducer(state, { type: 'COMMIT_OBSTACLE' })
 
     const obstacleId = state.activeObstacleId
-    expect(obstacleId).toBeTruthy()
-    expect(state.isDrawingObstacle).toBe(false)
-    expect(state.selectedObstacleIds).toEqual([obstacleId])
+    expect(Object.keys(state.obstacles)).toHaveLength(1)
+    expect(obstacleId).toBeNull()
+    expect(state.isDrawingObstacle).toBe(true)
+    expect(state.selectedObstacleIds).toEqual([])
 
     state = projectStateReducer(state, {
       type: 'SET_OBSTACLE_HEIGHT',
-      payload: { obstacleId: obstacleId ?? '', heightAboveGroundM: 12 },
+      payload: { obstacleId: Object.keys(state.obstacles)[0] ?? '', heightAboveGroundM: 12 },
     })
     state = projectStateReducer(state, {
       type: 'SET_OBSTACLE_KIND',
-      payload: { obstacleId: obstacleId ?? '', kind: 'tree' },
+      payload: { obstacleId: Object.keys(state.obstacles)[0] ?? '', kind: 'tree' },
     })
     state = projectStateReducer(state, {
       type: 'MOVE_OBSTACLE_VERTEX',
-      payload: { obstacleId: obstacleId ?? '', vertexIndex: 1, point: [3, 1.5] },
+      payload: { obstacleId: Object.keys(state.obstacles)[0] ?? '', vertexIndex: 1, point: [3, 1.5] },
     })
 
-    expect(state.obstacles[obstacleId ?? ''].heightAboveGroundM).toBe(12)
-    expect(state.obstacles[obstacleId ?? ''].kind).toBe('tree')
-    expect(state.obstacles[obstacleId ?? ''].shape.type).toBe('tree')
+    const createdObstacleId = Object.keys(state.obstacles)[0] ?? ''
+    expect(state.obstacles[createdObstacleId].heightAboveGroundM).toBe(12)
+    expect(state.obstacles[createdObstacleId].kind).toBe('tree')
+    expect(state.obstacles[createdObstacleId].shape.type).toBe('tree')
 
-    state = projectStateReducer(state, { type: 'DELETE_OBSTACLE', obstacleId: obstacleId ?? '' })
+    state = projectStateReducer(state, { type: 'DELETE_OBSTACLE', obstacleId: createdObstacleId })
     expect(state.activeObstacleId).toBeNull()
     expect(state.selectedObstacleIds).toEqual([])
     expect(Object.keys(state.obstacles)).toHaveLength(0)

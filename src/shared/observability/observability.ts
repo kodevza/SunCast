@@ -1,3 +1,5 @@
+import { observabilityStore } from './observabilityStore'
+
 type EventKind = 'event' | 'error' | 'metric'
 
 export interface ObservabilityEvent {
@@ -7,10 +9,6 @@ export interface ObservabilityEvent {
   data?: Record<string, unknown>
 }
 
-export const OBSERVABILITY_EVENT_NAME = 'suncast:observability'
-const MAX_BUFFERED_EVENTS = 200
-const bufferedEvents: ObservabilityEvent[] = []
-
 function normalizeData(value: unknown): Record<string, unknown> | undefined {
   if (!value || typeof value !== 'object') {
     return undefined
@@ -19,14 +17,7 @@ function normalizeData(value: unknown): Record<string, unknown> | undefined {
 }
 
 function pushEvent(event: ObservabilityEvent): void {
-  bufferedEvents.push(event)
-  if (bufferedEvents.length > MAX_BUFFERED_EVENTS) {
-    bufferedEvents.splice(0, bufferedEvents.length - MAX_BUFFERED_EVENTS)
-  }
-
-  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
-    window.dispatchEvent(new CustomEvent<ObservabilityEvent>(OBSERVABILITY_EVENT_NAME, { detail: event }))
-  }
+  observabilityStore.record(event)
 }
 
 export function recordEvent(name: string, data?: Record<string, unknown>): void {
@@ -67,5 +58,13 @@ export function recordMetric(name: string, value: number, data?: Record<string, 
 }
 
 export function getBufferedObservabilityEvents(): ObservabilityEvent[] {
-  return [...bufferedEvents]
+  return observabilityStore.getBuffered()
+}
+
+export function subscribeObservabilityEvents(listener: (event: ObservabilityEvent) => void): () => void {
+  return observabilityStore.subscribe(listener)
+}
+
+export function resetObservabilityStoreForTests(): void {
+  observabilityStore.clear()
 }

@@ -94,7 +94,7 @@ The app must continue to protect local project editing even when these capabilit
 
 ## 3.1 Orchestration bloat
 
-`src/app/hooks/useSunCastController.ts` is already a concentration point.
+`src/app/presentation/useSunCastController.ts` is already a concentration point.
 
 This is the highest-risk file for future decay because it can easily absorb:
 

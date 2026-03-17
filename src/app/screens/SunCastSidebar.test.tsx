@@ -5,7 +5,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
 import { SunCastSidebar } from './SunCastSidebar'
-import type { SunCastSidebarModel } from '../hooks/useSunCastController'
+import type { SunCastSidebarModel } from '../presentation/presentationModel.types'
 
 vi.mock('../components/FootprintPanel', () => ({ FootprintPanel: () => <div data-testid="footprint-panel" /> }))
 vi.mock('../features/sidebar/RoofEditor', () => ({ RoofEditor: () => <div data-testid="roof-editor-panel" /> }))

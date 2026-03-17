@@ -14,13 +14,13 @@ const mockDeriveSelectedRoofInputs = vi.fn()
 const mockUseDerivedShadingRoofs = vi.fn()
 const mockUseLiveShading = vi.fn()
 const mockUseAnnualSimulation = vi.fn()
-const mockUseSunProjectionPanel = vi.fn()
+const mockUseSunProjectionState = vi.fn()
 
 vi.mock('./useSolvedRoofEntries', () => ({
   useSolvedRoofEntries: (...args: unknown[]) => mockDeriveSolvedRoofs(...args),
 }))
 
-vi.mock('../hooks/useSelectedRoofInputs', () => ({
+vi.mock('./useSelectedRoofInputs', () => ({
   useSelectedRoofInputs: (...args: unknown[]) => mockDeriveSelectedRoofInputs(...args),
 }))
 
@@ -28,16 +28,16 @@ vi.mock('./deriveShadingRoofs', () => ({
   useDerivedShadingRoofs: (...args: unknown[]) => mockUseDerivedShadingRoofs(...args),
 }))
 
-vi.mock('../hooks/useRoofShading', () => ({
+vi.mock('./useRoofShading', () => ({
   useRoofShading: (...args: unknown[]) => mockUseLiveShading(...args),
 }))
 
-vi.mock('../hooks/useAnnualRoofSimulation', () => ({
+vi.mock('./useAnnualRoofSimulation', () => ({
   useAnnualRoofSimulation: (...args: unknown[]) => mockUseAnnualSimulation(...args),
 }))
 
-vi.mock('../features/sun-tools/useSunProjectionPanel', () => ({
-  useSunProjectionPanel: (...args: unknown[]) => mockUseSunProjectionPanel(...args),
+vi.mock('./useSunProjectionState', () => ({
+  useSunProjectionState: (...args: unknown[]) => mockUseSunProjectionState(...args),
 }))
 
 type UseAnalysisArgs = Parameters<typeof useAnalysis>[0]
@@ -139,7 +139,7 @@ describe('useAnalysis', () => {
     mockUseDerivedShadingRoofs.mockReset()
     mockUseLiveShading.mockReset()
     mockUseAnnualSimulation.mockReset()
-    mockUseSunProjectionPanel.mockReset()
+    mockUseSunProjectionState.mockReset()
 
     mockDeriveSolvedRoofs.mockReturnValue({
       entries: [],
@@ -158,7 +158,7 @@ describe('useAnalysis', () => {
         vertexHeightsM: [1, 1, 1],
       },
     ])
-    mockUseSunProjectionPanel.mockReturnValue({
+    mockUseSunProjectionState.mockReturnValue({
       sunDatetimeRaw: '2026-03-08T11:00',
       sunDailyDateRaw: '2026-03-08',
       sunDailyTimeZone: 'UTC',

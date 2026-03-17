@@ -18,34 +18,92 @@ export function useCanvasModel(state: SunCastPresentationState): SunCastCanvasMo
             }
 
       return {
-      editMode: editorSession.editMode,
-      footprints: projectDocument.footprints,
-      activeFootprint: projectDocument.activeFootprint,
-      selectedFootprintIds: projectDocument.selectedFootprintIds,
-      drawDraftRoof: store.state.drawDraft,
-      isDrawingRoof: store.state.isDrawing,
-      obstacles: projectDocument.obstacles,
-      activeObstacle: projectDocument.activeObstacle,
-      selectedObstacleIds: state.selectedObstacleIds,
-      drawDraftObstacle: store.state.obstacleDrawDraft,
-      isDrawingObstacle: store.state.isDrawingObstacle,
-      orbitEnabled: editorSession.orbitEnabled,
-      roofMeshes: analysis.solvedRoofs.entries.map((entry) => entry.mesh),
-      obstacleMeshes: state.obstacleMeshes
-        .filter((result): result is Extract<typeof result, { ok: true }> => result.ok)
-        .map((result) => result.value),
-      vertexConstraints: projectDocument.activeConstraints.vertexHeights,
-      selectedVertexIndex: editorSession.safeSelectedVertexIndex,
-      selectedEdgeIndex: editorSession.safeSelectedEdgeIndex,
-      showSolveHint: !analysis.solvedRoofs.activeSolved,
+      mapView: {
+        drawing: {
+          editMode: editorSession.editMode,
+          footprints: projectDocument.footprints,
+          activeFootprint: projectDocument.activeFootprint,
+          selectedFootprintIds: projectDocument.selectedFootprintIds,
+          drawDraftRoof: store.state.drawDraft,
+          isDrawingRoof: store.state.isDrawing,
+          obstacles: projectDocument.obstacles,
+          activeObstacle: projectDocument.activeObstacle,
+          selectedObstacleIds: state.selectedObstacleIds,
+          drawDraftObstacle: store.state.obstacleDrawDraft,
+          isDrawingObstacle: store.state.isDrawingObstacle,
+          onMapClick: store.addDraftPoint,
+          onCloseDrawing: () => {
+            store.commitFootprint()
+            editorSession.clearSelectionState()
+          },
+          onObstacleMapClick: store.addObstacleDraftPoint,
+          onCloseObstacleDrawing: () => {
+            store.commitObstacle()
+            editorSession.clearSelectionState()
+          },
+        },
+        selection: {
+          vertexConstraints: projectDocument.activeConstraints.vertexHeights,
+          selectedVertexIndex: editorSession.safeSelectedVertexIndex,
+          selectedEdgeIndex: editorSession.safeSelectedEdgeIndex,
+          onSelectVertex: (vertexIndex) => {
+            editorSession.selectVertex(vertexIndex)
+          },
+          onSelectEdge: (edgeIndex) => {
+            editorSession.selectEdge(edgeIndex)
+          },
+          onSelectFootprint: (footprintId, multiSelect) => {
+            if (multiSelect) {
+              store.toggleFootprintSelection(footprintId)
+            } else {
+              store.selectOnlyFootprint(footprintId)
+            }
+            editorSession.clearSelectionState()
+          },
+          onSelectObstacle: (obstacleId, multiSelect) => {
+            if (multiSelect) {
+              store.toggleObstacleSelection(obstacleId)
+            } else {
+              store.selectOnlyObstacle(obstacleId)
+            }
+            editorSession.clearSelectionState()
+          },
+          onClearSelection: () => {
+            editorSession.clearSelectionState()
+            store.clearFootprintSelection()
+            store.clearObstacleSelection()
+          },
+          onMoveVertex: editorSession.moveVertexIfValid,
+          onMoveEdge: editorSession.moveEdgeIfValid,
+          onMoveObstacleVertex: store.moveObstacleVertex,
+          onMoveRejected: editorSession.setMoveRejectedError,
+          onAdjustHeight: editorSession.applyHeightStep,
+        },
+        view: {
+          orbitEnabled: editorSession.orbitEnabled,
+          showSolveHint: !analysis.solvedRoofs.activeSolved,
+          sunProjectionResult,
+          sunPerspectiveCameraPose,
+          mapNavigationTarget: state.mapNavigationTarget,
+          onPlaceSearchSelect: state.onPlaceSearchSelect,
+          onToggleOrbit: () => editorSession.setOrbitEnabled((enabled) => !enabled),
+          onBearingChange: editorSession.setMapBearingDeg,
+          onPitchChange: editorSession.setMapPitchDeg,
+          onGeometryDragStateChange: editorSession.setIsGeometryDragActive,
+        },
+        render: {
+          shadingEnabled: analysis.heatmap.mapEnabled,
+          shadingHeatmapFeatures: analysis.heatmap.mapFeatures,
+          shadingComputeState: analysis.heatmap.mapComputeState,
+          roofMeshes: analysis.solvedRoofs.entries.map((entry) => entry.mesh),
+          obstacleMeshes: state.obstacleMeshes
+            .filter((result): result is Extract<typeof result, { ok: true }> => result.ok)
+            .map((result) => result.value),
+        },
+      },
       sunProjectionEnabled: projectDocument.sunProjection.enabled,
       hasValidSunDatetime: analysis.sunProjection.hasValidDatetime,
       sunDatetimeError: analysis.sunProjection.datetimeError,
-      sunProjectionResult,
-      sunPerspectiveCameraPose,
-      shadingEnabled: analysis.heatmap.mapEnabled,
-      shadingHeatmapFeatures: analysis.heatmap.mapFeatures,
-      shadingComputeState: analysis.heatmap.mapComputeState,
       annualSimulationHeatmapFeatures: analysis.heatmap.annualFeatures,
       annualSimulationState: analysis.annualSimulation.state,
       activeHeatmapMode: analysis.heatmap.activeMode,
@@ -60,54 +118,6 @@ export function useCanvasModel(state: SunCastPresentationState): SunCastCanvasMo
       sunDailyTimeZone: analysis.sunProjection.dailyTimeZone,
       selectedRoofInputs: analysis.selectedRoofInputs,
       hasSolvedActiveRoof: Boolean(analysis.solvedRoofs.activeSolved),
-      mapNavigationTarget: state.mapNavigationTarget,
-      onPlaceSearchSelect: state.onPlaceSearchSelect,
-      onToggleOrbit: () => editorSession.setOrbitEnabled((enabled) => !enabled),
-      onSelectVertex: (vertexIndex) => {
-        editorSession.selectVertex(vertexIndex)
-      },
-      onSelectEdge: (edgeIndex) => {
-        editorSession.selectEdge(edgeIndex)
-      },
-      onSelectFootprint: (footprintId, multiSelect) => {
-        if (multiSelect) {
-          store.toggleFootprintSelection(footprintId)
-        } else {
-          store.selectOnlyFootprint(footprintId)
-        }
-        editorSession.clearSelectionState()
-      },
-      onSelectObstacle: (obstacleId, multiSelect) => {
-        if (multiSelect) {
-          store.toggleObstacleSelection(obstacleId)
-        } else {
-          store.selectOnlyObstacle(obstacleId)
-        }
-        editorSession.clearSelectionState()
-      },
-      onClearSelection: () => {
-        editorSession.clearSelectionState()
-        store.clearFootprintSelection()
-        store.clearObstacleSelection()
-      },
-      onMoveVertex: editorSession.moveVertexIfValid,
-      onMoveEdge: editorSession.moveEdgeIfValid,
-      onMoveObstacleVertex: store.moveObstacleVertex,
-      onMoveRejected: editorSession.setMoveRejectedError,
-      onAdjustHeight: editorSession.applyHeightStep,
-      onMapClick: store.addDraftPoint,
-      onCloseDrawing: () => {
-        store.commitFootprint()
-        editorSession.clearSelectionState()
-      },
-      onObstacleMapClick: store.addObstacleDraftPoint,
-      onCloseObstacleDrawing: () => {
-        store.commitObstacle()
-        editorSession.clearSelectionState()
-      },
-      onBearingChange: editorSession.setMapBearingDeg,
-      onPitchChange: editorSession.setMapPitchDeg,
-      onGeometryDragStateChange: editorSession.setIsGeometryDragActive,
       productionComputationEnabled: analysis.productionComputationEnabled,
       onInitialized: () => editorSession.setMapInitialized(true),
       onToggleSunProjectionEnabled: store.setSunProjectionEnabled,

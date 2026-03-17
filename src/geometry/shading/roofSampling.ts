@@ -10,8 +10,8 @@ interface RoofGridSamplingOptions {
   overflowStrategy?: 'auto-increase' | 'abort'
 }
 
-// Purpose: Encapsulates point in polygon behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function pointInPolygon(point: { x: number; y: number }, polygon: Array<{ x: number; y: number }>): boolean {
   let inside = false
 
@@ -43,8 +43,8 @@ export function pointInPolygon(point: { x: number; y: number }, polygon: Array<{
   return inside
 }
 
-// Purpose: Builds roof surface from local vertices from the provided inputs.
-// Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
+
+
 export function buildRoofSurfaceFromLocalVertices(
   roofId: string,
   polygonLocal: Array<{ x: number; y: number }>,
@@ -73,8 +73,8 @@ export function buildRoofSurfaceFromLocalVertices(
   }
 }
 
-// Purpose: Builds cell polygon from the provided inputs.
-// Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
+
+
 function buildCellPolygon(x: number, y: number, resolutionM: number): Array<{ x: number; y: number }> {
   const half = resolutionM / 2
   return [
@@ -86,8 +86,8 @@ function buildCellPolygon(x: number, y: number, resolutionM: number): Array<{ x:
   ]
 }
 
-// Purpose: Computes compute grid axis count deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
+
+
 function computeGridAxisCount(minValue: number, maxValue: number, step: number): number {
   if (minValue > maxValue || step <= 0) {
     return 0
@@ -96,8 +96,8 @@ function computeGridAxisCount(minValue: number, maxValue: number, step: number):
   return Math.floor((maxValue - minValue + GRID_LOOP_EPS) / step) + 1
 }
 
-// Purpose: Computes normalized sample cap deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
+
+
 function normalizedSampleCap(value: number | undefined): number | null {
   if (!Number.isFinite(value) || value === undefined) {
     return null
@@ -107,8 +107,8 @@ function normalizedSampleCap(value: number | undefined): number | null {
   return floored > 0 ? floored : null
 }
 
-// Purpose: Computes sample roof grid deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
+
+
 export function sampleRoofGrid(
   roof: LocalRoofSurface,
   resolutionM: number,
@@ -180,8 +180,8 @@ export function sampleRoofGrid(
   return samples
 }
 
-// Purpose: Encapsulates roof bbox behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function roofBbox(roof: LocalRoofSurface): BBox2 {
   return roof.bbox
 }

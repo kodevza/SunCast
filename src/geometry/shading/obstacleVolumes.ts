@@ -5,8 +5,8 @@ import type { ObstaclePrism, Point3, ShadingObstacleInput, Triangle3 } from './t
 import { bboxFromPoints } from './shadowProjection'
 import { cylinderToPolygon } from '../obstacles/obstacleModels'
 
-// Purpose: Builds prism triangles from the provided inputs.
-// Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
+
+
 export function createPrismTriangles(polygonLocal: Array<{ x: number; y: number }>, topZ: number): Triangle3[] {
   const triangles: Triangle3[] = []
 
@@ -39,8 +39,8 @@ export function createPrismTriangles(polygonLocal: Array<{ x: number; y: number 
   return triangles
 }
 
-// Purpose: Computes normalize obstacles to prisms deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
+
+
 export function normalizeObstaclesToPrisms(origin: LocalOrigin, obstacles: ShadingObstacleInput[]): ObstaclePrism[] {
   const prisms: ObstaclePrism[] = []
 

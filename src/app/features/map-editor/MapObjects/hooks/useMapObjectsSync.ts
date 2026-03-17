@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import type maplibregl from 'maplibre-gl'
-import type { RoofMeshData, ObstacleMeshData } from '../../../../../types/geometry'
-import type { ShadeHeatmapFeature } from '../../../../analysis/analysis.types'
+import type { ObstacleMeshData, RoofHeatmapFeature, RoofMeshData } from '../../../../../types/geometry'
 import { RoofHeatmapLayer } from '../../../../../rendering/roof-layer/RoofHeatmapLayer'
-import { buildObstacleLayerGeometry, buildRoofLayerGeometry } from '../geometry/layerGeometryAdapters'
+import { buildObstacleLayerGeometry, buildRoofLayerGeometry } from '../../../../../rendering/shared/layerGeometryAdapters'
 import { WorldMeshLayer } from '../layers/MapObjectMeshLayer'
 
 interface UseMapObjectsSyncArgs {
@@ -11,7 +10,7 @@ interface UseMapObjectsSyncArgs {
   mapLoaded: boolean
   roofMeshes: RoofMeshData[]
   obstacleMeshes: ObstacleMeshData[]
-  heatmapFeatures: ShadeHeatmapFeature[]
+  heatmapFeatures: RoofHeatmapFeature[]
   orbitEnabled: boolean
   meshesVisible: boolean
   shadingEnabled: boolean

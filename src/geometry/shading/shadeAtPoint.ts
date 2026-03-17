@@ -12,8 +12,8 @@ interface ShadeAtPointInput {
   maxShadowDistanceM: number
 }
 
-// Purpose: Computes normalized distance limit deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
+
+
 function normalizedDistanceLimit(maxShadowDistanceM: number, direction: SunDirection): number {
   const horizontalMagnitude = Math.sqrt(direction.x * direction.x + direction.y * direction.y)
   if (horizontalMagnitude <= 1e-8) {
@@ -23,8 +23,8 @@ function normalizedDistanceLimit(maxShadowDistanceM: number, direction: SunDirec
   return maxShadowDistanceM / horizontalMagnitude
 }
 
-// Purpose: Encapsulates obstacle can block sample behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function obstacleCanBlockSample(
   sample: { x: number; y: number; z: number },
   direction: SunDirection,
@@ -59,8 +59,8 @@ function obstacleCanBlockSample(
   return maxProjection >= -1e-6 && minProjection <= maxShadowDistanceM + 1e-6
 }
 
-// Purpose: Checks whether point shaded and returns a boolean result.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function isPointShaded(input: ShadeAtPointInput): boolean {
   if (input.sunDirection.z <= 0) {
     return true

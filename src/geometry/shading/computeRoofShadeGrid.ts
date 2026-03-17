@@ -4,8 +4,8 @@ import { computeShadeSnapshot } from './computeShadeSnapshot'
 import { prepareShadingScene } from './prepareShadingScene'
 import type { ComputeRoofShadeGridInput, ComputeRoofShadeGridResult } from './types'
 
-// Purpose: Encapsulates empty diagnostics behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function emptyDiagnostics() {
   return {
     roofsProcessed: 0,
@@ -16,8 +16,8 @@ function emptyDiagnostics() {
   }
 }
 
-// Purpose: Encapsulates to status result behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function toStatusResult(
   status: ComputeRoofShadeGridResult['status'],
   statusMessage: string,
@@ -35,8 +35,8 @@ function toStatusResult(
   }
 }
 
-// Purpose: Computes compute roof shade grid deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
+
+
 export function computeRoofShadeGrid(input: ComputeRoofShadeGridInput): ComputeRoofShadeGridResult {
   if (!Number.isFinite(input.gridResolutionM) || input.gridResolutionM <= 0) {
     return toStatusResult('INVALID_GRID_RESOLUTION', 'Grid resolution must be a positive finite number')

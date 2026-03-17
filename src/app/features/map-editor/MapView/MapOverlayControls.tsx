@@ -1,7 +1,8 @@
-import { HEIGHT_STEP_M, HEIGHT_STEP_SHIFT_M } from './mapViewConstants'
 import type { DrawingAngleHint, HoveredEdgeLength, VertexDragAngleHint } from './hooks/useMapInteractions'
 import { PlaceSearchPanel } from '../../place-search/PlaceSearchPanel'
 import type { PlaceSearchResult } from '../../place-search/placeSearch.types'
+import { MapController } from './MapController'
+import { MapDrawingController } from './MapDrawingController'
 
 interface MapOverlayControlsProps {
   basemapMode: 'satellite' | 'streets'
@@ -22,8 +23,6 @@ interface MapOverlayControlsProps {
   drawLengthInput: string
   onDrawLengthInputChange: (value: string) => void
   onDrawLengthInputSubmit: () => void
-  gizmoScreenPos: { left: number; top: number } | null
-  onAdjustHeight: (stepM: number) => void
   showSolveHint: boolean
   onAdjustOrbitCamera: (bearingDeltaDeg: number, pitchDeltaDeg: number) => void
   onPlaceSearchSelect: (result: PlaceSearchResult) => void
@@ -48,8 +47,6 @@ export function MapOverlayControls({
   drawLengthInput,
   onDrawLengthInputChange,
   onDrawLengthInputSubmit,
-  gizmoScreenPos,
-  onAdjustHeight,
   showSolveHint,
   onAdjustOrbitCamera,
   onPlaceSearchSelect,
@@ -59,89 +56,18 @@ export function MapOverlayControls({
       <div className="map-place-search">
         <PlaceSearchPanel onSelectResult={onPlaceSearchSelect} />
       </div>
-      <div className="map-basemap-controls" role="group" aria-label="Basemap mode">
-        <button
-          type="button"
-          className={basemapMode === 'satellite' ? 'map-basemap-button map-basemap-button-active' : 'map-basemap-button'}
-          onClick={() => onBasemapModeChange('satellite')}
-          data-testid="basemap-satellite-button"
-        >
-          Satellite
-        </button>
-        <button
-          type="button"
-          className={basemapMode === 'streets' ? 'map-basemap-button map-basemap-button-active' : 'map-basemap-button'}
-          onClick={() => onBasemapModeChange('streets')}
-          data-testid="basemap-streets-button"
-        >
-          Streets
-        </button>
-      </div>
-      <button
-        type="button"
-        className="map-orbit-toggle"
-        onClick={onToggleOrbit}
-        title="Toggle orbit editing view for 3D interaction."
-        data-testid="orbit-toggle-button"
-      >
-        {orbitEnabled ? 'Exit orbit' : 'Orbit'}
-      </button>
-      <button
-        type="button"
-        className="map-sun-perspective-toggle"
-        onClick={onToggleSunPerspective}
-        title="Align camera to sun direction (requires orbit and computed sun position)."
-        data-testid="sun-perspective-toggle-button"
-        disabled={!orbitEnabled || !canUseSunPerspective}
-      >
-        {sunPerspectiveEnabled ? 'Exit sun view' : 'Sun view'}
-      </button>
-      <button
-        type="button"
-        className="map-mesh-toggle"
-        onClick={onToggleMeshesVisible}
-        title="Show/hide roof and obstacle meshes in orbit mode."
-        data-testid="mesh-visibility-toggle-button"
-        disabled={!orbitEnabled}
-      >
-        {meshesVisible ? 'Hide meshes' : 'Show meshes'}
-      </button>
-      {orbitEnabled && (
-        <div className="map-camera-controls">
-          <button
-            type="button"
-            data-testid="map-rotate-left-button"
-            onClick={() => onAdjustOrbitCamera(-15, 0)}
-            title="Rotate left"
-          >
-            ⟲
-          </button>
-          <button
-            type="button"
-            data-testid="map-rotate-right-button"
-            onClick={() => onAdjustOrbitCamera(15, 0)}
-            title="Rotate right"
-          >
-            ⟳
-          </button>
-          <button
-            type="button"
-            data-testid="map-pitch-up-button"
-            onClick={() => onAdjustOrbitCamera(0, 6)}
-            title="Pitch up"
-          >
-            ↥
-          </button>
-          <button
-            type="button"
-            data-testid="map-pitch-down-button"
-            onClick={() => onAdjustOrbitCamera(0, -6)}
-            title="Pitch down"
-          >
-            ↧
-          </button>
-        </div>
-      )}
+      <MapController
+        basemapMode={basemapMode}
+        onBasemapModeChange={onBasemapModeChange}
+        orbitEnabled={orbitEnabled}
+        onToggleOrbit={onToggleOrbit}
+        sunPerspectiveEnabled={sunPerspectiveEnabled}
+        canUseSunPerspective={canUseSunPerspective}
+        onToggleSunPerspective={onToggleSunPerspective}
+        meshesVisible={meshesVisible}
+        onToggleMeshesVisible={onToggleMeshesVisible}
+        onAdjustOrbitCamera={onAdjustOrbitCamera}
+      />
       {orbitEnabled && meshCount === 0 && !isDrawing && (
         <div className="map-mesh-hint" data-testid="map-mesh-hint">
           Meshes need a solved roof or at least one obstacle.
@@ -157,43 +83,13 @@ export function MapOverlayControls({
         </div>
       )}
       {drawingAngleHint && isDrawing && !orbitEnabled && (
-        <div
-          className="map-draw-angle-label"
-          style={{ left: `${drawingAngleHint.left}px`, top: `${drawingAngleHint.top}px` }}
-          data-testid="map-draw-angle-label"
-        >
-          {drawingAngleHint.lengthM.toFixed(2)} m
-          {drawingAngleHint.secondPointPreview && drawingAngleHint.azimuthDeg !== null && drawingAngleHint.angleFromSouthDeg !== null
-            ? ` | az ${drawingAngleHint.azimuthDeg.toFixed(1)} deg | S ${drawingAngleHint.angleFromSouthDeg.toFixed(1)} deg`
-            : drawingAngleHint.angleDeg !== null
-              ? ` | ${drawingAngleHint.angleDeg.toFixed(1)} deg`
-              : ''}
-          {drawingAngleHint.snapped ? ' snap' : ''}
-          <label className="map-draw-length-input-wrap" onMouseDown={(event) => event.stopPropagation()}>
-            <span>Edge</span>
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              inputMode="decimal"
-              placeholder={drawingAngleHint.lengthM.toFixed(2)}
-              value={drawLengthInput}
-              title="Set exact edge length (m). Press Enter to commit point."
-              onClick={(event) => event.stopPropagation()}
-              onChange={(event) => onDrawLengthInputChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  onDrawLengthInputSubmit()
-                }
-              }}
-              className="map-draw-length-input"
-              data-testid="map-draw-length-input"
-            />
-            <span>m</span>
-          </label>
-        </div>
+        <MapDrawingController
+          drawingAngleHint={drawingAngleHint}
+          drawLengthInput={drawLengthInput}
+          onDrawLengthInputChange={onDrawLengthInputChange}
+          onDrawLengthInputSubmit={onDrawLengthInputSubmit}
+          enabled={isDrawing && !orbitEnabled}
+        />
       )}
       {vertexDragAngleHint && !isDrawing && !orbitEnabled && (
         <div
@@ -202,26 +98,6 @@ export function MapOverlayControls({
           data-testid="map-vertex-angle-label"
         >
           {vertexDragAngleHint.angleDeg.toFixed(1)} deg
-        </div>
-      )}
-      {orbitEnabled && gizmoScreenPos && (
-        <div className="height-gizmo" style={{ left: `${gizmoScreenPos.left}px`, top: `${gizmoScreenPos.top}px` }}>
-          <button
-            type="button"
-            className="height-gizmo-button"
-            onClick={(event) => onAdjustHeight(event.shiftKey ? HEIGHT_STEP_SHIFT_M : HEIGHT_STEP_M)}
-            title={`Increase selected geometry height (+${HEIGHT_STEP_M.toFixed(2)} m, Shift for +${HEIGHT_STEP_SHIFT_M.toFixed(2)} m).`}
-          >
-            ▲
-          </button>
-          <button
-            type="button"
-            className="height-gizmo-button"
-            onClick={(event) => onAdjustHeight(event.shiftKey ? -HEIGHT_STEP_SHIFT_M : -HEIGHT_STEP_M)}
-            title={`Decrease selected geometry height (-${HEIGHT_STEP_M.toFixed(2)} m, Shift for -${HEIGHT_STEP_SHIFT_M.toFixed(2)} m).`}
-          >
-            ▼
-          </button>
         </div>
       )}
       {orbitEnabled && showSolveHint && hasActiveFootprint && <div className="map-hint">Add heights to solve plane</div>}

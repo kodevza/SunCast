@@ -119,8 +119,8 @@ export function snapDrawPointToRightAngle(
   return { point: snappedPoint, snapped: true, angleDeg: 90 }
 }
 
-// Purpose: Encapsulates snap vertex point to right angle behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function snapVertexPointToRightAngle(
   vertices: Array<[number, number]>,
   vertexIndex: number,

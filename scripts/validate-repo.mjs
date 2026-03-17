@@ -1,4 +1,4 @@
-import { readFile, access } from 'node:fs/promises'
+import { readFile, access, readdir } from 'node:fs/promises'
 import { constants } from 'node:fs'
 
 const requiredDocs = [
@@ -24,6 +24,8 @@ const forbiddenDocPatterns = [
   'src/app/components/DrawTools/',
   'src/app/screens/EditorScreen.tsx',
 ]
+
+
 
 async function assertRequiredDocs() {
   const missing = []
@@ -62,6 +64,8 @@ async function main() {
 
   const staleDocPaths = await scanDocsForStalePaths()
   errors.push(...staleDocPaths)
+
+
 
   if (errors.length > 0) {
     console.error('Repository validation failed:')

@@ -6,7 +6,7 @@ import { MonthlyProductionPanel } from './MonthlyProductionPanel'
 import { SunDateTimePanel } from './SunDateTimePanel'
 import type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
 import type { AnnualSunAccessResult } from '../../../geometry/shading'
-import type { AnnualSimulationOptions, AnnualSimulationState } from '../../hooks/useAnnualRoofSimulation'
+import type { AnnualSimulationOptions, AnnualSimulationState } from '../../analysis/analysis.types'
 export type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
 
 interface SunOverlayColumnProps {

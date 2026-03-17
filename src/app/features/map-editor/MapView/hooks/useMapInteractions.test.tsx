@@ -10,7 +10,12 @@ import { projectPointsToLocalMeters } from '../../../../../geometry/projection/l
 
 type Handler = (event: unknown) => void
 type UseMapInteractionsArgs = Parameters<typeof useMapInteractions>[0]
-type InteractionRefs = UseMapInteractionsArgs['refs']
+type InteractionModel = UseMapInteractionsArgs['model']
+type InteractionModelOverrides = {
+  drawing?: Partial<InteractionModel['drawing']>
+  selection?: Partial<InteractionModel['selection']>
+  camera?: Partial<InteractionModel['camera']>
+}
 
 interface MapMock {
   handlers: Record<string, Handler>
@@ -53,7 +58,7 @@ function createMapMock(hitFeatures: unknown[] = []): MapMock {
 function renderInteractions(args: {
   mapRef: RefObject<unknown>
   mapLoaded: boolean
-  refs: InteractionRefs
+  model: InteractionModel
 }) {
   const container = document.createElement('div')
   document.body.appendChild(container)
@@ -65,7 +70,7 @@ function renderInteractions(args: {
     const hookResult = useMapInteractions({
       mapRef: args.mapRef as UseMapInteractionsArgs['mapRef'],
       mapLoaded: args.mapLoaded,
-      refs: args.refs,
+      model: args.model,
       constrainedDrawLengthM: null,
     })
     useEffect(() => {
@@ -89,14 +94,28 @@ function renderInteractions(args: {
   }
 }
 
-function createRefs(overrides: Partial<InteractionRefs> = {}): InteractionRefs {
-  return {
-    drawingRef: { current: false },
-    drawDraftRef: { current: [] as Array<[number, number]> },
-    editModeRef: { current: 'roof' },
-    orbitEnabledRef: { current: false },
-    activeFootprintRef: {
-      current: {
+function createModel(overrides: InteractionModelOverrides = {}) {
+  const onMapClick = vi.fn()
+  const onCloseDrawing = vi.fn()
+  const onSelectVertex = vi.fn()
+  const onSelectEdge = vi.fn()
+  const onSelectFootprint = vi.fn()
+  const onSelectObstacle = vi.fn()
+  const onClearSelection = vi.fn()
+  const onMoveVertex = vi.fn(() => true)
+  const onMoveEdge = vi.fn(() => true)
+  const onMoveObstacleVertex = vi.fn(() => true)
+  const onMoveRejected = vi.fn()
+  const onBearingChange = vi.fn()
+  const onPitchChange = vi.fn()
+  const onGeometryDragStateChange = vi.fn()
+
+  const model: InteractionModel = {
+    drawing: {
+      editMode: 'roof',
+      drawDraft: [],
+      isDrawing: false,
+      activeFootprint: {
         id: 'a',
         vertices: [
           [10, 10],
@@ -105,23 +124,48 @@ function createRefs(overrides: Partial<InteractionRefs> = {}): InteractionRefs {
         ],
         kwp: 4,
       },
+      activeObstacle: null,
+      commitDrawPoint: onMapClick,
+      closeDrawing: onCloseDrawing,
+      ...overrides.drawing,
     },
-    activeObstacleRef: { current: null },
-    onMapClickRef: { current: vi.fn() },
-    onCloseDrawingRef: { current: vi.fn() },
-    onSelectVertexRef: { current: vi.fn() },
-    onSelectEdgeRef: { current: vi.fn() },
-    onSelectFootprintRef: { current: vi.fn() },
-    onSelectObstacleRef: { current: vi.fn() },
-    onClearSelectionRef: { current: vi.fn() },
-    onMoveVertexRef: { current: vi.fn(() => true) },
-    onMoveEdgeRef: { current: vi.fn(() => true) },
-    onMoveObstacleVertexRef: { current: vi.fn(() => true) },
-    onMoveRejectedRef: { current: vi.fn() },
-    onBearingChangeRef: { current: vi.fn() },
-    onPitchChangeRef: { current: vi.fn() },
-    onGeometryDragStateChangeRef: { current: vi.fn() },
-    ...overrides,
+    selection: {
+      onSelectVertex,
+      onSelectEdge,
+      onSelectFootprint,
+      onSelectObstacle,
+      onClearSelection,
+      onMoveVertex,
+      onMoveEdge,
+      onMoveObstacleVertex,
+      onMoveRejected,
+      ...overrides.selection,
+    },
+    camera: {
+      orbitEnabled: false,
+      onBearingChange,
+      onPitchChange,
+      onGeometryDragStateChange,
+      ...overrides.camera,
+    },
+  }
+
+  return {
+    model,
+    onMapClick,
+    onCloseDrawing,
+    onSelectVertex,
+    onSelectEdge,
+    onSelectFootprint,
+    onSelectObstacle,
+    onClearSelection,
+    onMoveVertex,
+    onMoveEdge,
+    onMoveObstacleVertex,
+    onMoveRejected,
+    onBearingChange,
+    onPitchChange,
+    onGeometryDragStateChange,
   }
 }
 
@@ -153,16 +197,18 @@ describe('useMapInteractions', () => {
     const { handlers, map } = createMapMock()
     const onMapClick = vi.fn()
     const onCloseDrawing = vi.fn()
-    const refs = createRefs({
-      drawingRef: { current: true },
-      drawDraftRef: { current: [] as Array<[number, number]> },
-      onMapClickRef: { current: onMapClick },
-      onCloseDrawingRef: { current: onCloseDrawing },
+    const testModel = createModel({
+      drawing: {
+        isDrawing: true,
+        drawDraft: [],
+        commitDrawPoint: onMapClick,
+        closeDrawing: onCloseDrawing,
+      },
     })
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.click({
@@ -180,15 +226,17 @@ describe('useMapInteractions', () => {
   it('snaps draft click to a right angle when near 90 degrees', () => {
     const { handlers, map } = createMapMock()
     const onMapClick = vi.fn()
-    const refs = createRefs({
-      drawingRef: { current: true },
-      drawDraftRef: { current: [[0, 0], [0.001, 0]] as Array<[number, number]> },
-      onMapClickRef: { current: onMapClick },
+    const testModel = createModel({
+      drawing: {
+        isDrawing: true,
+        drawDraft: [[0, 0], [0.001, 0]],
+        commitDrawPoint: onMapClick,
+      },
     })
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.click({
@@ -207,15 +255,17 @@ describe('useMapInteractions', () => {
   it('disables right-angle snap while shift is pressed during draw click', () => {
     const { handlers, map } = createMapMock()
     const onMapClick = vi.fn()
-    const refs = createRefs({
-      drawingRef: { current: true },
-      drawDraftRef: { current: [[0, 0], [0.001, 0]] as Array<[number, number]> },
-      onMapClickRef: { current: onMapClick },
+    const testModel = createModel({
+      drawing: {
+        isDrawing: true,
+        drawDraft: [[0, 0], [0.001, 0]],
+        commitDrawPoint: onMapClick,
+      },
     })
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.click({
@@ -240,16 +290,18 @@ describe('useMapInteractions', () => {
       x: lng * 1000,
       y: lat * 1000,
     }))
-    const refs = createRefs({
-      drawingRef: { current: true },
-      drawDraftRef: { current: [[0, 0], [0.001, 0], [0.001, 0.001]] as Array<[number, number]> },
-      onMapClickRef: { current: onMapClick },
-      onCloseDrawingRef: { current: onCloseDrawing },
+    const testModel = createModel({
+      drawing: {
+        isDrawing: true,
+        drawDraft: [[0, 0], [0.001, 0], [0.001, 0.001]],
+        commitDrawPoint: onMapClick,
+        closeDrawing: onCloseDrawing,
+      },
     })
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.click({
@@ -272,16 +324,18 @@ describe('useMapInteractions', () => {
       x: lng * 1000,
       y: lat * 1000,
     }))
-    const refs = createRefs({
-      drawingRef: { current: true },
-      drawDraftRef: { current: [[0, 0], [0.001, 0], [0.001, 0.001]] as Array<[number, number]> },
-      onMapClickRef: { current: onMapClick },
-      onCloseDrawingRef: { current: onCloseDrawing },
+    const testModel = createModel({
+      drawing: {
+        isDrawing: true,
+        drawDraft: [[0, 0], [0.001, 0], [0.001, 0.001]],
+        commitDrawPoint: onMapClick,
+        closeDrawing: onCloseDrawing,
+      },
     })
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.click({
@@ -299,11 +353,11 @@ describe('useMapInteractions', () => {
   it('uses resize cursor on editable edge hover', () => {
     const hitFeatures = [{ layer: { id: 'active-footprint-edge-hit' }, properties: { edgeIndex: 0 } }]
     const { handlers, map } = createMapMock(hitFeatures)
-    const refs = createRefs()
+    const testModel = createModel()
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.mousemove({
@@ -321,11 +375,11 @@ describe('useMapInteractions', () => {
   it('reduces drag hit tolerance at high zoom for precise editing', () => {
     const { handlers, map } = createMapMock([])
     map.getZoom.mockReturnValue(21)
-    const refs = createRefs()
+    const testModel = createModel()
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.mousemove({
@@ -344,11 +398,11 @@ describe('useMapInteractions', () => {
 
   it('uses middle mouse for orbit steer and clamps pitch', () => {
     const { handlers, map } = createMapMock()
-    const refs = createRefs({ orbitEnabledRef: { current: true } })
+    const testModel = createModel({ camera: { orbitEnabled: true } })
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.mousedown({
@@ -359,7 +413,7 @@ describe('useMapInteractions', () => {
     })
 
     expect(map.dragPan.disable).toHaveBeenCalled()
-    expect(refs.onGeometryDragStateChangeRef.current).not.toHaveBeenCalledWith(true)
+    expect(testModel.onGeometryDragStateChange).not.toHaveBeenCalledWith(true)
 
     map.getPitch.mockReturnValue(2)
     act(() => {
@@ -381,11 +435,12 @@ describe('useMapInteractions', () => {
   it('reports rejected drag when vertex move is invalid', () => {
     const hitFeatures = [{ layer: { id: 'active-footprint-vertex-hit' }, properties: { vertexIndex: 1 } }]
     const { handlers, map } = createMapMock(hitFeatures)
-    const refs = createRefs({ onMoveVertexRef: { current: vi.fn(() => false) } })
+    const onMoveVertex = vi.fn(() => false)
+    const testModel = createModel({ selection: { onMoveVertex } })
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.mousedown({
@@ -395,7 +450,7 @@ describe('useMapInteractions', () => {
       })
     })
 
-    expect(refs.onGeometryDragStateChangeRef.current).toHaveBeenCalledWith(true)
+    expect(testModel.onGeometryDragStateChange).toHaveBeenCalledWith(true)
 
     act(() => {
       handlers.mousemove({
@@ -405,25 +460,25 @@ describe('useMapInteractions', () => {
       })
     })
 
-    expect(refs.onMoveVertexRef.current).toHaveBeenCalledWith(1, [13, 14])
+    expect(onMoveVertex).toHaveBeenCalledWith(1, [13, 14])
 
     act(() => {
       handlers.mouseup({})
     })
 
-    expect(refs.onMoveRejectedRef.current).toHaveBeenCalled()
-    expect(refs.onGeometryDragStateChangeRef.current).toHaveBeenLastCalledWith(false)
+    expect(testModel.onMoveRejected).toHaveBeenCalled()
+    expect(testModel.onGeometryDragStateChange).toHaveBeenLastCalledWith(false)
     hook.unmount()
   })
 
   it('reports vertex angle hint while dragging a vertex', () => {
     const hitFeatures = [{ layer: { id: 'active-footprint-vertex-hit' }, properties: { vertexIndex: 1 } }]
     const { handlers, map } = createMapMock(hitFeatures)
-    const refs = createRefs()
+    const testModel = createModel()
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.mousedown({
@@ -463,21 +518,21 @@ describe('useMapInteractions', () => {
       [0.001, 0.001],
     ]
     const onMoveVertex = vi.fn(() => true)
-    const refs = createRefs({
-      activeFootprintRef: {
-        current: {
+    const testModel = createModel({
+      drawing: {
+        activeFootprint: {
           id: 'a',
           vertices,
           kwp: 4,
         },
       },
-      onMoveVertexRef: { current: onMoveVertex },
+      selection: { onMoveVertex },
     })
     const mapRef = createRef<unknown>()
     mapRef.current = map
     const rawPoint: [number, number] = [0.00104, 0.0003]
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.mousedown({
@@ -515,13 +570,11 @@ describe('useMapInteractions', () => {
   it('selects obstacle in obstacle edit mode', () => {
     const hitFeatures = [{ layer: { id: 'obstacles-hit' }, properties: { obstacleId: 'ob-1' } }]
     const { handlers, map } = createMapMock(hitFeatures)
-    const refs = createRefs({
-      editModeRef: { current: 'obstacle' },
-    })
+    const testModel = createModel({ drawing: { editMode: 'obstacle' } })
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.click({
@@ -531,17 +584,17 @@ describe('useMapInteractions', () => {
       })
     })
 
-    expect(refs.onSelectObstacleRef.current).toHaveBeenCalledWith('ob-1', false)
+    expect(testModel.onSelectObstacle).toHaveBeenCalledWith('ob-1', false)
     hook.unmount()
   })
 
   it('shows edge-length label when hovering active obstacle edge in obstacle mode', () => {
     const hitFeatures = [{ layer: { id: 'active-obstacle-edge-hit' }, properties: { edgeIndex: 0 } }]
     const { handlers, map } = createMapMock(hitFeatures)
-    const refs = createRefs({
-      editModeRef: { current: 'obstacle' },
-      activeObstacleRef: {
-        current: {
+    const testModel = createModel({
+      drawing: {
+        editMode: 'obstacle',
+        activeObstacle: {
           id: 'ob-1',
           kind: 'custom',
           shape: {
@@ -559,7 +612,7 @@ describe('useMapInteractions', () => {
     const mapRef = createRef<unknown>()
     mapRef.current = map
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.mousemove({
@@ -587,10 +640,10 @@ describe('useMapInteractions', () => {
       [0.001, 0.001],
     ]
     const onMoveObstacleVertex = vi.fn(() => true)
-    const refs = createRefs({
-      editModeRef: { current: 'obstacle' },
-      activeObstacleRef: {
-        current: {
+    const testModel = createModel({
+      drawing: {
+        editMode: 'obstacle',
+        activeObstacle: {
           id: 'ob-1',
           kind: 'custom',
           shape: {
@@ -600,13 +653,13 @@ describe('useMapInteractions', () => {
           heightAboveGroundM: 8,
         },
       },
-      onMoveObstacleVertexRef: { current: onMoveObstacleVertex },
+      selection: { onMoveObstacleVertex },
     })
     const mapRef = createRef<unknown>()
     mapRef.current = map
     const rawPoint: [number, number] = [0.00104, 0.0003]
 
-    const hook = renderInteractions({ mapRef, mapLoaded: true, refs })
+    const hook = renderInteractions({ mapRef, mapLoaded: true, model: testModel.model })
 
     act(() => {
       handlers.mousedown({

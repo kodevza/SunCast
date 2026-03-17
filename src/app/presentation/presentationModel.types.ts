@@ -1,4 +1,4 @@
-import type { ComputeRoofShadeGridResult, RoofShadeDiagnostics } from '../../geometry/shading'
+import type { ComputeRoofShadeGridResult, RoofShadeDiagnosticsResults } from '../../geometry/shading'
 import type { AnnualSunAccessResult } from '../../geometry/shading'
 import type { SunProjectionResult } from '../../geometry/sun/sunProjection'
 import type {
@@ -25,18 +25,7 @@ export function clampPitchAdjustmentPercent(value: number): number {
   return Math.min(MAX_PITCH_ADJUSTMENT_PERCENT, Math.max(MIN_PITCH_ADJUSTMENT_PERCENT, value))
 }
 
-export function computeFootprintCentroid(vertices: Array<[number, number]>): [number, number] | null {
-  if (vertices.length === 0) {
-    return null
-  }
-  let lonSum = 0
-  let latSum = 0
-  for (const [lon, lat] of vertices) {
-    lonSum += lon
-    latSum += lat
-  }
-  return [lonSum / vertices.length, latSum / vertices.length]
-}
+export { computeFootprintCentroid } from '../../shared/utils/footprintGeometry'
 
 export interface SunCastSidebarModel {
   editMode: 'roof' | 'obstacle'
@@ -95,42 +84,17 @@ export interface SunCastSidebarModel {
 }
 
 export interface SunCastCanvasModel {
-  editMode: 'roof' | 'obstacle'
-  footprints: FootprintPolygon[]
-  activeFootprint: FootprintPolygon | null
-  selectedFootprintIds: string[]
-  drawDraftRoof: Array<[number, number]>
-  isDrawingRoof: boolean
-  obstacles: ObstacleStateEntry[]
-  activeObstacle: ObstacleStateEntry | null
-  selectedObstacleIds: string[]
-  drawDraftObstacle: Array<[number, number]>
-  isDrawingObstacle: boolean
-  orbitEnabled: boolean
-  roofMeshes: RoofMeshData[]
-  obstacleMeshes: RoofMeshData[]
-  vertexConstraints: FaceConstraints['vertexHeights']
-  selectedVertexIndex: number | null
-  selectedEdgeIndex: number | null
-  showSolveHint: boolean
+  mapView: SunCastMapViewModel
   sunProjectionEnabled: boolean
-  shadingEnabled: boolean
   hasValidSunDatetime: boolean
   sunDatetimeError: string | null
-  sunProjectionResult: SunProjectionResult | null
-  sunPerspectiveCameraPose: {
-    bearingDeg: number
-    pitchDeg: number
-  } | null
-  shadingHeatmapFeatures: ShadeHeatmapFeature[]
-  shadingComputeState: RoofShadingComputeState
   annualSimulationHeatmapFeatures: ShadeHeatmapFeature[]
   annualSimulationState: AnnualSimulationState
   activeHeatmapMode: 'live-shading' | 'annual-sun-access' | 'none'
   shadingComputeMode: 'final' | 'coarse'
   shadingResultStatus: ComputeRoofShadeGridResult['status'] | null
   shadingStatusMessage: string | null
-  shadingDiagnostics: RoofShadeDiagnostics | null
+  shadingDiagnostics: RoofShadeDiagnosticsResults | null
   shadingGridResolutionM: number
   shadingUsedGridResolutionM: number | null
   sunDatetimeRaw: string
@@ -138,30 +102,6 @@ export interface SunCastCanvasModel {
   sunDailyTimeZone: string
   selectedRoofInputs: SelectedRoofSunInput[]
   hasSolvedActiveRoof: boolean
-  mapNavigationTarget: {
-    id: number
-    lon: number
-    lat: number
-  } | null
-  onPlaceSearchSelect: (result: PlaceSearchResult) => void
-  onToggleOrbit: () => void
-  onSelectVertex: (vertexIndex: number) => void
-  onSelectEdge: (edgeIndex: number) => void
-  onSelectFootprint: (footprintId: string, multiSelect: boolean) => void
-  onSelectObstacle: (obstacleId: string, multiSelect: boolean) => void
-  onClearSelection: () => void
-  onMoveVertex: (vertexIndex: number, point: [number, number]) => boolean
-  onMoveEdge: (edgeIndex: number, delta: [number, number]) => boolean
-  onMoveObstacleVertex: (obstacleId: string, vertexIndex: number, point: [number, number]) => boolean
-  onMoveRejected: () => void
-  onAdjustHeight: (stepM: number) => void
-  onMapClick: (point: [number, number]) => void
-  onCloseDrawing: () => void
-  onObstacleMapClick: (point: [number, number]) => void
-  onCloseObstacleDrawing: () => void
-  onBearingChange: (bearingDeg: number) => void
-  onPitchChange: (pitchDeg: number) => void
-  onGeometryDragStateChange: (dragging: boolean) => void
   productionComputationEnabled: boolean
   onInitialized: () => void
   onToggleSunProjectionEnabled: (enabled: boolean) => void
@@ -179,6 +119,67 @@ export interface SunCastCanvasModel {
     onClearSimulation: () => void
     onShowAnnualHeatmap: () => void
     onHideAnnualHeatmap: () => void
+  }
+}
+
+export interface SunCastMapViewModel {
+  drawing: {
+    editMode: 'roof' | 'obstacle'
+    footprints: FootprintPolygon[]
+    activeFootprint: FootprintPolygon | null
+    selectedFootprintIds: string[]
+    drawDraftRoof: Array<[number, number]>
+    isDrawingRoof: boolean
+    obstacles: ObstacleStateEntry[]
+    activeObstacle: ObstacleStateEntry | null
+    selectedObstacleIds: string[]
+    drawDraftObstacle: Array<[number, number]>
+    isDrawingObstacle: boolean
+    onMapClick: (point: [number, number]) => void
+    onCloseDrawing: () => void
+    onObstacleMapClick: (point: [number, number]) => void
+    onCloseObstacleDrawing: () => void
+  }
+  selection: {
+    vertexConstraints: FaceConstraints['vertexHeights']
+    selectedVertexIndex: number | null
+    selectedEdgeIndex: number | null
+    onSelectVertex: (vertexIndex: number) => void
+    onSelectEdge: (edgeIndex: number) => void
+    onSelectFootprint: (footprintId: string, multiSelect: boolean) => void
+    onSelectObstacle: (obstacleId: string, multiSelect: boolean) => void
+    onClearSelection: () => void
+    onMoveVertex: (vertexIndex: number, point: [number, number]) => boolean
+    onMoveEdge: (edgeIndex: number, delta: [number, number]) => boolean
+    onMoveObstacleVertex: (obstacleId: string, vertexIndex: number, point: [number, number]) => boolean
+    onMoveRejected: () => void
+    onAdjustHeight: (stepM: number) => void
+  }
+  view: {
+    orbitEnabled: boolean
+    showSolveHint: boolean
+    sunProjectionResult: SunProjectionResult | null
+    sunPerspectiveCameraPose: {
+      bearingDeg: number
+      pitchDeg: number
+    } | null
+    mapNavigationTarget: {
+      id: number
+      lon: number
+      lat: number
+    } | null
+    onPlaceSearchSelect: (result: PlaceSearchResult) => void
+    onToggleOrbit: () => void
+    onBearingChange: (bearingDeg: number) => void
+    onPitchChange: (pitchDeg: number) => void
+    onGeometryDragStateChange: (dragging: boolean) => void
+  }
+  render: {
+    shadingEnabled: boolean
+    shadingHeatmapFeatures: ShadeHeatmapFeature[]
+    shadingComputeState: RoofShadingComputeState
+    roofMeshes: RoofMeshData[]
+    obstacleMeshes: RoofMeshData[]
   }
 }
 

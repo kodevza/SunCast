@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { MapOverlayControls } from './MapOverlayControls'
-import { useLatest } from './useLatest'
 import { useMapInstance } from './hooks/useMapInstance'
 import { useMapInteractions } from './hooks/useMapInteractions'
 import { useMapSources } from './hooks/useMapSources'
@@ -12,63 +11,19 @@ import { useSunPerspectiveSync } from './hooks/useSunPerspectiveSync'
 import { SATELLITE_LAYER_ID, STREETS_LAYER_ID } from './mapViewConstants'
 import { MapAttributionControl } from './MapAttributionControl'
 import { fetchArcgisProviderAttribution } from './arcgisAttribution'
-import type { SunCastCanvasModel } from '../../../presentation/presentationModel.types'
+import type { SunCastMapViewModel } from '../../../presentation/presentationModel.types'
 
 interface MapViewProps {
-  model: SunCastCanvasModel
+  model: SunCastMapViewModel
   onInitialized?: () => void
 }
 
 type BasemapMode = 'satellite' | 'streets'
 
 export function MapView({ model, onInitialized }: MapViewProps) {
-  const {
-    editMode,
-    footprints,
-    activeFootprint,
-    selectedFootprintIds,
-    drawDraftRoof,
-    isDrawingRoof,
-    obstacles,
-    activeObstacle,
-    selectedObstacleIds,
-    drawDraftObstacle,
-    isDrawingObstacle,
-    orbitEnabled,
-    onToggleOrbit,
-    sunProjectionResult,
-    sunPerspectiveCameraPose,
-    shadingEnabled,
-    shadingHeatmapFeatures,
-    shadingComputeState,
-    roofMeshes,
-    obstacleMeshes,
-    vertexConstraints,
-    selectedVertexIndex,
-    selectedEdgeIndex,
-    onSelectVertex,
-    onSelectEdge,
-    onSelectFootprint,
-    onSelectObstacle,
-    onClearSelection,
-    onMoveVertex,
-    onMoveEdge,
-    onMoveObstacleVertex,
-    onMoveRejected,
-    onAdjustHeight,
-    showSolveHint,
-    onMapClick,
-    onCloseDrawing,
-    onObstacleMapClick,
-    onCloseObstacleDrawing,
-    onBearingChange,
-    onPitchChange,
-    onGeometryDragStateChange,
-    mapNavigationTarget,
-    onPlaceSearchSelect,
-  } = model
-  const isDrawing = editMode === 'roof' ? isDrawingRoof : isDrawingObstacle
-  const drawDraft = editMode === 'roof' ? drawDraftRoof : drawDraftObstacle
+  const { drawing, selection, view, render } = model
+  const isDrawing = drawing.editMode === 'roof' ? drawing.isDrawingRoof : drawing.isDrawingObstacle
+  const drawDraft = drawing.editMode === 'roof' ? drawing.drawDraftRoof : drawing.drawDraftObstacle
   const [meshesVisible, setMeshesVisible] = useState(true)
   const [sunPerspectiveEnabled, setSunPerspectiveEnabled] = useState(false)
   const [basemapMode, setBasemapMode] = useState<BasemapMode>('satellite')
@@ -77,7 +32,7 @@ export function MapView({ model, onInitialized }: MapViewProps) {
   const [constrainedDrawLengthM, setConstrainedDrawLengthM] = useState<number | null>(null)
   const effectiveDrawLengthInput = isDrawing ? drawLengthInput : ''
   const effectiveConstrainedDrawLengthM = isDrawing ? constrainedDrawLengthM : null
-  const canUseSunPerspective = orbitEnabled && sunProjectionResult !== null
+  const canUseSunPerspective = view.orbitEnabled && view.sunProjectionResult !== null
   const effectiveSunPerspectiveEnabled = canUseSunPerspective && sunPerspectiveEnabled
 
   const parseDrawLengthInput = useCallback(() => {
@@ -95,88 +50,64 @@ export function MapView({ model, onInitialized }: MapViewProps) {
     return parsed
   }, [parseDrawLengthInput])
 
-  const drawingRef = useLatest(isDrawing)
-  const drawDraftRef = useLatest(drawDraft)
-  const editModeRef = useLatest(editMode)
-  const orbitEnabledRef = useLatest(orbitEnabled)
-  const activeFootprintRef = useLatest(activeFootprint)
-  const activeObstacleRef = useLatest(activeObstacle)
   const handleDrawPointCommit = useCallback(
     (point: [number, number]) => {
-      if (editMode === 'obstacle') {
-        onObstacleMapClick(point)
+      if (drawing.editMode === 'obstacle') {
+        drawing.onObstacleMapClick(point)
       } else {
-        onMapClick(point)
+        drawing.onMapClick(point)
       }
       setDrawLengthInput('')
       setConstrainedDrawLengthM(null)
     },
-    [editMode, onMapClick, onObstacleMapClick],
+    [drawing],
   )
-  const onMapClickRef = useLatest(handleDrawPointCommit)
-  const onCloseDrawingRef = useLatest(() => {
-    if (editMode === 'obstacle') {
-      onCloseObstacleDrawing()
+  const handleCloseDrawing = useCallback(() => {
+    if (drawing.editMode === 'obstacle') {
+      drawing.onCloseObstacleDrawing()
     } else {
-      onCloseDrawing()
+      drawing.onCloseDrawing()
     }
-  })
-  const onSelectVertexRef = useLatest(onSelectVertex)
-  const onSelectEdgeRef = useLatest(onSelectEdge)
-  const onSelectFootprintRef = useLatest(onSelectFootprint)
-  const onSelectObstacleRef = useLatest(onSelectObstacle)
-  const onClearSelectionRef = useLatest(onClearSelection)
-  const onMoveVertexRef = useLatest(onMoveVertex)
-  const onMoveEdgeRef = useLatest(onMoveEdge)
-  const onMoveObstacleVertexRef = useLatest(onMoveObstacleVertex)
-  const onMoveRejectedRef = useLatest(onMoveRejected)
-  const onBearingChangeRef = useLatest(onBearingChange)
-  const onPitchChangeRef = useLatest(onPitchChange)
-  const onGeometryDragStateChangeRef = useLatest(onGeometryDragStateChange)
-  const interactionRefs = useMemo(
+  }, [drawing])
+  const interactionModel = useMemo(
     () => ({
-      drawingRef,
-      drawDraftRef,
-      editModeRef,
-      orbitEnabledRef,
-      activeFootprintRef,
-      activeObstacleRef,
-      onMapClickRef,
-      onCloseDrawingRef,
-      onSelectVertexRef,
-      onSelectEdgeRef,
-      onSelectFootprintRef,
-      onSelectObstacleRef,
-      onClearSelectionRef,
-      onMoveVertexRef,
-      onMoveEdgeRef,
-      onMoveObstacleVertexRef,
-      onMoveRejectedRef,
-      onBearingChangeRef,
-      onPitchChangeRef,
-      onGeometryDragStateChangeRef,
+      drawing: {
+        editMode: drawing.editMode,
+        drawDraft,
+        isDrawing,
+        activeFootprint: drawing.activeFootprint,
+        activeObstacle: drawing.activeObstacle,
+        commitDrawPoint: handleDrawPointCommit,
+        closeDrawing: handleCloseDrawing,
+      },
+      selection: {
+        onSelectVertex: selection.onSelectVertex,
+        onSelectEdge: selection.onSelectEdge,
+        onSelectFootprint: selection.onSelectFootprint,
+        onSelectObstacle: selection.onSelectObstacle,
+        onClearSelection: selection.onClearSelection,
+        onMoveVertex: selection.onMoveVertex,
+        onMoveEdge: selection.onMoveEdge,
+        onMoveObstacleVertex: selection.onMoveObstacleVertex,
+        onMoveRejected: selection.onMoveRejected,
+      },
+      camera: {
+        orbitEnabled: view.orbitEnabled,
+        onBearingChange: view.onBearingChange,
+        onPitchChange: view.onPitchChange,
+        onGeometryDragStateChange: view.onGeometryDragStateChange,
+      },
     }),
     [
-      activeFootprintRef,
-      activeObstacleRef,
-      drawDraftRef,
-      drawingRef,
-      editModeRef,
-      onBearingChangeRef,
-      onClearSelectionRef,
-      onMapClickRef,
-      onCloseDrawingRef,
-      onMoveEdgeRef,
-      onMoveObstacleVertexRef,
-      onMoveRejectedRef,
-      onMoveVertexRef,
-      onPitchChangeRef,
-      onSelectEdgeRef,
-      onSelectFootprintRef,
-      onSelectObstacleRef,
-      onSelectVertexRef,
-      orbitEnabledRef,
-      onGeometryDragStateChangeRef,
+      drawing.activeFootprint,
+      drawing.activeObstacle,
+      drawing.editMode,
+      drawDraft,
+      handleCloseDrawing,
+      handleDrawPointCommit,
+      isDrawing,
+      selection,
+      view,
     ],
   )
 
@@ -185,7 +116,7 @@ export function MapView({ model, onInitialized }: MapViewProps) {
   const { hoveredEdgeLength, drawingAngleHint, vertexDragAngleHint, draftPreviewPoint } = useMapInteractions({
     mapRef,
     mapLoaded,
-    refs: interactionRefs,
+    model: interactionModel,
     constrainedDrawLengthM: effectiveConstrainedDrawLengthM,
   })
 
@@ -219,31 +150,6 @@ export function MapView({ model, onInitialized }: MapViewProps) {
     }
   }, [basemapMode, mapLoaded, mapRef])
 
-  useEffect(() => {
-    if (!isDrawing || orbitEnabled || !drawingAngleHint) {
-      return
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Tab' || event.shiftKey) {
-        return
-      }
-      const input = document.querySelector('[data-testid="map-draw-length-input"]') as HTMLInputElement | null
-      if (!input) {
-        return
-      }
-      if (document.activeElement === input) {
-        return
-      }
-      event.preventDefault()
-      input.focus()
-      input.select()
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [drawingAngleHint, isDrawing, orbitEnabled])
-
   const submitDrawLengthInput = useCallback(() => {
     if (!isDrawing || !draftPreviewPoint || drawDraft.length < 1) {
       return
@@ -257,55 +163,55 @@ export function MapView({ model, onInitialized }: MapViewProps) {
   useMapSources({
     mapRef,
     mapLoaded,
-    editMode,
-    footprints,
-    activeFootprint,
-    selectedFootprintIds,
-    obstacles,
-    activeObstacle,
-    selectedObstacleIds,
-    drawDraftRoof,
-    drawDraftObstacle,
-    isDrawingRoof,
-    isDrawingObstacle,
+    editMode: drawing.editMode,
+    footprints: drawing.footprints,
+    activeFootprint: drawing.activeFootprint,
+    selectedFootprintIds: drawing.selectedFootprintIds,
+    obstacles: drawing.obstacles,
+    activeObstacle: drawing.activeObstacle,
+    selectedObstacleIds: drawing.selectedObstacleIds,
+    drawDraftRoof: drawing.drawDraftRoof,
+    drawDraftObstacle: drawing.drawDraftObstacle,
+    isDrawingRoof: drawing.isDrawingRoof,
+    isDrawingObstacle: drawing.isDrawingObstacle,
     draftPreviewPoint,
-    vertexConstraints,
-    selectedVertexIndex,
-    selectedEdgeIndex,
+    vertexConstraints: selection.vertexConstraints,
+    selectedVertexIndex: selection.selectedVertexIndex,
+    selectedEdgeIndex: selection.selectedEdgeIndex,
   })
 
-  const { gizmoScreenPos, adjustOrbitCamera, setOrbitCameraPose } = useOrbitCamera({
+  const { adjustOrbitCamera, setOrbitCameraPose } = useOrbitCamera({
     mapRef,
     mapLoaded,
-    orbitEnabled,
-    footprints,
-    activeFootprint,
-    selectedVertexIndex,
-    selectedEdgeIndex,
+    orbitEnabled: view.orbitEnabled,
+    footprints: drawing.footprints,
+    activeFootprint: drawing.activeFootprint,
+    selectedVertexIndex: selection.selectedVertexIndex,
+    selectedEdgeIndex: selection.selectedEdgeIndex,
   })
 
   useMapObjects({
     mapRef,
     mapLoaded,
-    roofMeshes,
-    obstacleMeshes,
-    heatmapFeatures: shadingHeatmapFeatures,
-    orbitEnabled,
+    roofMeshes: render.roofMeshes,
+    obstacleMeshes: render.obstacleMeshes,
+    heatmapFeatures: render.shadingHeatmapFeatures,
+    orbitEnabled: view.orbitEnabled,
     meshesVisible,
-    shadingEnabled,
-    shadingComputeState,
+    shadingEnabled: render.shadingEnabled,
+    shadingComputeState: render.shadingComputeState,
   })
 
   useSunPerspectiveSync({
     enabled: effectiveSunPerspectiveEnabled,
-    pose: sunPerspectiveCameraPose,
+    pose: view.sunPerspectiveCameraPose,
     setOrbitCameraPose,
   })
 
   useMapNavigationSync({
     mapRef,
     mapLoaded,
-    mapNavigationTarget,
+    mapNavigationTarget: view.mapNavigationTarget,
   })
 
   return (
@@ -314,8 +220,8 @@ export function MapView({ model, onInitialized }: MapViewProps) {
       <MapOverlayControls
         basemapMode={basemapMode}
         onBasemapModeChange={setBasemapMode}
-        orbitEnabled={orbitEnabled}
-        onToggleOrbit={onToggleOrbit}
+        orbitEnabled={view.orbitEnabled}
+        onToggleOrbit={view.onToggleOrbit}
         sunPerspectiveEnabled={effectiveSunPerspectiveEnabled}
         canUseSunPerspective={canUseSunPerspective}
         onToggleSunPerspective={() => {
@@ -326,20 +232,18 @@ export function MapView({ model, onInitialized }: MapViewProps) {
         }}
         meshesVisible={meshesVisible}
         onToggleMeshesVisible={() => setMeshesVisible((visible) => !visible)}
-        meshCount={roofMeshes.length + obstacleMeshes.length}
+        meshCount={render.roofMeshes.length + render.obstacleMeshes.length}
         isDrawing={isDrawing}
-        hasActiveFootprint={activeFootprint !== null}
+        hasActiveFootprint={drawing.activeFootprint !== null}
         hoveredEdgeLength={hoveredEdgeLength}
         drawingAngleHint={drawingAngleHint}
         vertexDragAngleHint={vertexDragAngleHint}
         drawLengthInput={effectiveDrawLengthInput}
         onDrawLengthInputChange={setDrawLengthInput}
         onDrawLengthInputSubmit={submitDrawLengthInput}
-        gizmoScreenPos={gizmoScreenPos}
-        onAdjustHeight={onAdjustHeight}
-        showSolveHint={showSolveHint}
+        showSolveHint={view.showSolveHint}
         onAdjustOrbitCamera={adjustOrbitCamera}
-        onPlaceSearchSelect={onPlaceSearchSelect}
+        onPlaceSearchSelect={view.onPlaceSearchSelect}
       />
       <MapAttributionControl basemapMode={basemapMode} arcgisProviderAttribution={arcgisProviderAttribution} />
     </div>

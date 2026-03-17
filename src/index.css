@@ -833,26 +833,6 @@ button:disabled {
   font-size: 0.74rem;
 }
 
-.height-gizmo {
-  position: absolute;
-  z-index: 15;
-  transform: translate(-50%, -50%);
-  display: grid;
-  gap: 6px;
-}
-
-.height-gizmo-button {
-  width: 40px;
-  height: 34px;
-  border: 1px solid #6f8a95;
-  background: rgba(15, 23, 27, 0.94);
-  color: #f5fbff;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1;
-  padding: 0;
-}
-
 .tutorial-backdrop {
   position: fixed;
   inset: 0;

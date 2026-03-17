@@ -1,19 +1,7 @@
-export const GLOBAL_ERROR_TOAST_ACTION_EVENT_NAME = 'suncast:global-error-toast-action'
+import { toastActionService, type GlobalErrorToastAction } from '../globalServices/toastActionService'
 
-export type GlobalErrorToastAction = 'reset-state' | 'share-state'
-
-export interface GlobalErrorToastActionEventDetail {
-  action: GlobalErrorToastAction
-}
+export type { GlobalErrorToastAction } from '../globalServices/toastActionService'
 
 export function dispatchGlobalErrorToastAction(action: GlobalErrorToastAction): void {
-  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function' || typeof CustomEvent === 'undefined') {
-    return
-  }
-
-  window.dispatchEvent(
-    new CustomEvent<GlobalErrorToastActionEventDetail>(GLOBAL_ERROR_TOAST_ACTION_EVENT_NAME, {
-      detail: { action },
-    }),
-  )
+  toastActionService.emit(action)
 }

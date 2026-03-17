@@ -17,8 +17,8 @@ interface ObstaclePanelProps {
   onDeleteActiveObstacle: () => void
 }
 
-// Purpose: Encapsulates obstacle panel behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function ObstaclePanel({
   obstacles,
   activeObstacle,

@@ -490,7 +490,7 @@ Recommended order:
 5. active handles / labels
 6. optional 3D roof mesh
 
-You may later decide to synchronize with `RoofMeshLayer.ts`, but first keep heatmap in 2D overlay.
+You may later decide to synchronize with `MapObjectMeshLayer.ts`, but first keep heatmap in 2D overlay.
 
 ## 5.4 Multi-roof support
 

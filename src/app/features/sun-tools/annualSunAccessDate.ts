@@ -1,3 +1,5 @@
+import { parseDateIsoUtc } from '../../../shared/utils/dateIsoUtc'
+
 export function currentYear(): number {
   return new Date().getFullYear()
 }
@@ -27,21 +29,12 @@ export function parseDateEuToIso(value: string): string | null {
     return null
   }
 
-  const ts = Date.UTC(year, month - 1, day)
-  if (!Number.isFinite(ts)) {
+  const dateIso = formatDateIso(year, month, day)
+  if (parseDateIsoUtc(dateIso) === null) {
     return null
   }
 
-  const normalized = new Date(ts)
-  if (
-    normalized.getUTCFullYear() !== year ||
-    normalized.getUTCMonth() + 1 !== month ||
-    normalized.getUTCDate() !== day
-  ) {
-    return null
-  }
-
-  return formatDateIso(year, month, day)
+  return dateIso
 }
 
 export function firstDayOfYearIso(year: number): string {
