@@ -5,8 +5,8 @@ import { cylinderToPolygon, toVisualObstacleModel } from '../obstacles/obstacleM
 
 const DEFAULT_OBSTACLE_KWP = 0
 
-// Purpose: Builds obstacle mesh from the provided inputs.
-// Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
+
+
 export function generateObstacleMesh(obstacle: ObstacleStateEntry): RoofMeshData | null {
   const result = generateObstacleMeshResult(obstacle)
   return result.ok ? result.value : null

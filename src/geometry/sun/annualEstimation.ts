@@ -1,8 +1,9 @@
 import type { RoofPlane } from '../../types/geometry'
 import { getDailyPoaSeries } from './dailyEstimation'
+import { getDateIsosForYear, parseDateIsoUtc } from '../../shared/utils/dateIsoUtc'
+import { getZonedDateTimeParts } from '../../shared/utils/dateIsoLocal'
 
 const MINUTES_PER_DAY = 24 * 60
-const zonedHourMinuteFormatterCache = new Map<string, Intl.DateTimeFormat>()
 
 export interface AnnualAggregatedDayProfileInput {
   year: number
@@ -57,29 +58,6 @@ export interface AnnualMonthlyEnergyEstimate {
   }
 }
 
-function formatDateIsoUtc(date: Date): string {
-  const year = date.getUTCFullYear()
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(date.getUTCDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function getDateIsosForYear(year: number): string[] {
-  if (!Number.isInteger(year) || year < 1) {
-    return []
-  }
-
-  const dates: string[] = []
-  for (let ts = Date.UTC(year, 0, 1); ; ts += 86_400_000) {
-    const date = new Date(ts)
-    if (date.getUTCFullYear() !== year) {
-      break
-    }
-    dates.push(formatDateIsoUtc(date))
-  }
-  return dates
-}
-
 function formatMinuteOfDay(minuteOfDay: number): string {
   const hour = Math.floor(minuteOfDay / 60)
   const minute = minuteOfDay % 60
@@ -87,42 +65,19 @@ function formatMinuteOfDay(minuteOfDay: number): string {
 }
 
 function parseMonthFromDateIso(dateIso: string): number | null {
-  const match = /^\d{4}-(\d{2})-\d{2}$/.exec(dateIso)
-  if (!match) {
+  const ts = parseDateIsoUtc(dateIso)
+  if (ts === null) {
     return null
   }
-  const month = Number(match[1])
-  if (!Number.isInteger(month) || month < 1 || month > 12) {
-    return null
-  }
-  return month
-}
-
-function getZonedHourMinuteFormatter(timeZone: string): Intl.DateTimeFormat {
-  const cached = zonedHourMinuteFormatterCache.get(timeZone)
-  if (cached) {
-    return cached
-  }
-
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hourCycle: 'h23',
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  zonedHourMinuteFormatterCache.set(timeZone, formatter)
-  return formatter
+  return new Date(ts).getUTCMonth() + 1
 }
 
 function minuteOfDayFromTimestamp(timestamp: number, timeZone: string): number | null {
-  const formatter = getZonedHourMinuteFormatter(timeZone)
-  const parts = formatter.formatToParts(new Date(timestamp))
-  const hourPart = parts.find((part) => part.type === 'hour')
-  const minutePart = parts.find((part) => part.type === 'minute')
-
-  const hour = Number(hourPart?.value)
-  const minute = Number(minutePart?.value)
+  const zoned = getZonedDateTimeParts(timestamp, timeZone)
+  if (!zoned) {
+    return null
+  }
+  const { hour, minute } = zoned
   if (!Number.isInteger(hour) || !Number.isInteger(minute)) {
     return null
   }

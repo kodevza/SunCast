@@ -1,8 +1,8 @@
 import maplibregl from 'maplibre-gl'
 import * as THREE from 'three'
-import type { WorldMeshGeometry } from '../geometry/meshWorldGeometry'
-import { resolveLayerAnchor, toLayerRelativePoint, type LayerAnchor } from '../geometry/layerRebasing'
-import { acquireSharedThreeRenderer, releaseSharedThreeRenderer } from '../geometry/sharedThreeRenderer'
+import type { WorldMeshGeometry } from '../../../../../rendering/shared/meshWorldGeometry'
+import { resolveLayerAnchor, toLayerRelativePoint, type LayerAnchor } from '../../../../../rendering/shared/layerRebasing'
+import { acquireSharedThreeRenderer, releaseSharedThreeRenderer } from '../../../../../rendering/shared/sharedThreeRenderer'
 
 const RENDER_EPSILON_M = 0.0002
 const DEFAULT_TOP_COLOR_HEX = 0xff6155
@@ -27,8 +27,8 @@ export interface MeshLayerParts {
   base: boolean
 }
 
-// Purpose: Builds top geometry from the provided inputs.
-// Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
+
+
 function createTopGeometry(world: WorldMeshGeometry, layerAnchor: LayerAnchor): THREE.BufferGeometry | null {
   if (world.topVertices.length < 3 || world.triangleIndices.length < 3) {
     return null
@@ -51,8 +51,8 @@ function createTopGeometry(world: WorldMeshGeometry, layerAnchor: LayerAnchor): 
   return geometry
 }
 
-// Purpose: Builds wall geometry from the provided inputs.
-// Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
+
+
 function createWallGeometry(world: WorldMeshGeometry, layerAnchor: LayerAnchor): THREE.BufferGeometry | null {
   if (world.topVertices.length < 3 || world.baseVertices.length < 3) {
     return null
@@ -91,8 +91,8 @@ function createWallGeometry(world: WorldMeshGeometry, layerAnchor: LayerAnchor):
   return geometry
 }
 
-// Purpose: Builds base geometry from the provided inputs.
-// Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
+
+
 function createBaseGeometry(world: WorldMeshGeometry, layerAnchor: LayerAnchor): THREE.BufferGeometry | null {
   if (world.baseVertices.length < 3 || world.triangleIndices.length < 3) {
     return null

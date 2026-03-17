@@ -48,20 +48,20 @@ export type ShadingObstacleVolume =
       heightAboveGroundM: number
     }
 
-// Purpose: Computes clamp height deterministically from the provided input values.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function clampHeight(heightAboveGroundM: number): number {
   return Number.isFinite(heightAboveGroundM) ? Math.max(0, heightAboveGroundM) : 0
 }
 
-// Purpose: Computes clamp radius deterministically from the provided input values.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function clampRadius(value: number): number {
   return Number.isFinite(value) ? Math.max(MIN_RADIUS_M, value) : MIN_RADIUS_M
 }
 
-// Purpose: Encapsulates centroid behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function centroid(points: LngLat[]): LngLat {
   if (points.length === 0) {
     return [0, 0]
@@ -77,8 +77,8 @@ function centroid(points: LngLat[]): LngLat {
   return [sum.lon / points.length, sum.lat / points.length]
 }
 
-// Purpose: Encapsulates cylinder to polygon behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function cylinderToPolygon(center: LngLat, radiusM: number, segments = CYLINDER_POLYGON_SEGMENTS): LngLat[] {
   const safeSegments = Math.max(8, Math.floor(segments))
   const safeRadiusM = clampRadius(radiusM)
@@ -98,8 +98,8 @@ export function cylinderToPolygon(center: LngLat, radiusM: number, segments = CY
   return polygon
 }
 
-// Purpose: Encapsulates polygon to center radius behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function polygonToCenterRadius(polygon: LngLat[]): { center: LngLat; radiusM: number } {
   const center = centroid(polygon)
   const origin = buildLocalOrigin([center, ...polygon])
@@ -116,8 +116,8 @@ function polygonToCenterRadius(polygon: LngLat[]): { center: LngLat; radiusM: nu
   return { center, radiusM }
 }
 
-// Purpose: Encapsulates obstacle shape to polygon behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function obstacleShapeToPolygon(shape: ObstacleShape): LngLat[] {
   if (shape.type === 'polygon-prism') {
     return shape.polygon
@@ -128,14 +128,14 @@ export function obstacleShapeToPolygon(shape: ObstacleShape): LngLat[] {
   return cylinderToPolygon(shape.center, shape.crownRadiusM)
 }
 
-// Purpose: Encapsulates obstacle shape vertex count behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function obstacleShapeVertexCount(shape: ObstacleShape): number {
   return shape.type === 'polygon-prism' ? shape.polygon.length : 0
 }
 
-// Purpose: Builds obstacle shape for kind from the provided inputs.
-// Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
+
+
 export function createObstacleShapeForKind(kind: ObstacleKind, polygonHint: LngLat[]): ObstacleShape {
   if (kind === 'building' || kind === 'custom') {
     return { type: 'polygon-prism', polygon: polygonHint }
@@ -153,8 +153,8 @@ export function createObstacleShapeForKind(kind: ObstacleKind, polygonHint: LngL
   }
 }
 
-// Purpose: Encapsulates with obstacle kind behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function withObstacleKind(entry: ObstacleStateEntry, nextKind: ObstacleKind): ObstacleStateEntry {
   const shapePolygon = obstacleShapeToPolygon(entry.shape)
   return {
@@ -164,8 +164,8 @@ export function withObstacleKind(entry: ObstacleStateEntry, nextKind: ObstacleKi
   }
 }
 
-// Purpose: Encapsulates with moved obstacle shape vertex behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function withMovedObstacleShapeVertex(entry: ObstacleStateEntry, vertexIndex: number, point: LngLat): ObstacleStateEntry {
   if (entry.shape.type !== 'polygon-prism') {
     return entry
@@ -187,8 +187,8 @@ export function withMovedObstacleShapeVertex(entry: ObstacleStateEntry, vertexIn
   }
 }
 
-// Purpose: Encapsulates to visual obstacle model behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function toVisualObstacleModel(obstacle: ObstacleStateEntry): VisualObstacleModel {
   const heightAboveGroundM = clampHeight(obstacle.heightAboveGroundM)
   if (obstacle.shape.type === 'polygon-prism') {
@@ -221,8 +221,8 @@ export function toVisualObstacleModel(obstacle: ObstacleStateEntry): VisualObsta
   }
 }
 
-// Purpose: Encapsulates to shading obstacle volume behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function toShadingObstacleVolume(obstacle: ObstacleStateEntry): ShadingObstacleVolume {
   const heightAboveGroundM = clampHeight(obstacle.heightAboveGroundM)
   if (obstacle.shape.type === 'polygon-prism') {

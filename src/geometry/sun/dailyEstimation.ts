@@ -1,17 +1,10 @@
 import type { RoofPlane } from '../../types/geometry'
 import { computeSunProjection } from './sunProjection'
+import { parseDateIsoUtc } from '../../shared/utils/dateIsoUtc'
+import { formatTimestampHHmmInTimeZone, localDateTimeInTimeZoneToUtcTs } from '../../shared/utils/dateIsoLocal'
 
 const MS_PER_MINUTE = 60_000
 const MS_PER_DAY = 86_400_000
-
-interface DateParts {
-  year: number
-  month: number
-  day: number
-  hour: number
-  minute: number
-  second: number
-}
 
 interface LocalDate {
   year: number
@@ -44,97 +37,17 @@ export interface DailyPoaSeries {
   sunsetTs: number
 }
 
-const zonedPartsFormatterCache = new Map<string, Intl.DateTimeFormat>()
-const hhmmFormatterCache = new Map<string, Intl.DateTimeFormat>()
-
-function getZonedPartsFormatter(timeZone: string): Intl.DateTimeFormat {
-  const cached = zonedPartsFormatterCache.get(timeZone)
-  if (cached) {
-    return cached
-  }
-
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hourCycle: 'h23',
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-  zonedPartsFormatterCache.set(timeZone, formatter)
-  return formatter
-}
-
-function getHhmmFormatter(timeZone: string): Intl.DateTimeFormat {
-  const cached = hhmmFormatterCache.get(timeZone)
-  if (cached) {
-    return cached
-  }
-
-  const formatter = new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  hhmmFormatterCache.set(timeZone, formatter)
-  return formatter
-}
-
 function parseDateIso(dateIso: string): LocalDate | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateIso)
-  if (!match) {
+  const ts = parseDateIsoUtc(dateIso)
+  if (ts === null) {
     return null
   }
-
-  const year = Number(match[1])
-  const month = Number(match[2])
-  const day = Number(match[3])
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
-    return null
-  }
-  if (month < 1 || month > 12 || day < 1 || day > 31) {
-    return null
-  }
-
-  return { year, month, day }
-}
-
-function parseDateParts(parts: Intl.DateTimeFormatPart[]): DateParts {
-  const byType = new Map(parts.map((part) => [part.type, part.value]))
-
-  let year = Number(byType.get('year'))
-  let month = Number(byType.get('month'))
-  let day = Number(byType.get('day'))
-  let hour = Number(byType.get('hour'))
-  const minute = Number(byType.get('minute'))
-  const second = Number(byType.get('second'))
-
-  if (hour === 24) {
-    hour = 0
-    const next = addOneDay({ year, month, day })
-    year = next.year
-    month = next.month
-    day = next.day
-  }
-
+  const normalized = new Date(ts)
   return {
-    year,
-    month,
-    day,
-    hour,
-    minute,
-    second,
+    year: normalized.getUTCFullYear(),
+    month: normalized.getUTCMonth() + 1,
+    day: normalized.getUTCDate(),
   }
-}
-
-function getZonedDateParts(timestamp: number, timeZone: string): DateParts {
-  const formatter = getZonedPartsFormatter(timeZone)
-  const parts = parseDateParts(formatter.formatToParts(new Date(timestamp)))
-  return parts
 }
 
 function addOneDay(localDate: LocalDate): LocalDate {
@@ -144,25 +57,6 @@ function addOneDay(localDate: LocalDate): LocalDate {
     month: next.getUTCMonth() + 1,
     day: next.getUTCDate(),
   }
-}
-
-function minutesEpoch(parts: DateParts): number {
-  return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second) / MS_PER_MINUTE
-}
-
-function localTimeToUtcTs(parts: DateParts, timeZone: string): number {
-  let guess = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second)
-
-  for (let i = 0; i < 6; i += 1) {
-    const zoned = getZonedDateParts(guess, timeZone)
-    const deltaMinutes = minutesEpoch(parts) - minutesEpoch(zoned)
-    if (Math.abs(deltaMinutes) < 1 / 60) {
-      return guess
-    }
-    guess += deltaMinutes * MS_PER_MINUTE
-  }
-
-  return guess
 }
 
 function sunElevationAt(timestamp: number, latDeg: number, lonDeg: number): number {
@@ -211,8 +105,8 @@ export function getSunriseSunset(input: SunriseSunsetInput): SunriseSunsetResult
   }
 
   const nextDate = addOneDay(parsedDate)
-  const dayStartTs = localTimeToUtcTs({ ...parsedDate, hour: 0, minute: 0, second: 0 }, input.timeZone)
-  const nextDayStartTs = localTimeToUtcTs({ ...nextDate, hour: 0, minute: 0, second: 0 }, input.timeZone)
+  const dayStartTs = localDateTimeInTimeZoneToUtcTs({ ...parsedDate, hour: 0, minute: 0, second: 0 }, input.timeZone)
+  const nextDayStartTs = localDateTimeInTimeZoneToUtcTs({ ...nextDate, hour: 0, minute: 0, second: 0 }, input.timeZone)
 
   if (!Number.isFinite(dayStartTs) || !Number.isFinite(nextDayStartTs) || nextDayStartTs <= dayStartTs) {
     return null
@@ -261,7 +155,7 @@ export function getSunriseSunset(input: SunriseSunsetInput): SunriseSunsetResult
 }
 
 function formatTimeLabel(timestamp: number, timeZone: string): string {
-  return getHhmmFormatter(timeZone).format(new Date(timestamp))
+  return formatTimestampHHmmInTimeZone(timestamp, timeZone)
 }
 
 export function getDailyPoaSeries(input: DailyPoaSeriesInput): DailyPoaSeries | null {

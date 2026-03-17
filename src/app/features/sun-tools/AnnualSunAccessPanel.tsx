@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { AnnualSunAccessResult } from '../../../geometry/shading'
-import type { AnnualSimulationOptions, AnnualSimulationState } from '../../hooks/useAnnualRoofSimulation'
+import type { AnnualSimulationOptions, AnnualSimulationState } from '../../analysis/analysis.types'
 import { AnnualHeatmapCanvas } from './AnnualHeatmapCanvas'
 import {
   currentYear,

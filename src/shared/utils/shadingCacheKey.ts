@@ -23,8 +23,8 @@ export type ObstacleGeometryCacheInput =
       heightAboveGroundM: number
     }
 
-// Purpose: Builds deterministic cache key for roof geometry inputs.
-// Why: Keeps cache key serialization reusable across shading workflows.
+
+
 export function buildRoofGeometryCacheKey(roofs: RoofGeometryCacheInput[]): string {
   return roofs
     .map((roof) => {
@@ -35,8 +35,8 @@ export function buildRoofGeometryCacheKey(roofs: RoofGeometryCacheInput[]): stri
     .join('||')
 }
 
-// Purpose: Builds deterministic cache key for obstacle geometry inputs.
-// Why: Keeps cache key serialization reusable across shading workflows.
+
+
 export function buildObstacleGeometryCacheKey(obstacles: ObstacleGeometryCacheInput[]): string {
   return obstacles
     .map((obstacle) => {

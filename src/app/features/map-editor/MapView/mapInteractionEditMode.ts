@@ -11,7 +11,7 @@ import {
   zoomAdaptiveHitTolerancePx,
 } from './mapViewConstants'
 import { getEdgeHit, getFootprintHit, getHitFeatures, getObstacleHit, getVertexHit } from './mapViewHitTesting'
-import type { DragState, MapInteractionRefs } from './mapInteractionTypes'
+import type { DragState, MapInteractionModel } from './mapInteractionTypes'
 
 export interface HoverState {
   cursor: '' | 'grab' | 'move'
@@ -19,11 +19,11 @@ export interface HoverState {
   polygon: Array<[number, number]> | null
 }
 
-// Purpose: Returns hover state from available inputs.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function resolveHoverState(
   map: maplibregl.Map,
-  refs: MapInteractionRefs,
+  model: MapInteractionModel,
   point: { x: number; y: number },
 ): HoverState {
   const dragTolerancePx = zoomAdaptiveHitTolerancePx(DRAG_HIT_TOLERANCE_PX, map.getZoom())
@@ -38,10 +38,10 @@ export function resolveHoverState(
   const obstacleEdgeIndex = getEdgeHit(hits, OBSTACLE_EDGE_HIT_LAYER_ID)
   const roofEdgeIndex = getEdgeHit(hits, EDGE_HIT_LAYER_ID)
 
-  const activeObstacle = refs.activeObstacleRef.current
+  const activeObstacle = model.drawing.activeObstacle
   const obstaclePolygon =
     activeObstacle && activeObstacle.shape.type === 'polygon-prism' ? activeObstacle.shape.polygon : null
-  const activeFootprint = refs.activeFootprintRef.current
+  const activeFootprint = model.drawing.activeFootprint
   const roofPolygon = activeFootprint?.vertices ?? null
   const canModifyRoofEdge = roofEdgeIndex !== null && !!roofPolygon && roofPolygon.length >= 3
 
@@ -57,11 +57,11 @@ export function resolveHoverState(
   return { cursor: '', edgeIndex: null, polygon: null }
 }
 
-// Purpose: Handles mode selection click events and triggers the required side effects.
-// Why: Keeps event wiring localized and prevents UI handlers from duplicating logic.
+
+
 export function handleModeSelectionClick(
   map: maplibregl.Map,
-  refs: MapInteractionRefs,
+  model: MapInteractionModel,
   point: { x: number; y: number },
   multiSelect: boolean,
 ): void {
@@ -75,42 +75,42 @@ export function handleModeSelectionClick(
 
   const vertexIndex = getVertexHit(hits, VERTEX_HIT_LAYER_ID)
   if (vertexIndex !== null) {
-    refs.onSelectVertexRef.current(vertexIndex)
+    model.selection.onSelectVertex(vertexIndex)
     return
   }
 
   const edgeIndex = getEdgeHit(hits, EDGE_HIT_LAYER_ID)
   if (edgeIndex !== null) {
-    refs.onSelectEdgeRef.current(edgeIndex)
+    model.selection.onSelectEdge(edgeIndex)
     return
   }
 
   const obstacleId = getObstacleHit(hits, OBSTACLE_HIT_LAYER_ID)
   if (obstacleId) {
-    refs.onSelectObstacleRef.current(obstacleId, multiSelect)
+    model.selection.onSelectObstacle(obstacleId, multiSelect)
     return
   }
 
   const footprintId = getFootprintHit(hits, FOOTPRINT_HIT_LAYER_ID)
   if (footprintId) {
-    refs.onSelectFootprintRef.current(footprintId, multiSelect)
+    model.selection.onSelectFootprint(footprintId, multiSelect)
     return
   }
 
-  refs.onClearSelectionRef.current()
+  model.selection.onClearSelection()
 }
 
-// Purpose: Returns mouse down drag state from available inputs.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function resolveMouseDownDragState(
   map: maplibregl.Map,
-  refs: MapInteractionRefs,
+  model: MapInteractionModel,
   point: { x: number; y: number },
   lngLat: [number, number],
 ): DragState | null {
   const dragTolerancePx = zoomAdaptiveHitTolerancePx(DRAG_HIT_TOLERANCE_PX, map.getZoom())
   const hits = getHitFeatures(map, point, dragTolerancePx, [OBSTACLE_VERTEX_HIT_LAYER_ID, VERTEX_HIT_LAYER_ID, EDGE_HIT_LAYER_ID])
-  const activeObstacle = refs.activeObstacleRef.current
+  const activeObstacle = model.drawing.activeObstacle
   const obstacleVertexIndex = getVertexHit(hits, OBSTACLE_VERTEX_HIT_LAYER_ID)
   if (activeObstacle && obstacleVertexIndex !== null) {
     return {
@@ -123,7 +123,7 @@ export function resolveMouseDownDragState(
     }
   }
 
-  const activeFootprint = refs.activeFootprintRef.current
+  const activeFootprint = model.drawing.activeFootprint
   const vertexIndex = getVertexHit(hits, VERTEX_HIT_LAYER_ID)
   if (activeFootprint && vertexIndex !== null) {
     return {
@@ -148,17 +148,17 @@ export function resolveMouseDownDragState(
   }
 }
 
-// Purpose: Returns vertex drag polygon from available inputs.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function resolveVertexDragPolygon(
-  refs: MapInteractionRefs,
+  model: MapInteractionModel,
   dragState: DragState,
 ): Array<[number, number]> | null {
   if (dragState.type === 'vertex' && dragState.target === 'obstacle') {
     if (!dragState.obstacleId) {
       return null
     }
-    const activeObstacle = refs.activeObstacleRef.current
+    const activeObstacle = model.drawing.activeObstacle
     if (!activeObstacle || activeObstacle.id !== dragState.obstacleId || activeObstacle.shape.type !== 'polygon-prism') {
       return null
     }
@@ -166,23 +166,23 @@ export function resolveVertexDragPolygon(
   }
 
   if (dragState.type === 'vertex' && dragState.target === 'roof') {
-    return refs.activeFootprintRef.current?.vertices ?? null
+    return model.drawing.activeFootprint?.vertices ?? null
   }
 
   return null
 }
 
-// Purpose: Updates vertex drag move in a controlled way.
-// Why: Makes state transitions explicit and easier to reason about during edits.
-export function applyVertexDragMove(refs: MapInteractionRefs, dragState: DragState, point: [number, number]): boolean {
+
+
+export function applyVertexDragMove(model: MapInteractionModel, dragState: DragState, point: [number, number]): boolean {
   if (dragState.type === 'vertex' && dragState.target === 'obstacle') {
     if (!dragState.obstacleId) {
       return false
     }
-    return refs.onMoveObstacleVertexRef.current(dragState.obstacleId, dragState.index, point)
+    return model.selection.onMoveObstacleVertex(dragState.obstacleId, dragState.index, point)
   }
   if (dragState.type === 'vertex' && dragState.target === 'roof') {
-    return refs.onMoveVertexRef.current(dragState.index, point)
+    return model.selection.onMoveVertex(dragState.index, point)
   }
   return false
 }

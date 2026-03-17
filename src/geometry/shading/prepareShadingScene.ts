@@ -12,8 +12,8 @@ import type {
   ShadingRoofInput,
 } from './types'
 
-// Purpose: Encapsulates all roof and obstacle points behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function allRoofAndObstaclePoints(input: Pick<PrepareShadingSceneInput, 'roofs' | 'obstacles'>): Array<[number, number]> {
   const points: Array<[number, number]> = []
 
@@ -36,8 +36,8 @@ function allRoofAndObstaclePoints(input: Pick<PrepareShadingSceneInput, 'roofs' 
   return points
 }
 
-// Purpose: Computes normalize roofs to local deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
+
+
 function normalizeRoofsToLocal(origin: ReturnType<typeof buildLocalOrigin>, roofs: ShadingRoofInput[]): LocalRoofSurface[] {
   const localRoofs: LocalRoofSurface[] = []
 
@@ -53,15 +53,15 @@ function normalizeRoofsToLocal(origin: ReturnType<typeof buildLocalOrigin>, roof
   return localRoofs
 }
 
-// Purpose: Encapsulates prefilter obstacles for roof behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function prefilterObstaclesForRoof(roof: LocalRoofSurface, obstacles: ObstaclePrism[], maxShadowDistanceM: number): ObstaclePrism[] {
   const searchBounds = expandBbox(roof.bbox, maxShadowDistanceM)
   return obstacles.filter((obstacle) => bboxesIntersect(searchBounds, obstacle.bbox))
 }
 
-// Purpose: Encapsulates prepare shading scene behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function prepareShadingScene(input: PrepareShadingSceneInput): PreparedShadingScene | null {
   if (!Number.isFinite(input.gridResolutionM) || input.gridResolutionM <= 0) {
     return null

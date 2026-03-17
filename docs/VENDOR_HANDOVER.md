@@ -31,11 +31,12 @@ Stage 1 editor is production-like for deterministic single-plane roof modeling a
 
 ## Code Hotspots
 
+- `src/app/project-store/useProjectStore.ts`: runtime store composition, hydration, and canonical persistence wiring.
 - `src/app/presentation/useSunCastPresentationState.ts`: composition and action/event bridge.
 - `src/app/features/map-editor/MapView/hooks/useMapInteractions.ts`: interaction coordinator.
 - `src/app/features/map-editor/MapObjects/hooks/useMapObjectsSync.ts`: custom-layer lifecycle and visibility sync.
 - `src/geometry/shading/*`: deterministic sun/shade business logic and annual aggregation.
-- `src/state/project-store/projectState.reducer.ts`: central state transitions.
+- `src/state/project-store/projectState.reducer.ts`: canonical project-document transitions.
 
 ## CI / Delivery
 

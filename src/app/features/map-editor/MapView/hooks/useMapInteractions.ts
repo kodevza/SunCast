@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createMapInteractionHandlers } from '../mapInteractionHandlers'
+import { useLatest } from '../useLatest'
 import type {
   DragState,
   DrawingAngleHint,
@@ -13,7 +14,7 @@ import type {
 export type {
   DrawingAngleHint,
   HoveredEdgeLength,
-  MapInteractionRefs,
+  MapInteractionModel,
   VertexDragAngleHint,
   UseMapInteractionsArgs,
   UseMapInteractionsResult,
@@ -22,7 +23,7 @@ export type {
 export function useMapInteractions({
   mapRef,
   mapLoaded,
-  refs,
+  model,
   constrainedDrawLengthM,
 }: UseMapInteractionsArgs): UseMapInteractionsResult {
   const [hoveredEdgeLength, setHoveredEdgeLength] = useState<HoveredEdgeLength | null>(null)
@@ -32,6 +33,7 @@ export function useMapInteractions({
   const hoveredEdgeLengthRef = useRef<HoveredEdgeLength | null>(null)
   const dragStateRef = useRef<DragState | null>(null)
   const orbitSteerStateRef = useRef<OrbitSteerState | null>(null)
+  const modelRef = useLatest(model)
 
   useEffect(() => {
     hoveredEdgeLengthRef.current = hoveredEdgeLength
@@ -46,10 +48,11 @@ export function useMapInteractions({
     if (!map) {
       return
     }
+    const cameraModel = modelRef.current.camera
 
     const handlers = createMapInteractionHandlers({
       map,
-      refs,
+      modelRef,
       constrainedDrawLengthM,
       hoveredEdgeLengthRef,
       dragStateRef,
@@ -60,8 +63,8 @@ export function useMapInteractions({
       setDraftPreviewPoint,
     })
 
-    refs.onBearingChangeRef.current(map.getBearing())
-    refs.onPitchChangeRef.current(map.getPitch())
+    cameraModel.onBearingChange(map.getBearing())
+    cameraModel.onPitchChange(map.getPitch())
 
     map.on('click', handlers.handleClick)
     map.on('mousedown', handlers.handleMouseDown)
@@ -83,9 +86,9 @@ export function useMapInteractions({
       setDrawingAngleHint(null)
       setVertexDragAngleHint(null)
       setDraftPreviewPoint(null)
-      refs.onGeometryDragStateChangeRef.current(false)
+      cameraModel.onGeometryDragStateChange(false)
     }
-  }, [constrainedDrawLengthM, mapLoaded, mapRef, refs])
+  }, [constrainedDrawLengthM, mapLoaded, mapRef, modelRef])
 
   return {
     hoveredEdgeLength,

@@ -2,8 +2,8 @@ import type { ObstaclePrism, Point3, SunDirection, Triangle3 } from './types'
 
 const EPS = 1e-8
 
-// Purpose: Encapsulates subtract behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function subtract(a: Point3, b: Point3): Point3 {
   return {
     x: a.x - b.x,
@@ -12,8 +12,8 @@ function subtract(a: Point3, b: Point3): Point3 {
   }
 }
 
-// Purpose: Encapsulates cross behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function cross(a: Point3, b: Point3): Point3 {
   return {
     x: a.y * b.z - a.z * b.y,
@@ -22,14 +22,14 @@ function cross(a: Point3, b: Point3): Point3 {
   }
 }
 
-// Purpose: Encapsulates dot behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function dot(a: Point3, b: Point3): number {
   return a.x * b.x + a.y * b.y + a.z * b.z
 }
 
-// Purpose: Encapsulates intersect ray triangle behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function intersectRayTriangle(origin: Point3, direction: SunDirection, triangle: Triangle3): number | null {
   const edge1 = subtract(triangle.b, triangle.a)
   const edge2 = subtract(triangle.c, triangle.a)
@@ -61,8 +61,8 @@ function intersectRayTriangle(origin: Point3, direction: SunDirection, triangle:
   return t
 }
 
-// Purpose: Encapsulates intersect ray prism behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function intersectRayPrism(
   origin: Point3,
   direction: SunDirection,

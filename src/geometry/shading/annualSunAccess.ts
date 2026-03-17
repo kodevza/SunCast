@@ -2,81 +2,8 @@ import { computeSolarPosition } from '../sun/sunPosition'
 import { getSunriseSunset } from '../sun/dailyEstimation'
 import { localMetersToLonLat } from '../projection/localMeters'
 import { computeShadeSnapshot } from './computeShadeSnapshot'
+import { getDateIsosForRange, getDateIsosForYear, MINUTES_PER_HOUR, MS_PER_MINUTE } from '../../shared/utils/dateIsoUtc'
 import type { AnnualSunAccessInput, AnnualSunAccessProgress, AnnualSunAccessResult } from './types'
-
-const MINUTES_PER_HOUR = 60
-const MS_PER_MINUTE = 60_000
-
-// Purpose: Computes format date iso utc deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
-function formatDateIsoUtc(date: Date): string {
-  const year = date.getUTCFullYear()
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(date.getUTCDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-// Purpose: Computes parse date iso utc deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
-function parseDateIsoUtc(dateIso: string): number | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) {
-    return null
-  }
-  const [yearRaw, monthRaw, dayRaw] = dateIso.split('-')
-  const year = Number(yearRaw)
-  const month = Number(monthRaw)
-  const day = Number(dayRaw)
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
-    return null
-  }
-  const ts = Date.UTC(year, month - 1, day)
-  if (!Number.isFinite(ts)) {
-    return null
-  }
-  const normalized = new Date(ts)
-  if (
-    normalized.getUTCFullYear() !== year ||
-    normalized.getUTCMonth() + 1 !== month ||
-    normalized.getUTCDate() !== day
-  ) {
-    return null
-  }
-  return ts
-}
-
-// Purpose: Returns date isos for year from available inputs.
-// Why: Improves readability by isolating a single responsibility behind a named function.
-function getDateIsosForYear(year: number): string[] {
-  if (!Number.isInteger(year) || year < 1) {
-    return []
-  }
-
-  const dates: string[] = []
-  for (let ts = Date.UTC(year, 0, 1); ; ts += 86_400_000) {
-    const date = new Date(ts)
-    if (date.getUTCFullYear() !== year) {
-      break
-    }
-    dates.push(formatDateIsoUtc(date))
-  }
-  return dates
-}
-
-// Purpose: Returns date isos for range from available inputs.
-// Why: Improves readability by isolating a single responsibility behind a named function.
-function getDateIsosForRange(startDateIso: string, endDateIso: string): string[] {
-  const startTs = parseDateIsoUtc(startDateIso)
-  const endTs = parseDateIsoUtc(endDateIso)
-  if (startTs === null || endTs === null || endTs < startTs) {
-    return []
-  }
-
-  const dates: string[] = []
-  for (let ts = startTs; ts <= endTs; ts += 86_400_000) {
-    dates.push(formatDateIsoUtc(new Date(ts)))
-  }
-  return dates
-}
 
 interface ResolvedSimulationDates {
   dateIsos: string[]
@@ -84,8 +11,8 @@ interface ResolvedSimulationDates {
   dateEndIso: string
 }
 
-// Purpose: Returns simulation dates from available inputs.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function resolveSimulationDates(input: AnnualSunAccessInput): ResolvedSimulationDates | null {
   const hasExplicitRange = Boolean(input.dateStartIso) || Boolean(input.dateEndIso)
   if (hasExplicitRange) {
@@ -120,8 +47,8 @@ interface SimulatedDay {
   windowWeight: number
 }
 
-// Purpose: Builds simulated days from the provided inputs.
-// Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
+
+
 function buildSimulatedDays(dateIsos: string[], sampleWindowDays: number, halfYearMirror: boolean): SimulatedDay[] {
   if (dateIsos.length === 0) {
     return []
@@ -180,8 +107,8 @@ interface AnnualAccumulator {
   sampledDayCount: number
 }
 
-// Purpose: Builds accumulator from the provided inputs.
-// Why: Centralizes object/geometry construction and avoids duplicated assembly logic.
+
+
 function createAccumulator(input: AnnualSunAccessInput): AnnualAccumulator {
   return {
     roofAccumById: new Map(
@@ -211,17 +138,17 @@ function createAccumulator(input: AnnualSunAccessInput): AnnualAccumulator {
   }
 }
 
-// Purpose: Encapsulates process simulated day behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function processSimulatedDay(input: AnnualSunAccessInput, stepMinutes: number, simulatedDay: SimulatedDay, accum: AnnualAccumulator): void {
-  const window = getSunriseSunset({
+  const timeWindow = getSunriseSunset({
     dateIso: simulatedDay.dateIso,
     timeZone: input.timeZone,
     latDeg: input.scene.origin.lat0,
     lonDeg: input.scene.origin.lon0,
   })
 
-  if (!window) {
+  if (!timeWindow) {
     return
   }
 
@@ -229,7 +156,7 @@ function processSimulatedDay(input: AnnualSunAccessInput, stepMinutes: number, s
   const stepHours = stepMinutes / MINUTES_PER_HOUR
   const weightedStepHours = stepHours * simulatedDay.windowWeight
 
-  for (let timestamp = window.sunriseTs; timestamp <= window.sunsetTs; timestamp += stepMinutes * MS_PER_MINUTE) {
+  for (let timestamp = timeWindow.sunriseTs; timestamp <= timeWindow.sunsetTs; timestamp += stepMinutes * MS_PER_MINUTE) {
     const solar = computeSolarPosition(new Date(timestamp).toISOString(), input.scene.origin.lat0, input.scene.origin.lon0)
     const snapshot = computeShadeSnapshot({
       scene: input.scene,
@@ -281,8 +208,8 @@ function processSimulatedDay(input: AnnualSunAccessInput, stepMinutes: number, s
   }
 }
 
-// Purpose: Encapsulates finalize result behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 function finalizeResult(
   input: AnnualSunAccessInput,
   accum: AnnualAccumulator,
@@ -337,8 +264,8 @@ export interface ComputeAnnualSunAccessBatchedOptions {
   onYield?: () => Promise<void>
 }
 
-// Purpose: Computes compute annual sun access batched deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
+
+
 export async function computeAnnualSunAccessBatched(
   input: AnnualSunAccessInput,
   options: ComputeAnnualSunAccessBatchedOptions = {},
@@ -377,8 +304,8 @@ export async function computeAnnualSunAccessBatched(
   )
 }
 
-// Purpose: Computes compute annual sun access deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
+
+
 export function computeAnnualSunAccess(input: AnnualSunAccessInput): AnnualSunAccessResult | null {
   const stepMinutes = Math.max(1, Math.floor(input.stepMinutes))
   const sampleWindowDays = Math.max(1, Math.floor(input.sampleWindowDays))

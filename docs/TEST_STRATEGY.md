@@ -36,7 +36,7 @@ Legacy e2e specs (`roof-orbit.spec.ts`, `uc-strategy.spec.ts`) are intentionally
    - snapshot/annual deterministic fixtures in `src/geometry/shading/*`
    - “sun-behind-plane not counted as direct sun access” regressions
 3. Map object rendering math:
-   - layer rebasing precision guard (`MapObjects/geometry/layerRebasing.test.ts`)
+   - layer rebasing precision guard (`rendering/shared/layerRebasing.test.ts`)
    - world mesh conversion and roof heatmap overlay projection tests
 4. Client transport boundaries:
    - `src/app/clients/photonClient.test.ts`

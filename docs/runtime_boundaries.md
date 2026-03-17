@@ -29,12 +29,13 @@ Rules:
 - deterministic output for equal input
 - no React/DOM/MapLibre/browser-storage dependencies
 - no side effects or persistence
+- shared deterministic helpers from `src/shared/utils/*` are currently used here for date/time and error/result primitives; keep those helpers UI-free
 
 ### `src/state/project-store/*` (Canonical project document + persistence)
 
 Responsibilities:
 - reducer-driven project transitions and commands
-- canonical state projection (`useProjectDocument`)
+- selectors for canonical project state
 - storage schema migration/sanitization
 - share payload import/export mapping
 
@@ -42,7 +43,19 @@ Rules:
 - authoritative owner of canonical project inputs
 - fail-closed on unknown future schema versions
 - must not persist solved geometry/meshes/heatmap outputs
-- may compose `src/app/editor-session/*` reducer state, but session fields remain non-canonical
+- must not import `src/app/*`
+
+### `src/app/project-store/*` (Store composition + startup hydration)
+
+Responsibilities:
+- compose canonical project-document transitions with editor-session transitions
+- own `useProjectStore` / `useProjectDocument` runtime hooks
+- run startup hydration and persistence side effects
+
+Rules:
+- may depend on `src/state/project-store/*`, `src/app/editor-session/*`, and `src/app/globalServices/*`
+- must keep browser/runtime effects out of `src/state/project-store/*`
+- must not redefine canonical document rules owned by `src/state/project-store/*`
 
 ### `src/app/editor-session/*` (Ephemeral editing state)
 
@@ -65,6 +78,7 @@ Responsibilities:
 Rules:
 - outputs are derived-only artifacts
 - consume geometry + project/session contracts
+- owns shading, annual simulation, selected-roof inputs, and sun-projection derived state for presentation consumers
 - no UI rendering concerns
 
 ### `src/app/presentation/*` (Screen-facing model composition)
@@ -72,6 +86,7 @@ Rules:
 Responsibilities:
 - compose presentation state from document/session/analysis
 - build typed sidebar/canvas/tutorial models
+- own the thin `useSunCastController` compatibility composition for screens
 - bridge action handlers for screens
 
 Rules:
@@ -83,10 +98,12 @@ Rules:
 
 Responsibilities:
 - feature orchestration hooks (shading, annual simulation, sharing, keyboard, selection)
-- compatibility composition (`useSunCastController` over presentation hooks)
+- editor-session helpers (`useConstraintEditor`, `useSelectionState`)
+- runtime/presentation support (`useSunCastRuntimeActions`, `useSunCastRuntimeEffects`, obstacle mesh derivation)
 
 Rules:
-- orchestrate flows; do not become business-logic sink
+- this folder is still a mixed boundary in the current app, not only a thin compatibility layer
+- orchestrate flows; do not become the default sink for new business logic
 - no direct geometry algorithm implementations
 - long-running work must preserve UI responsiveness
 
@@ -102,6 +119,34 @@ Rules:
 - no business/domain mapping
 - no retry/cache policy (feature modules own policy)
 - no UI concerns or toasts
+
+### `src/app/globalServices/*` (Browser-global app services)
+
+Responsibilities:
+- share/hash payload decode entry points
+- toast action dispatch bridges
+
+Rules:
+- browser/runtime side effects are allowed here
+- no geometry solving or rendering ownership
+
+### `src/application/services/*` (Cross-cutting app services)
+
+Responsibilities:
+- small application flows that do not fit a single feature; currently project reset/recovery
+
+Rules:
+- may coordinate store/session/global-service calls
+- should stay thin and explicit; do not turn into a second generic hooks bucket
+
+### `src/adapters/*` (Platform adapters)
+
+Responsibilities:
+- platform library wrappers; currently MapLibre runtime creation/disposal
+
+Rules:
+- encapsulate third-party runtime setup details
+- no ownership of project/document state
 
 ### `src/app/features/map-editor/*` (Map interaction + rendering integration)
 
@@ -132,7 +177,6 @@ Rules:
 
 Responsibilities:
 - custom 3D layers for roof meshes, obstacle meshes, roof heatmap overlay
-- layer-relative rebasing and render-geometry adapters
 - visibility synchronization from presentation/analysis state
 
 Rules:
@@ -172,6 +216,36 @@ Rules:
 - consumes app state/events
 - does not own geometry or persistence behavior
 
+### `src/app/components/*` (Shared UI components)
+
+Responsibilities:
+- reusable UI widgets
+- global runtime error UI and toast display
+
+Rules:
+- may depend on shared/app contracts
+- must not become a geometry or persistence boundary
+
+### `src/app/screens/*` (Screen assembly)
+
+Responsibilities:
+- final page/layout composition
+
+Rules:
+- assemble presentation models and feature components
+- no solver/shading implementation
+
+### `src/rendering/*` (Rendering primitives)
+
+Responsibilities:
+- reusable custom-layer and heatmap geometry rendering primitives
+- Three.js / MapLibre render-path code shared by map-object features
+
+Rules:
+- should consume derived render inputs only
+- must not own canonical state
+- may own shared world-geometry adapters, layer rebasing helpers, worker entry points, and WebGL renderer lifecycle code used by map-object features
+
 ### `src/shared/*` (Cross-cutting contracts/utilities)
 
 Responsibilities:
@@ -191,21 +265,35 @@ Responsibilities:
 Rules:
 - type-only/shared contracts, no runtime side effects
 
-## Dependency Direction (Allowed)
+## Dependency Direction (Observed)
 
 Preferred direction:
 
-`geometry -> state/analysis -> presentation/hooks -> features/screens`
+`geometry -> state -> analysis -> presentation -> features/screens`
 
-Allowed imports by boundary:
-- `geometry/*` -> `types/*` only (plus internal geometry modules)
-- `state/project-store/*` -> `types/*`, `geometry/*`, `shared/*`, `app/editor-session/*`
-- `app/editor-session/*` -> `types/*`, `state/project-store/*` contracts
-- `app/analysis/*` -> `geometry/*`, `types/*`, `state/project-store/*`, `shared/*`, selected `app/hooks/*`
-- `app/presentation/*` -> `app/analysis/*`, `state/project-store/*`, `app/editor-session/*`, `app/hooks/*`, `shared/*`
-- `app/hooks/*` -> `state/project-store/*`, `geometry/*`, `shared/*`, feature contracts
-- `app/clients/*` -> browser platform APIs + `shared/*`/`types/*` only
-- `app/features/*` + `app/screens/*` -> presentation/hook contracts + clients + platform libraries
+Current app also has side-channel boundaries:
+
+`shared/types` support every layer
+`clients/adapters/globalServices` sit beside the main flow for platform and transport work
+`app/hooks` is still a mixed orchestration layer used by `analysis`, `presentation`, and `editor-session`
+`rendering` is consumed by `MapObjects` and stays below app/features in the import graph
+
+Observed imports by boundary:
+- `geometry/*` imports `types/*` plus selected `shared/utils/*` and `shared/errors/*` helpers, in addition to internal geometry modules.
+- `state/project-store/*` imports `types/*`, `geometry/*`, and `shared/*`.
+- `app/project-store/*` imports `state/project-store/*`, `app/editor-session/*`, `app/globalServices/*`, `shared/*`, and React runtime APIs.
+- `app/editor-session/*` imports `types/*`, `state/project-store/*` contracts, and selected `app/hooks/*`.
+- `app/analysis/*` imports `geometry/*`, `types/*`, `state/project-store/*`, and `shared/*`.
+- `app/presentation/*` imports `app/project-store/*`, `app/analysis/*`, `app/editor-session/*`, `app/hooks/*`, and `shared/*`.
+- `app/hooks/*` imports `state/project-store/*`, `geometry/*`, `shared/*`, `app/globalServices/*`, and selected feature contracts.
+- `app/clients/*` currently uses browser/web APIs such as `fetch`, `AbortSignal`, and `URL`, plus `shared/*` and `types/*`.
+- `app/globalServices/*` imports browser APIs, `shared/*`, and `state/project-store/*`.
+- `application/services/*` currently imports `app/globalServices/*`.
+- `adapters/*` currently wraps platform libraries only.
+- `rendering/*` imports `types/*` and `shared/*`, plus rendering-internal helpers.
+- `app/components/*` imports `shared/*`, `types/*`, and selected app/feature contracts.
+- `app/features/*` imports a mix of `presentation/*`, `hooks/*`, `clients/*`, platform libraries, and in `sun-tools/*` also selected `geometry/*` types/helpers.
+- `app/screens/*` imports `presentation/*` contracts and feature components.
 
 Disallowed:
 - `geometry/*` importing React/MapLibre/browser APIs
@@ -213,6 +301,8 @@ Disallowed:
 - rendering/map layers becoming canonical state owners
 - persistence/share storing derived meshes/planes/heatmap grids
 - features bypassing `app/clients/*` and inlining provider HTTP transport
+- `app/hooks/*` importing `app/presentation/*`
+- direct `geometry/*` imports from `app/features/sun-tools/*` remain current-state exceptions only; do not spread that pattern further without an explicit boundary decision
 
 ## Runtime Notes
 

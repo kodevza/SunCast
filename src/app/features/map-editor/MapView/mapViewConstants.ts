@@ -51,8 +51,8 @@ const HIGH_ZOOM_TOLERANCE_END = 21
 const HIGH_ZOOM_TOLERANCE_SCALE = 0.5
 const MIN_HIT_TOLERANCE_PX = 5
 
-// Purpose: Computes edit hit tolerance in pixels from base tolerance and zoom level.
-// Why: Keeps sub-meter editing accurate at high zoom while preserving usability at lower zoom.
+
+
 export function zoomAdaptiveHitTolerancePx(baseTolerancePx: number, zoom: number): number {
   if (!Number.isFinite(zoom) || zoom <= HIGH_ZOOM_TOLERANCE_START) {
     return baseTolerancePx

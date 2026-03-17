@@ -99,10 +99,10 @@ export interface PreparedShadingScene {
   obstacles: ObstaclePrism[]
   maxObstacleHeightM: number
   maxShadowDistanceClampM: number
-  diagnostics: RoofShadeDiagnostics
+  diagnostics: RoofShadeDiagnosticsResults
 }
 
-export interface RoofShadeDiagnostics {
+export interface RoofShadeDiagnosticsResults {
   roofsProcessed: number
   roofsSkipped: number
   obstaclesProcessed: number
@@ -136,7 +136,7 @@ export interface ComputeRoofShadeGridResult {
   sunElevationDeg: number | null
   sunDirection: SunDirection | null
   roofs: RoofShadeResult[]
-  diagnostics: RoofShadeDiagnostics
+  diagnostics: RoofShadeDiagnosticsResults
 }
 
 export interface PrepareShadingSceneInput {
@@ -163,7 +163,7 @@ export interface ComputeShadeSnapshotResult {
   sunElevationDeg: number
   sunDirection: SunDirection | null
   roofs: RoofShadeSnapshotResult[]
-  diagnostics: RoofShadeDiagnostics
+  diagnostics: RoofShadeDiagnosticsResults
 }
 
 export interface AnnualSunAccessInput {

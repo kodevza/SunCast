@@ -2,8 +2,8 @@ import type { BBox2, SunDirection } from './types'
 
 const DEG_TO_RAD = Math.PI / 180
 
-// Purpose: Encapsulates sun direction from azimuth elevation behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function sunDirectionFromAzimuthElevation(sunAzimuthDeg: number, sunElevationDeg: number): SunDirection {
   const azimuthRad = sunAzimuthDeg * DEG_TO_RAD
   const elevationRad = sunElevationDeg * DEG_TO_RAD
@@ -15,8 +15,8 @@ export function sunDirectionFromAzimuthElevation(sunAzimuthDeg: number, sunEleva
   }
 }
 
-// Purpose: Computes compute max shadow distance m deterministically from the provided input values.
-// Why: Keeps domain rules explicit, testable, and deterministic.
+
+
 export function computeMaxShadowDistanceM(
   maxObstacleHeightM: number,
   sunElevationDeg: number,
@@ -35,8 +35,8 @@ export function computeMaxShadowDistanceM(
   return Math.min(maxObstacleHeightM / tanElevation, maxShadowDistanceClampM)
 }
 
-// Purpose: Encapsulates bbox from points behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function bboxFromPoints(points: Array<{ x: number; y: number }>): BBox2 {
   let minX = Number.POSITIVE_INFINITY
   let minY = Number.POSITIVE_INFINITY
@@ -61,8 +61,8 @@ export function bboxFromPoints(points: Array<{ x: number; y: number }>): BBox2 {
   return { minX, minY, maxX, maxY }
 }
 
-// Purpose: Encapsulates expand bbox behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function expandBbox(bbox: BBox2, marginM: number): BBox2 {
   return {
     minX: bbox.minX - marginM,
@@ -72,8 +72,8 @@ export function expandBbox(bbox: BBox2, marginM: number): BBox2 {
   }
 }
 
-// Purpose: Encapsulates bboxes intersect behavior in one reusable function.
-// Why: Improves readability by isolating a single responsibility behind a named function.
+
+
 export function bboxesIntersect(a: BBox2, b: BBox2): boolean {
   return !(a.maxX < b.minX || b.maxX < a.minX || a.maxY < b.minY || b.maxY < a.minY)
 }

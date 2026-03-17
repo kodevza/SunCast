@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { OBSERVABILITY_EVENT_NAME, getBufferedObservabilityEvents, type ObservabilityEvent } from '../../shared/observability/observability'
+import {
+  getBufferedObservabilityEvents,
+  subscribeObservabilityEvents,
+  type ObservabilityEvent,
+} from '../../shared/observability/observability'
 import type { AppErrorSeverity } from '../../shared/errors'
 import { dispatchGlobalErrorToastAction } from './globalErrorToastActions'
 
@@ -55,18 +59,17 @@ export function GlobalErrorToasts() {
   })
 
   useEffect(() => {
-    const onEvent = (rawEvent: Event) => {
-      const customEvent = rawEvent as CustomEvent<ObservabilityEvent>
+    return subscribeObservabilityEvents((event) => {
       if (
-        customEvent.detail.kind === 'event' &&
-        customEvent.detail.name === 'app.info.dismiss' &&
-        typeof customEvent.detail.data?.toastKey === 'string'
+        event.kind === 'event' &&
+        event.name === 'app.info.dismiss' &&
+        typeof event.data?.toastKey === 'string'
       ) {
-        const toastKey = customEvent.detail.data.toastKey
+        const toastKey = event.data.toastKey
         setToasts((previous) => previous.filter((item) => item.toastKey !== toastKey))
         return
       }
-      const next = toToast(customEvent.detail)
+      const next = toToast(event)
       if (!next) {
         return
       }
@@ -91,10 +94,7 @@ export function GlobalErrorToasts() {
           setToasts((previous) => previous.filter((item) => item.id !== next.id))
         }, TOAST_TTL_MS)
       }
-    }
-
-    window.addEventListener(OBSERVABILITY_EVENT_NAME, onEvent)
-    return () => window.removeEventListener(OBSERVABILITY_EVENT_NAME, onEvent)
+    })
   }, [])
 
   const visibleToasts = useMemo(() => toasts.slice(-MAX_TOASTS), [toasts])
