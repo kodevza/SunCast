@@ -1,12 +1,15 @@
-import { readdirSync, readFileSync } from 'node:fs'
-import path from 'node:path'
+import { readdirSync, readFileSync } from 'fs'
+import path from 'path'
 import { describe, expect, it } from 'vitest'
+import { fileURLToPath } from 'url'
 
-const projectStoreDir = path.resolve(import.meta.dirname)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const projectStoreDir = path.resolve(__dirname)
 
 describe('state/project-store module boundaries', () => {
   it('does not import from app runtime boundaries', () => {
-    const sourceFiles = readdirSync(projectStoreDir).filter((entry) => {
+    const sourceFiles = readdirSync(projectStoreDir).filter((entry: string) => {
       if (!entry.endsWith('.ts') && !entry.endsWith('.tsx')) {
         return false
       }
