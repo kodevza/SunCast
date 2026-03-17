@@ -109,12 +109,12 @@ describe('projectStateReducer', () => {
   })
 
   it('commits and edits obstacle geometry without session selection side effects', () => {
-    let state = {
+    let state: ProjectState = {
       ...initialProjectState,
       obstacleDrawDraft: [
-        [1, 1],
-        [2, 1],
-        [2, 2],
+        [1, 1] as [number, number],
+        [2, 1] as [number, number],
+        [2, 2] as [number, number],
       ],
       isDrawingObstacle: true,
     }

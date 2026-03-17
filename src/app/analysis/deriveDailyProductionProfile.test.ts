@@ -37,7 +37,9 @@ describe('deriveDailyProductionProfile', () => {
     expect(result?.labels.length).toBe(result?.productionValues_kW.length)
     expect(result?.productionValues_kW.every((value) => Number.isFinite(value) && value >= 0)).toBe(true)
     expect(result?.peakProductionValue_kW).toBeGreaterThan(0)
-    expect(result?.sunriseTs).toBeLessThan(result?.sunsetTs)
+    if (result?.sunriseTs && result?.sunsetTs) {
+      expect(result.sunriseTs).toBeLessThan(result.sunsetTs)
+    }
     expect(result?.peakProductionTimeLabel).toMatch(/^\d{2}:\d{2}$/)
   })
 

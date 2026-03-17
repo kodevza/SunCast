@@ -73,6 +73,11 @@ export default defineConfig([
             message: 'analysis must not import features',
           },
           {
+            target: './src/app/analysis',
+            from: './src/app/hooks',
+            message: 'analysis must not import features',
+          },          
+          {
             target: './src/geometry',
             from: './src/app/features',
             message: 'features must not import geometry directly',
