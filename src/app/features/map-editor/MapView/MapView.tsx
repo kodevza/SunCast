@@ -11,7 +11,7 @@ import { useSunPerspectiveSync } from './hooks/useSunPerspectiveSync'
 import { SATELLITE_LAYER_ID, STREETS_LAYER_ID } from './mapViewConstants'
 import { MapAttributionControl } from './MapAttributionControl'
 import { fetchArcgisProviderAttribution } from './arcgisAttribution'
-import type { SunCastMapViewModel } from '../../../presentation/presentationModel.types'
+import type { SunCastMapViewModel } from './mapView.types'
 
 interface MapViewProps {
   model: SunCastMapViewModel

@@ -2,39 +2,39 @@ import { MapView } from '../features/map-editor/MapView/MapView'
 import { SunDailyChartPanel } from '../features/sun-tools/SunDailyChartPanel'
 import { SunOverlayColumn } from '../features/sun-tools/SunOverlayColumn'
 import { SunProjectionStatus } from '../features/sun-tools/SunProjectionStatus'
-import type { SunCastCanvasModel } from '../presentation/presentationModel.types'
+import { useMapViewController } from '../features/map-editor/MapView/useMapViewController'
+import { useSunToolsController } from '../features/sun-tools/useSunToolsController'
 
-interface SunCastCanvasProps {
-  model: SunCastCanvasModel
-}
+export function SunCastCanvas() {
+  const mapView = useMapViewController()
+  const sunTools = useSunToolsController()
 
-export function SunCastCanvas({ model }: SunCastCanvasProps) {
   return (
     <main className="sun-cast-canvas">
-      <MapView model={model.mapView} onInitialized={model.onInitialized} />
+      <MapView model={mapView.model} onInitialized={mapView.onInitialized} />
 
       <SunOverlayColumn
-        datetimeIso={model.sunDatetimeRaw}
-        timeZone={model.sunDailyTimeZone}
-        selectedRoofs={model.selectedRoofInputs}
-        onDatetimeInputChange={model.onSunDatetimeInputChange}
-        productionComputationEnabled={model.productionComputationEnabled}
-        annualSunAccess={model.annualSunAccess}
-        expanded={model.hasSolvedActiveRoof && !model.mapView.drawing.isDrawingRoof && !model.mapView.drawing.isDrawingObstacle}
+        datetimeIso={sunTools.sunDatetimeRaw}
+        timeZone={sunTools.sunDailyTimeZone}
+        selectedRoofs={sunTools.selectedRoofInputs}
+        onDatetimeInputChange={sunTools.onSunDatetimeInputChange}
+        productionComputationEnabled={sunTools.productionComputationEnabled}
+        annualSunAccess={sunTools.annualSunAccess}
+        expanded={sunTools.hasSolvedActiveRoof && !mapView.model.drawing.isDrawingRoof && !mapView.model.drawing.isDrawingObstacle}
       >
-        {model.hasSolvedActiveRoof ? (
+        {sunTools.hasSolvedActiveRoof ? (
           <>
             <SunProjectionStatus
-              enabled={model.sunProjectionEnabled}
-              hasDatetime={model.hasValidSunDatetime}
-              onToggleEnabled={model.onToggleSunProjectionEnabled}
-              result={model.mapView.view.sunProjectionResult}
+              enabled={sunTools.sunProjectionEnabled}
+              hasDatetime={sunTools.hasValidSunDatetime}
+              onToggleEnabled={sunTools.onToggleSunProjectionEnabled}
+              result={mapView.model.view.sunProjectionResult}
             />
             <SunDailyChartPanel
-              dateIso={model.sunDailyDateRaw}
-              timeZone={model.sunDailyTimeZone}
-              selectedRoofs={model.selectedRoofInputs}
-              computationEnabled={model.productionComputationEnabled}
+              dateIso={sunTools.sunDailyDateRaw}
+              timeZone={sunTools.sunDailyTimeZone}
+              selectedRoofs={sunTools.selectedRoofInputs}
+              computationEnabled={sunTools.productionComputationEnabled}
             />
           </>
         ) : (

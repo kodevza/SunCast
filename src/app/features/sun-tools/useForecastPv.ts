@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { SelectedRoofSunInput } from './SunOverlayColumn'
 import { fetchOpenMeteoTiltedIrradiance } from './forecast/openMeteoForecast'
 import { createRoofForecastProfile, mergeSettledRoofForecasts, type ForecastPoint } from './forecast/forecastPvTransform'
 import { extractDateIsoInTimeZone } from './sunDateTime'
 import { captureException, recordEvent } from '../../../shared/observability/observability'
 import { reportAppErrorCode, startGlobalProcessingToast, stopGlobalProcessingToast } from '../../../shared/errors'
+import type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
 
 const FORECAST_TIME_ZONE = 'UTC'
 

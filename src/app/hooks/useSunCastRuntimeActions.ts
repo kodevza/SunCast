@@ -3,7 +3,7 @@ import { useShareProject } from './useShareProject'
 import type { ReturnTypeUseProjectDocument } from './hookReturnTypes'
 
 export function useSunCastRuntimeActions(projectDocument: ReturnTypeUseProjectDocument) {
-  const { store } = projectDocument
+  const store = projectDocument
 
   const { onShareProject } = useShareProject({
     footprints: store.state.footprints,

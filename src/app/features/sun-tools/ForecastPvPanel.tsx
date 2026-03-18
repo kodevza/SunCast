@@ -12,8 +12,8 @@ import {
 } from 'chart.js'
 import { useMemo } from 'react'
 import { Line } from 'react-chartjs-2'
-import type { SelectedRoofSunInput } from './SunOverlayColumn'
 import { useForecastPv } from './useForecastPv'
+import type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 

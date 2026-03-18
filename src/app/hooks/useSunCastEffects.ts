@@ -2,11 +2,11 @@ import { useComputeProcessingToast } from './useComputeProcessingToast'
 import { useEditorKeyboardShortcuts } from './useEditorKeyboardShortcuts'
 import { useGlobalToastActions } from './useGlobalToastActions'
 import { useObstacleMeshErrorReporting } from './useObstacleMeshErrorReporting'
-import type { useObstacleMeshResults } from './useObstacleMeshResults'
 import { useUiErrorReporting } from './useUiErrorReporting'
 import type { ReturnTypeUseAnalysis, ReturnTypeUseEditorSession, ReturnTypeUseProjectDocument } from './hookReturnTypes'
+import type { useObstacleMeshResults } from './useObstacleMeshResults'
 
-interface UseSunCastRuntimeEffectsArgs {
+interface UseSunCastEffectsArgs {
   projectDocument: ReturnTypeUseProjectDocument
   editorSession: ReturnTypeUseEditorSession
   analysis: ReturnTypeUseAnalysis
@@ -15,14 +15,14 @@ interface UseSunCastRuntimeEffectsArgs {
   onShareProject: () => Promise<void>
 }
 
-export function useSunCastRuntimeEffects({
+export function useSunCastEffects({
   projectDocument,
   editorSession,
   analysis,
   activeFootprintErrors,
   obstacleMeshResults,
   onShareProject,
-}: UseSunCastRuntimeEffectsArgs): void {
+}: UseSunCastEffectsArgs): void {
   useComputeProcessingToast(analysis.computeProcessingActive)
   useEditorKeyboardShortcuts(projectDocument, editorSession)
   useGlobalToastActions({ projectDocument, editorSession, analysis, onShareProject })

@@ -1,44 +1,39 @@
 import { useMemo } from 'react'
-import type { FootprintStateEntry } from '../../state/project-store/projectState.types'
-import type { SelectedRoofSunInput } from '../../types/presentation-contracts'
-import { computeFootprintCentroid } from '../../shared/utils/footprintGeometry'
-import type { SolvedEntry } from './solvedRoof.types'
+import { computeFootprintCentroid } from '../../../shared/utils/footprintGeometry'
+import type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
+import { useSunCastAppContext } from '../../screens/SunCastAppProvider'
 
 function clampPitchAdjustmentPercent(value: number): number {
   if (!Number.isFinite(value)) {
     return 0
   }
+
   return Math.min(200, Math.max(-90, value))
 }
 
-interface UseSelectedRoofInputsArgs {
-  selectedFootprintIds: string[]
-  footprintEntries: Record<string, FootprintStateEntry>
-  solvedEntries: SolvedEntry[]
-}
+export function useSelectedRoofInputs(): SelectedRoofSunInput[] {
+  const { project, analysis } = useSunCastAppContext()
 
-export function useSelectedRoofInputs({
-  selectedFootprintIds,
-  footprintEntries,
-  solvedEntries,
-}: UseSelectedRoofInputsArgs): SelectedRoofSunInput[] {
   const solvedByFootprintId = useMemo(
-    () => new Map(solvedEntries.map((entry) => [entry.footprintId, entry])),
-    [solvedEntries],
+    () => new Map(analysis.solvedRoofs.entries.map((entry) => [entry.footprintId, entry])),
+    [analysis.solvedRoofs.entries],
   )
 
   return useMemo(() => {
     const inputs: SelectedRoofSunInput[] = []
-    for (const footprintId of selectedFootprintIds) {
+
+    for (const footprintId of project.selectedFootprintIds) {
       const solvedEntry = solvedByFootprintId.get(footprintId)
-      const footprintEntry = footprintEntries[footprintId]
+      const footprintEntry = project.state.footprints[footprintId]
       if (!solvedEntry || !footprintEntry) {
         continue
       }
+
       const centroid = computeFootprintCentroid(footprintEntry.footprint.vertices)
       if (!centroid) {
         continue
       }
+
       inputs.push({
         footprintId,
         lonDeg: centroid[0],
@@ -50,6 +45,7 @@ export function useSelectedRoofInputs({
         roofPlane: solvedEntry.solution.plane,
       })
     }
+
     return inputs
-  }, [footprintEntries, selectedFootprintIds, solvedByFootprintId])
+  }, [project.selectedFootprintIds, project.state.footprints, solvedByFootprintId])
 }

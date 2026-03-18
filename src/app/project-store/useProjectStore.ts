@@ -15,6 +15,7 @@ import {
   getShadingReadyFootprintEntries,
   isFootprintSelected,
 } from '../../state/project-store/projectState.selectors'
+import { selectProjectDocument } from '../../state/project-store/projectDocument.selectors'
 import { writeStorage } from '../../state/project-store/projectState.storage'
 import type { Action, ProjectState } from '../../state/project-store/projectState.types'
 import { editorSessionReducer } from '../editor-session/editorSession.reducer'
@@ -49,6 +50,7 @@ export function useProjectStore() {
   const [state, dispatchRaw] = useReducer(reduceProjectStoreState, initialProjectState)
   const [stateRevision, bumpStateRevision] = useReducer((revision: number) => revision + 1, 0)
   const [hasFinishedHydration, setHasFinishedHydration] = useState(false)
+  const projectDocument = useMemo(() => selectProjectDocument(state), [state])
 
   const dispatch = useCallback((action: Action) => {
     dispatchRaw(action)
@@ -71,16 +73,12 @@ export function useProjectStore() {
       return
     }
 
-    const projectDocument = {
-      footprints: state.footprints,
-      obstacles: state.obstacles,
-      sunProjection: state.sunProjection,
-      shadingSettings: state.shadingSettings,
-    }
-
     writeStorage(
       {
-        ...projectDocument,
+        footprints: state.footprints,
+        obstacles: state.obstacles,
+        sunProjection: state.sunProjection,
+        shadingSettings: state.shadingSettings,
         // Active ids belong to editor session; keep persisted payload canonical.
         activeFootprintId: null,
         activeObstacleId: null,
@@ -98,12 +96,6 @@ export function useProjectStore() {
 
   return useMemo(() => {
     const activeFootprint = getActiveFootprint(state)
-    const projectDocument = {
-      footprints: state.footprints,
-      obstacles: state.obstacles,
-      sunProjection: state.sunProjection,
-      shadingSettings: state.shadingSettings,
-    }
     const editorSession = {
       activeFootprintId: state.activeFootprintId,
       selectedFootprintIds: state.selectedFootprintIds,
@@ -128,9 +120,7 @@ export function useProjectStore() {
       activeObstacle: getActiveObstacle(state),
       selectedObstacles: getSelectedObstacleEntries(state),
       shadingReadyFootprints: getShadingReadyFootprintEntries(state),
-      sunProjection: state.sunProjection,
-      shadingSettings: state.shadingSettings,
       ...createProjectCommands(dispatch, () => state),
     }
-  }, [dispatch, state, stateRevision])
+  }, [dispatch, projectDocument, state, stateRevision])
 }

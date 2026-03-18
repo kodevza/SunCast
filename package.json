@@ -16,6 +16,7 @@
     "test:coverage": "vitest run --exclude \"**/e2e/**\" --coverage --coverage.reporter=text-summary --coverage.reporter=lcov --coverage.reporter=json-summary",
     "test:e2e": "playwright test",
     "test:e2e:coverage": "cross-env PW_COVERAGE=1 playwright test",
+    "test:coverage:e2e": "npm run coverage:e2e",
     "coverage:e2e:report": "nyc report --reporter=html --reporter=text-summary --reporter=lcov",
     "coverage:e2e": "npm run test:e2e:coverage && npm run coverage:e2e:report",
     "coverage:legacy-audit": "node scripts/coverage-legacy-audit.mjs --lcov coverage/lcov.info",

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FootprintPolygon, VertexHeightConstraint } from '../../../types/geometry'
 import { HintTooltip } from '../../components/HintTooltip'
 
-interface RoofEditorProps {
+export interface RoofEditorProps {
   footprint: FootprintPolygon | null
   vertexConstraints: VertexHeightConstraint[]
   selectedVertexIndex: number | null

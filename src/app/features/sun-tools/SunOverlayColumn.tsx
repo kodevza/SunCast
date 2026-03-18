@@ -4,10 +4,8 @@ import { AnnualSunAccessPanel } from './AnnualSunAccessPanel'
 import { ForecastPvPanel } from './ForecastPvPanel'
 import { MonthlyProductionPanel } from './MonthlyProductionPanel'
 import { SunDateTimePanel } from './SunDateTimePanel'
+import type { AnnualSunAccessController } from './useAnnualSunAccessController'
 import type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
-import type { AnnualSunAccessResult } from '../../../geometry/shading'
-import type { AnnualSimulationOptions, AnnualSimulationState } from '../../analysis/analysis.types'
-export type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
 
 interface SunOverlayColumnProps {
   children: ReactNode
@@ -16,20 +14,7 @@ interface SunOverlayColumnProps {
   selectedRoofs: SelectedRoofSunInput[]
   onDatetimeInputChange: (datetimeIsoRaw: string) => void
   productionComputationEnabled: boolean
-  annualSunAccess: {
-    selectedRoofCount: number
-    gridResolutionM: number
-    state: AnnualSimulationState
-    progressRatio: number
-    result: AnnualSunAccessResult | null
-    error: string | null
-    isAnnualHeatmapVisible: boolean
-    onGridResolutionChange: (gridResolutionM: number) => void
-    onRunSimulation: (options: AnnualSimulationOptions) => Promise<void>
-    onClearSimulation: () => void
-    onShowAnnualHeatmap: () => void
-    onHideAnnualHeatmap: () => void
-  }
+  annualSunAccess: AnnualSunAccessController
   expanded?: boolean
 }
 
@@ -60,7 +45,6 @@ export function SunOverlayColumn({
       {!isCollapsed && (
         <div className="sun-overlay-content">
           <div className="sun-overlay-tabs" role="tablist" aria-label="Sun overlay tabs">
-
             <button
               type="button"
               role="tab"

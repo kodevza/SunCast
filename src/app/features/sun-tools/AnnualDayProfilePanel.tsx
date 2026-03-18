@@ -13,8 +13,8 @@ import {
 import { useMemo } from 'react'
 import { Line } from 'react-chartjs-2'
 import { deriveAnnualDayProfile } from '../../analysis/deriveAnnualDayProfile'
-import type { SelectedRoofSunInput } from './SunOverlayColumn'
 import { extractYearInTimeZone } from './sunDateTime'
+import type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 

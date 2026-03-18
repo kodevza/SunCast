@@ -1,18 +1,13 @@
 import type { SolverWarning } from '../../../types/geometry'
 import { useEffect, useState } from 'react'
 import { HintTooltip } from '../../components/HintTooltip'
+import {
+  MAX_PITCH_ADJUSTMENT_PERCENT,
+  MIN_PITCH_ADJUSTMENT_PERCENT,
+  clampPitchAdjustmentPercent,
+} from './statusPanel.types'
 
-const MIN_PITCH_ADJUSTMENT_PERCENT = -90
-const MAX_PITCH_ADJUSTMENT_PERCENT = 200
-
-function clampPitchAdjustmentPercent(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 0
-  }
-  return Math.min(MAX_PITCH_ADJUSTMENT_PERCENT, Math.max(MIN_PITCH_ADJUSTMENT_PERCENT, value))
-}
-
-interface StatusPanelProps {
+export interface StatusPanelProps {
   warnings: SolverWarning[]
   basePitchDeg: number | null
   pitchAdjustmentPercent: number
