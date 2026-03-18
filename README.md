@@ -2,7 +2,7 @@
 
 SunCast is a React + TypeScript app for drawing roof/obstacle geometry on a map and computing deterministic roof metrics, shading preview, and annual sun-access outputs.
 
-Live demo: [SunCast Demo](https://konradzawadka.github.io/SunCast/)
+Live demo: [SunCast Demo](https://kodevza.github.io/SunCast/)
 
 ## Core Principles
 
