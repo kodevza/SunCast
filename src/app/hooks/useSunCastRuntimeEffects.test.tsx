@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client'
 import { useEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { dispatchGlobalErrorToastAction } from '../components/globalErrorToastActions'
-import { useSunCastRuntimeEffects } from './useSunCastRuntimeEffects'
+import { useSunCastEffects } from './useSunCastEffects'
 
 const mockReportAppSuccess = vi.fn()
 
@@ -19,13 +19,13 @@ vi.mock('../../shared/errors', () => ({
   stopGlobalProcessingToast: vi.fn(),
 }))
 
-function renderHook(args: Parameters<typeof useSunCastRuntimeEffects>[0]) {
+function renderHook(args: Parameters<typeof useSunCastEffects>[0]) {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
 
   function Probe() {
-    useSunCastRuntimeEffects(args)
+    useSunCastEffects(args)
 
     useEffect(() => undefined, [])
     return null
@@ -45,7 +45,7 @@ function renderHook(args: Parameters<typeof useSunCastRuntimeEffects>[0]) {
   }
 }
 
-describe('useSunCastRuntimeEffects', () => {
+describe('useSunCastEffects', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/#c=shared')
@@ -54,15 +54,10 @@ describe('useSunCastRuntimeEffects', () => {
   it('handles reset-state action by resetting state and clearing shared hash payload', () => {
     const args = {
       projectDocument: {
-        store: {
-          resetState: vi.fn(),
-          state: {
-            isDrawing: false,
-            isDrawingObstacle: false,
-          },
-          selectAllFootprints: vi.fn(),
-          cancelObstacleDrawing: vi.fn(),
-          cancelDrawing: vi.fn(),
+        resetState: vi.fn(),
+        state: {
+          isDrawing: false,
+          isDrawingObstacle: false,
         },
       },
       editorSession: {
@@ -80,13 +75,13 @@ describe('useSunCastRuntimeEffects', () => {
       onShareProject: vi.fn(async () => undefined),
     }
 
-    const hook = renderHook(args as unknown as Parameters<typeof useSunCastRuntimeEffects>[0])
+    const hook = renderHook(args as unknown as Parameters<typeof useSunCastEffects>[0])
 
     act(() => {
       dispatchGlobalErrorToastAction('reset-state')
     })
 
-    expect(args.projectDocument.store.resetState).toHaveBeenCalledTimes(1)
+    expect(args.projectDocument.resetState).toHaveBeenCalledTimes(1)
     expect(args.editorSession.clearSelectionState).toHaveBeenCalledTimes(1)
     expect(args.analysis.setRequestedHeatmapMode).toHaveBeenCalledWith('live-shading')
     expect(window.location.hash).toBe('')

@@ -78,28 +78,39 @@ Responsibilities:
 Rules:
 - outputs are derived-only artifacts
 - consume geometry + project/session contracts
-- owns shading, annual simulation, selected-roof inputs, and sun-projection derived state for presentation consumers
+- owns shading, annual simulation, and sun-projection derived state for presentation consumers
 - no UI rendering concerns
 
-### `src/app/presentation/*` (Screen-facing model composition)
+### `src/app/screens/*` (Screen composition boundary)
 
 Responsibilities:
-- compose presentation state from document/session/analysis
-- build typed sidebar/canvas/tutorial models
-- own the thin `useSunCastController` compatibility composition for screens
-- bridge action handlers for screens
+- compose the final screen tree
+- own the shared app provider and runtime side-effect mounting
+- wire feature controllers into screen-level components
 
 Rules:
 - no domain solver/shading math
 - no map engine lifecycle ownership
-- boundary immediately before screen components
+- screen components should stay thin and delegate state shaping to feature controllers
+
+### `src/app/features/*` (Feature-owned UI controllers)
+
+Responsibilities:
+- shape UI props from shared app context
+- keep feature-specific logic close to the consuming panels/overlays
+- avoid reintroducing a mega presentation model
+
+Rules:
+- no domain solver/shading math
+- no canonical state ownership
+- do not couple unrelated feature controllers together
 
 ### `src/app/hooks/*` (Application orchestration)
 
 Responsibilities:
 - feature orchestration hooks (shading, annual simulation, sharing, keyboard, selection)
 - editor-session helpers (`useConstraintEditor`, `useSelectionState`)
-- runtime/presentation support (`useSunCastRuntimeActions`, `useSunCastRuntimeEffects`, obstacle mesh derivation)
+- runtime/effect support (`useSunCastCommands`, `useSunCastEffects`, obstacle mesh derivation)
 
 Rules:
 - this folder is still a mixed boundary in the current app, not only a thin compatibility layer
@@ -189,6 +200,7 @@ Rules:
 Responsibilities:
 - sun/date controls and projection UI
 - annual simulation UI orchestration
+- feature-owned selected-roof shaping for charts/forecast inputs
 - forecast fetch/presentation (via `app/clients`)
 
 Rules:
@@ -232,7 +244,7 @@ Responsibilities:
 - final page/layout composition
 
 Rules:
-- assemble presentation models and feature components
+- assemble screen-level components and feature controllers
 - no solver/shading implementation
 
 ### `src/rendering/*` (Rendering primitives)
@@ -260,7 +272,7 @@ Rules:
 ### `src/types/*` (Shared type contracts)
 
 Responsibilities:
-- domain/app/presentation type contracts
+- domain/app/screen/feature type contracts
 
 Rules:
 - type-only/shared contracts, no runtime side effects
@@ -269,13 +281,13 @@ Rules:
 
 Preferred direction:
 
-`geometry -> state -> analysis -> presentation -> features/screens`
+`geometry -> state -> analysis -> screens/features`
 
 Current app also has side-channel boundaries:
 
 `shared/types` support every layer
 `clients/adapters/globalServices` sit beside the main flow for platform and transport work
-`app/hooks` is still a mixed orchestration layer used by `analysis`, `presentation`, and `editor-session`
+`app/hooks` is still a mixed orchestration layer used by `analysis`, `screens`, and `editor-session`
 `rendering` is consumed by `MapObjects` and stays below app/features in the import graph
 
 Observed imports by boundary:
@@ -284,7 +296,6 @@ Observed imports by boundary:
 - `app/project-store/*` imports `state/project-store/*`, `app/editor-session/*`, `app/globalServices/*`, `shared/*`, and React runtime APIs.
 - `app/editor-session/*` imports `types/*`, `state/project-store/*` contracts, and selected `app/hooks/*`.
 - `app/analysis/*` imports `geometry/*`, `types/*`, `state/project-store/*`, and `shared/*`.
-- `app/presentation/*` imports `app/project-store/*`, `app/analysis/*`, `app/editor-session/*`, `app/hooks/*`, and `shared/*`.
 - `app/hooks/*` imports `state/project-store/*`, `geometry/*`, `shared/*`, `app/globalServices/*`, and selected feature contracts.
 - `app/clients/*` currently uses browser/web APIs such as `fetch`, `AbortSignal`, and `URL`, plus `shared/*` and `types/*`.
 - `app/globalServices/*` imports browser APIs, `shared/*`, and `state/project-store/*`.
@@ -292,8 +303,8 @@ Observed imports by boundary:
 - `adapters/*` currently wraps platform libraries only.
 - `rendering/*` imports `types/*` and `shared/*`, plus rendering-internal helpers.
 - `app/components/*` imports `shared/*`, `types/*`, and selected app/feature contracts.
-- `app/features/*` imports a mix of `presentation/*`, `hooks/*`, `clients/*`, platform libraries, and in `sun-tools/*` also selected `geometry/*` types/helpers.
-- `app/screens/*` imports `presentation/*` contracts and feature components.
+- `app/features/*` imports a mix of `hooks/*`, `clients/*`, platform libraries, and in `sun-tools/*` also selected `geometry/*` types/helpers.
+- `app/screens/*` imports provider/effect modules and feature components.
 
 Disallowed:
 - `geometry/*` importing React/MapLibre/browser APIs
@@ -301,7 +312,7 @@ Disallowed:
 - rendering/map layers becoming canonical state owners
 - persistence/share storing derived meshes/planes/heatmap grids
 - features bypassing `app/clients/*` and inlining provider HTTP transport
-- `app/hooks/*` importing `app/presentation/*`
+- `app/hooks/*` importing `app/screens/*`
 - direct `geometry/*` imports from `app/features/sun-tools/*` remain current-state exceptions only; do not spread that pattern further without an explicit boundary decision
 
 ## Runtime Notes

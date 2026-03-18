@@ -17,7 +17,7 @@ export function useGlobalToastActions({
   analysis,
   onShareProject,
 }: UseGlobalToastActionsArgs): void {
-  const { store } = projectDocument
+  const store = projectDocument
 
   useEffect(() => {
     return toastActionService.subscribe((action) => {

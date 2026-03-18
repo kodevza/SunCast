@@ -4,7 +4,6 @@ import type { ShadeComputationStatus } from '../../geometry/shading/types'
 import type { AnnualSunAccessResult } from '../../geometry/shading'
 import type { SunProjectionResult } from '../../geometry/sun/sunProjection'
 import type { SolvedEntry } from './solvedRoof.types'
-import type { SelectedRoofSunInput } from '../../types/presentation-contracts'
 
 export interface ShadeHeatmapFeature {
   type: 'Feature'
@@ -75,7 +74,6 @@ export interface AnalysisState {
     activeError: string | null
   }
   shadingRoofs: ShadingRoofInput[]
-  selectedRoofInputs: SelectedRoofSunInput[]
   sunProjection: {
     datetimeRaw: string
     dailyDateRaw: string

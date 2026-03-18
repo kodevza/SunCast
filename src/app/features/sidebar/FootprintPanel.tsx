@@ -1,7 +1,7 @@
-import type { FootprintPolygon } from '../../types/geometry'
-import { HintTooltip } from './HintTooltip'
+import type { FootprintPolygon } from '../../../types/geometry'
+import { HintTooltip } from '../../components/HintTooltip'
 
-interface FootprintPanelProps {
+export interface FootprintPanelProps {
   footprints: FootprintPolygon[]
   activeFootprintId: string | null
   selectedFootprintIds: string[]

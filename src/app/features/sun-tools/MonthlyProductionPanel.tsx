@@ -11,8 +11,8 @@ import {
 import { useMemo } from 'react'
 import { Bar } from 'react-chartjs-2'
 import { deriveMonthlyProduction } from '../../analysis/deriveMonthlyProduction'
-import type { SelectedRoofSunInput } from './SunOverlayColumn'
 import { extractYearInTimeZone } from './sunDateTime'
+import type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 

@@ -31,7 +31,8 @@ Derived-only artifacts (never canonical persisted source data):
 - `src/app/project-store/*`: application-level store composition and startup hydration. It composes canonical document transitions with editor-session runtime state and browser-facing hydration/persistence entry points.
 - `src/app/editor-session/*`: ephemeral editing/session boundary for selection, camera flags, and input guards; currently implemented as React hooks plus reducer/selectors.
 - `src/app/analysis/*`: derived computation boundary for solved roofs, heatmap mode, shading, annual simulation, sun-projection derived state, and diagnostics.
-- `src/app/presentation/*`: screen-facing composition models (`sidebar`, `canvas`, `tutorial`) plus the thin `useSunCastController` compatibility composition that consumes document/session/analysis contracts and runtime action/effect hooks.
+- `src/app/screens/*`: final screen composition plus the app provider/effect boundary.
+- `src/app/features/*`: feature-owned controllers and UI composition.
 - `src/app/hooks/*`: mixed application-orchestration boundary for selection, constraint editing, share/runtime effects, and obstacle-mesh derivation.
 - `src/app/clients/*`: thin external HTTP clients (request assembly, fetch, HTTP status handling, raw payload return).
 - `src/app/globalServices/*`: browser-global services for share/hash decoding and toast dispatch.
@@ -43,7 +44,7 @@ Derived-only artifacts (never canonical persisted source data):
 - `src/app/features/map-editor/DrawTools/*`: drawing workflow controls, hints, and shortcuts.
 - `src/app/features/map-editor/MapView/*`: base MapLibre runtime, base-style/sources, interactions, camera/navigation sync, attribution UI.
 - `src/app/features/map-editor/MapObjects/*`: rendered roof/obstacle meshes and heatmap layer synchronization.
-- `src/app/features/sun-tools/*`: projection, charts, weather forecast integration.
+- `src/app/features/sun-tools/*`: projection controls, feature-owned selected-roof shaping, charts, weather forecast integration, and annual sun-access UI.
 - `src/app/features/place-search/*`: place-search provider orchestration + UI mapping.
 - `src/app/features/sidebar/*`: sidebar editors/panels for constraints, obstacles, status, and roof metadata.
 - `src/app/features/tutorial/*`: onboarding state + overlay UI.
@@ -57,8 +58,10 @@ Recent violations had accumulated in:
 - `src/app/hooks/*` still holding session/runtime behavior that has not yet been moved into tighter owning boundaries.
 
 Current and target direction:
-- `useSunCastController` now lives in `app/presentation/*` as a thin wrapper over presentation models.
-- presentation state remains the main composition root, but session/runtime helpers still live in `app/hooks/*`.
+- `SunCastScreen` is the top composition point, but sidebar/canvas/tutorial screen components now own their feature controllers directly.
+- `src/app/screens/SunCastAppProvider.tsx` owns the shared app context for document/session/analysis/command wiring.
+- `src/app/features/*` owns the feature-specific controllers that shape UI props from the shared context.
+- session/runtime helpers still live in `app/hooks/*`.
 - import direction is documented in `docs/runtime_boundaries.md`; treat it as the real current boundary map plus the intended cleanup direction.
 
 ## Main Data Flows
@@ -66,7 +69,7 @@ Current and target direction:
 1. Map/UI interactions emit edit intents and update the composed store (document + editor session).
 2. `state/project-store` owns persisted canonical inputs; `app/project-store` composes that document state with startup hydration/persistence wiring; `editor-session` owns transient runtime interaction state.
 3. `analysis` derives solved roofs, selected roof inputs, sun-projection state, live shading, annual simulation, heatmap mode, and diagnostics from document + session guards.
-4. `presentation` shapes UI-facing contracts for sidebar/canvas/tutorial from document/session/analysis boundaries and wires runtime actions/effects.
+4. Screen and feature controllers shape UI-facing contracts for sidebar/canvas/tutorial from document/session/analysis boundaries and wire runtime actions/effects.
 5. `MapView` owns map runtime + interactions while `MapObjects/hooks` synchronize typed derived outputs into MapLibre/Three layers (roof/obstacle meshes + heatmap); `rendering/*` provides lower-level custom-layer primitives used there.
 6. `app/clients` perform raw provider HTTP calls; feature modules apply retry/cache/mapping/observability policy.
 7. `app/project-store/*`, `app/globalServices/*`, and `application/services/*` coordinate hash-share recovery, startup hydration, reset flow, and global toast side effects.
@@ -78,17 +81,27 @@ Current top-level composition is intentionally split:
 
 ```text
 SunCastScreen
-  -> useSunCastController()
-      -> useSunCastPresentationState()
-          -> useProjectDocument()
-          -> useEditorSession()
-          -> useAnalysis()
-      -> useSidebarModel()
-      -> useCanvasModel()
-      -> useTutorialModel()
+  -> SunCastAppProvider()
+      -> useProjectStore()
+      -> useEditorSession()
+      -> useAnalysis()
+      -> useSunCastCommands()
+  -> SunCastEffects()
+      -> useSunCastEffects()
+  -> SunCastSidebar()
+      -> useDrawToolsController()
+      -> useFootprintPanelController()
+      -> useRoofEditorController()
+      -> useObstaclePanelController()
+      -> useStatusPanelController()
+  -> SunCastCanvas()
+      -> useMapViewController()
+      -> useSunToolsController()
+  -> TutorialController()
+      -> useTutorialControllerModel()
 ```
 
-`useSunCastController` remains as a thin compatibility wrapper over this composition, but it is owned by `app/presentation/*` rather than `app/hooks/*`.
+`SunCastScreen` now owns the final runtime-to-screen wiring by composing screen-level providers/effects and feature-owned controllers directly.
 
 ## Performance Model
 

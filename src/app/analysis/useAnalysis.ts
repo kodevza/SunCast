@@ -4,7 +4,6 @@ import { useDerivedShadingRoofs } from './deriveShadingRoofs'
 import { useSolvedRoofEntries } from './useSolvedRoofEntries'
 import { useAnnualRoofSimulation } from './useAnnualRoofSimulation'
 import { useRoofShading } from './useRoofShading'
-import { useSelectedRoofInputs } from './useSelectedRoofInputs'
 import { useSunProjectionState } from './useSunProjectionState'
 import type { ObstacleStateEntry, ProjectSunProjectionSettings, ShadingSettings } from '../../types/geometry'
 import type { FootprintStateEntry } from '../../state/project-store/projectState.types'
@@ -28,12 +27,6 @@ interface UseAnalysisArgs {
 
 export function useAnalysis(args: UseAnalysisArgs) {
   const solved = useSolvedRoofEntries(args.footprintEntries, args.activeFootprintId)
-
-  const selectedRoofInputs = useSelectedRoofInputs({
-    selectedFootprintIds: args.selectedFootprintIds,
-    footprintEntries: args.footprintEntriesById,
-    solvedEntries: solved.entries,
-  })
 
   const shadingRoofs = useDerivedShadingRoofs({
     selectedFootprintIds: args.selectedFootprintIds,
@@ -133,7 +126,6 @@ export function useAnalysis(args: UseAnalysisArgs) {
 
   return {
     solvedRoofs: solved,
-    selectedRoofInputs,
     shadingRoofs,
     sunProjection: {
       datetimeRaw: sunDatetimeRaw,

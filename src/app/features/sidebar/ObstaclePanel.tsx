@@ -7,7 +7,7 @@ const OBSTACLE_KIND_OPTIONS: Array<{ value: ObstacleKind; label: string }> = [
   { value: 'custom', label: 'Custom' },
 ]
 
-interface ObstaclePanelProps {
+export interface ObstaclePanelProps {
   obstacles: ObstacleStateEntry[]
   activeObstacle: ObstacleStateEntry | null
   selectedObstacleIds: string[]

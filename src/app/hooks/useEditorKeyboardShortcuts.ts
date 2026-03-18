@@ -5,7 +5,7 @@ export function useEditorKeyboardShortcuts(
   projectDocument: ReturnTypeUseProjectDocument,
   editorSession: ReturnTypeUseEditorSession,
 ): void {
-  const { store } = projectDocument
+  const store = projectDocument
 
   useKeyboardShortcuts({
     onSelectAllFootprints: () => {

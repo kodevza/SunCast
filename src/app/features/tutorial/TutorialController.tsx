@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { TutorialOverlay } from './Tutorial/TutorialOverlay'
-import type { SunCastTutorialModel } from '../../presentation/presentationModel.types'
 import { useTutorial } from './useTutorial'
+import { useTutorialControllerModel } from './useTutorialControllerModel'
 
 const TUTORIAL_STEPS = [
   {
@@ -38,11 +38,8 @@ const TUTORIAL_STEPS = [
   },
 ] as const
 
-interface TutorialControllerProps {
-  model: SunCastTutorialModel
-}
-
-export function TutorialController({ model }: TutorialControllerProps) {
+export function TutorialController() {
+  const model = useTutorialControllerModel()
   const tutorial = useTutorial({
     draftVertexCount: model.draftVertexCount,
     hasFinishedPolygon: model.hasFinishedPolygon,

@@ -32,7 +32,19 @@ Stage 1 editor is production-like for deterministic single-plane roof modeling a
 ## Code Hotspots
 
 - `src/app/project-store/useProjectStore.ts`: runtime store composition, hydration, and canonical persistence wiring.
-- `src/app/presentation/useSunCastPresentationState.ts`: composition and action/event bridge.
+- `src/app/screens/SunCastSidebar.tsx`: sidebar composition and tutorial trigger wiring.
+- `src/app/features/sidebar/useDrawToolsController.ts`: sidebar draw-tool controller.
+- `src/app/features/sidebar/useFootprintPanelController.ts`: roof-polygon panel controller.
+- `src/app/features/sidebar/useRoofEditorController.ts`: constraint editor controller.
+- `src/app/features/sidebar/useObstaclePanelController.ts`: obstacle panel controller.
+- `src/app/features/sidebar/useStatusPanelController.ts`: roof status / pitch-adjustment controller.
+- `src/app/screens/SunCastAppProvider.tsx`: shared document/session/analysis/command composition.
+- `src/app/screens/SunCastScreen.tsx`: final screen composition and runtime provider/effect mounting.
+- `src/app/screens/SunCastCanvas.tsx`: top-level canvas wiring for map and sun-tool controllers.
+- `src/app/features/map-editor/MapView/useMapViewController.ts`: map runtime composition.
+- `src/app/features/sun-tools/useSunToolsController.ts`: sun projection / annual simulation controller.
+- `src/app/features/sun-tools/useAnnualSunAccessController.ts`: annual sun-access controller extracted from the sun-tools flow.
+- `src/app/features/sun-tools/useSelectedRoofInputs.ts`: feature-owned shaping for sun chart/forecast roof inputs.
 - `src/app/features/map-editor/MapView/hooks/useMapInteractions.ts`: interaction coordinator.
 - `src/app/features/map-editor/MapObjects/hooks/useMapObjectsSync.ts`: custom-layer lifecycle and visibility sync.
 - `src/geometry/shading/*`: deterministic sun/shade business logic and annual aggregation.

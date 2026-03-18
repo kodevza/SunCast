@@ -10,7 +10,6 @@ import type { ObstacleStateEntry, ProjectSunProjectionSettings, ShadingSettings 
 import { useAnalysis } from './useAnalysis'
 
 const mockDeriveSolvedRoofs = vi.fn()
-const mockDeriveSelectedRoofInputs = vi.fn()
 const mockUseDerivedShadingRoofs = vi.fn()
 const mockUseLiveShading = vi.fn()
 const mockUseAnnualSimulation = vi.fn()
@@ -18,10 +17,6 @@ const mockUseSunProjectionState = vi.fn()
 
 vi.mock('./useSolvedRoofEntries', () => ({
   useSolvedRoofEntries: (...args: unknown[]) => mockDeriveSolvedRoofs(...args),
-}))
-
-vi.mock('./useSelectedRoofInputs', () => ({
-  useSelectedRoofInputs: (...args: unknown[]) => mockDeriveSelectedRoofInputs(...args),
 }))
 
 vi.mock('./deriveShadingRoofs', () => ({
@@ -135,7 +130,6 @@ function makeArgs(overrides: Partial<UseAnalysisArgs> = {}): UseAnalysisArgs {
 describe('useAnalysis', () => {
   beforeEach(() => {
     mockDeriveSolvedRoofs.mockReset()
-    mockDeriveSelectedRoofInputs.mockReset()
     mockUseDerivedShadingRoofs.mockReset()
     mockUseLiveShading.mockReset()
     mockUseAnnualSimulation.mockReset()
@@ -146,7 +140,6 @@ describe('useAnalysis', () => {
       activeSolved: null,
       activeError: null,
     })
-    mockDeriveSelectedRoofInputs.mockReturnValue([{ footprintId: 'roofA' }])
     mockUseDerivedShadingRoofs.mockReturnValue([
       {
         roofId: 'roofA',

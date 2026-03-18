@@ -16,4 +16,4 @@
 ## Iteration / Historical Docs
 
 Files prefixed with `UC*` and `IP*` are iteration records and planning artifacts.
-They are useful for context, but are not the canonical handover reference.
+They may be outdated and are kept in the repo to document historical product development; use them for context only, not as the canonical handover reference.

@@ -1,19 +1,26 @@
 import { useEffect, useState } from 'react'
 import { DrawTools } from '../features/map-editor/DrawTools/DrawTools'
-import { FootprintPanel } from '../components/FootprintPanel'
+import { FootprintPanel } from '../features/sidebar/FootprintPanel'
 import { ObstaclePanel } from '../features/sidebar/ObstaclePanel'
 import { RoofEditor } from '../features/sidebar/RoofEditor'
 import { StatusPanel } from '../features/sidebar/StatusPanel'
-import type { SunCastSidebarModel } from '../presentation/presentationModel.types'
+import { useDrawToolsController } from '../features/sidebar/useDrawToolsController'
 import { TutorialIntroOverlay } from '../features/tutorial/Tutorial/TutorialIntroOverlay'
+import { useSunCastAppContext } from './SunCastAppProvider'
+import { useFootprintPanelController } from '../features/sidebar/useFootprintPanelController'
+import { useObstaclePanelController } from '../features/sidebar/useObstaclePanelController'
+import { useRoofEditorController } from '../features/sidebar/useRoofEditorController'
+import { useStatusPanelController } from '../features/sidebar/useStatusPanelController'
 
-interface SunCastSidebarProps {
-  model: SunCastSidebarModel
-}
-
-export function SunCastSidebar({ model }: SunCastSidebarProps) {
+export function SunCastSidebar() {
+  const { session } = useSunCastAppContext()
+  const drawTools = useDrawToolsController()
+  const footprintPanel = useFootprintPanelController()
+  const roofEditor = useRoofEditorController()
+  const obstaclePanel = useObstaclePanelController()
+  const statusPanel = useStatusPanelController()
   const [tutorialIntroVisible, setTutorialIntroVisible] = useState(false)
-  const activeEditorTab = model.editMode
+  const activeEditorTab = drawTools.editMode
 
   useEffect(() => {
     if (!tutorialIntroVisible) {
@@ -47,85 +54,28 @@ export function SunCastSidebar({ model }: SunCastSidebarProps) {
         <TutorialIntroOverlay
           onStartInteractiveTutorial={() => {
             setTutorialIntroVisible(false)
-            model.onStartTutorial()
+            session.tutorialStartRef.current()
           }}
           onClose={() => setTutorialIntroVisible(false)}
         />
       )}
       <p className="subtitle">Draw your roof and get short-term and long-term production forecasts.</p>
-      <DrawTools
-        editMode={model.editMode}
-        isDrawingRoof={model.isDrawingRoof}
-        isDrawingObstacle={model.isDrawingObstacle}
-        roofPointCount={model.drawDraftCountRoof}
-        obstaclePointCount={model.drawDraftCountObstacle}
-        onSetEditMode={model.onSetEditMode}
-        onStartRoofDrawing={model.onStartDrawing}
-        onUndoRoofDrawing={model.onUndoDrawing}
-        onCancelRoofDrawing={model.onCancelDrawing}
-        onCommitRoofDrawing={model.onCommitDrawing}
-        onStartObstacleDrawing={model.onStartObstacleDrawing}
-        onUndoObstacleDrawing={model.onUndoObstacleDrawing}
-        onCancelObstacleDrawing={model.onCancelObstacleDrawing}
-        onCommitObstacleDrawing={model.onCommitObstacleDrawing}
-      />
+      <DrawTools {...drawTools} />
 
       <section className="sun-cast-editor-tabs-shell">
-
-
         {activeEditorTab === 'roof' ? (
           <div role="tabpanel" id="editor-panel-roof" aria-labelledby="editor-tab-roof">
-            <FootprintPanel
-              footprints={model.footprints}
-              activeFootprintId={model.activeFootprintId}
-              selectedFootprintIds={model.selectedFootprintIds}
-              activeFootprintKwp={model.activeFootprint?.kwp ?? null}
-              onShareProject={model.onShareProject}
-              onSelectFootprint={model.onSelectFootprint}
-              onSetActiveFootprintKwp={model.onSetActiveFootprintKwp}
-              onDeleteActiveFootprint={model.onDeleteActiveFootprint}
-            />
-            <RoofEditor
-              footprint={model.activeFootprint}
-              vertexConstraints={model.activeConstraints.vertexHeights}
-              selectedVertexIndex={model.selectedVertexIndex}
-              selectedEdgeIndex={model.selectedEdgeIndex}
-              onSetVertex={model.onSetVertex}
-              onSetEdge={model.onSetEdge}
-              onClearVertex={model.onClearVertex}
-              onClearEdge={model.onClearEdge}
-              onConstraintLimitExceeded={model.onConstraintLimitExceeded}
-            />
+            <FootprintPanel {...footprintPanel} />
+            <RoofEditor {...roofEditor} />
           </div>
         ) : (
           <div role="tabpanel" id="editor-panel-obstacles" aria-labelledby="editor-tab-obstacles">
-            <ObstaclePanel
-              obstacles={model.obstacles}
-              activeObstacle={model.activeObstacle}
-              selectedObstacleIds={model.selectedObstacleIds}
-              onSelectObstacle={model.onSelectObstacle}
-              onSetActiveObstacleKind={model.onSetActiveObstacleKind}
-              onSetActiveObstacleHeight={model.onSetActiveObstacleHeight}
-              onDeleteActiveObstacle={model.onDeleteActiveObstacle}
-            />
+            <ObstaclePanel {...obstaclePanel} />
           </div>
         )}
       </section>
 
-      <StatusPanel
-        warnings={model.warnings}
-        basePitchDeg={model.basePitchDeg}
-        pitchAdjustmentPercent={model.pitchAdjustmentPercent}
-        adjustedPitchDeg={model.adjustedPitchDeg}
-        onSetPitchAdjustmentPercent={model.onSetPitchAdjustmentPercent}
-        azimuthDeg={model.azimuthDeg}
-        roofAreaM2={model.roofAreaM2}
-        minHeightM={model.minHeightM}
-        maxHeightM={model.maxHeightM}
-        fitRmsErrorM={model.fitRmsErrorM}
-        activeFootprintLatDeg={model.activeFootprintLatDeg}
-        activeFootprintLonDeg={model.activeFootprintLonDeg}
-      />
+      <StatusPanel {...statusPanel} />
     </aside>
   )
 }
