@@ -158,6 +158,7 @@ describe('useSidebarControllerModel', () => {
                 ],
                 kwp: 7.2,
               },
+              constraints: { vertexHeights: [] },
               pitchAdjustmentPercent: 15,
             },
           },
