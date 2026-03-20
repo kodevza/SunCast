@@ -115,7 +115,7 @@ Event bridge:
 Implementation:
 - `src/app/components/GlobalErrorToasts.tsx`
 - `src/app/components/globalErrorToastActions.ts`
-- `src/app/screens/SunCastAppProvider.tsx`
+- `src/app/screens/SunCastScreen.tsx`
 - `src/app/hooks/useSunCastEffects.ts`
 
 ### 5.5 Fatal failures

@@ -1,16 +1,17 @@
-import type { ReturnTypeUseEditorSession, ReturnTypeUseProjectDocument } from './hookReturnTypes'
+import type { GeometrySelectionState } from '../editor-session/editorSession.types'
+import type { ReturnTypeUseProjectDocument } from './hookReturnTypes'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 
 export function useEditorKeyboardShortcuts(
   projectDocument: ReturnTypeUseProjectDocument,
-  editorSession: ReturnTypeUseEditorSession,
+  geometrySelection: GeometrySelectionState,
 ): void {
   const store = projectDocument
 
   useKeyboardShortcuts({
     onSelectAllFootprints: () => {
       store.selectAllFootprints()
-      editorSession.clearSelectionState()
+      geometrySelection.clearSelectionState()
     },
     isDrawing: store.state.isDrawing || store.state.isDrawingObstacle,
     onCancelDrawing: () => {
@@ -19,7 +20,7 @@ export function useEditorKeyboardShortcuts(
       } else {
         store.cancelDrawing()
       }
-      editorSession.clearSelectionState()
+      geometrySelection.clearSelectionState()
     },
   })
 }

@@ -6,8 +6,8 @@ import type {
   ObstacleStateEntry,
   RoofMeshData,
 } from '../../../../types/geometry'
-import type { PlaceSearchResult } from '../../place-search/placeSearch.types'
 import type { RoofShadingComputeState, ShadeHeatmapFeature } from '../../../analysis/analysis.types'
+import type { MapNavigationRuntime } from '../../place-search/useMapNavigationRuntime'
 
 export interface SunCastMapViewModel {
   drawing: {
@@ -50,12 +50,7 @@ export interface SunCastMapViewModel {
       bearingDeg: number
       pitchDeg: number
     } | null
-    mapNavigationTarget: {
-      id: number
-      lon: number
-      lat: number
-    } | null
-    onPlaceSearchSelect: (result: PlaceSearchResult) => void
+    mapNavigation: MapNavigationRuntime
     onToggleOrbit: () => void
     onBearingChange: (bearingDeg: number) => void
     onPitchChange: (pitchDeg: number) => void

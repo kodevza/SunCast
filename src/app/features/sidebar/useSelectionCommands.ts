@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { useSunCastAppContext } from '../screens/SunCastAppProvider'
+import type { GeometrySelectionState } from '../../editor-session/editorSession.types'
+import type { useProjectStore } from '../../project-store/useProjectStore'
 
 export interface SelectionCommands {
   selectFootprint: (footprintId: string, multiSelect: boolean) => void
@@ -7,18 +8,21 @@ export interface SelectionCommands {
   clearSelection: () => void
 }
 
-export function useSelectionCommands(): SelectionCommands {
-  const { project, session } = useSunCastAppContext()
+interface UseSelectionCommandsArgs {
+  project: ReturnType<typeof useProjectStore>
+  geometrySelection: Pick<GeometrySelectionState, 'clearSelectionState'>
+}
 
+export function useSelectionCommands({ project, geometrySelection }: UseSelectionCommandsArgs): SelectionCommands {
   return useMemo(
     () => ({
       selectFootprint: (footprintId: string, multiSelect: boolean) => {
         if (multiSelect) {
-          project.toggleFootprintSelection(footprintId)
+          console.error("not implemented");
         } else {
           project.selectOnlyFootprint(footprintId)
         }
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
       },
       selectObstacle: (obstacleId: string, multiSelect: boolean) => {
         if (multiSelect) {
@@ -26,14 +30,14 @@ export function useSelectionCommands(): SelectionCommands {
         } else {
           project.selectOnlyObstacle(obstacleId)
         }
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
       },
       clearSelection: () => {
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
         project.clearFootprintSelection()
         project.clearObstacleSelection()
       },
     }),
-    [project, session],
+    [geometrySelection, project],
   )
 }

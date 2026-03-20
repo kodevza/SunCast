@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
-import { useSunCastAppContext } from '../screens/SunCastAppProvider'
-import { clampPitchAdjustmentPercent } from '../features/sidebar/statusPanel.types'
+import type { GeometrySelectionState, TutorialState } from '../../editor-session/editorSession.types'
+import type { useProjectStore } from '../../project-store/useProjectStore'
+import { clampPitchAdjustmentPercent } from './statusPanel.types'
 
 export interface FootprintCommands {
   setActiveFootprintKwp: (kwp: number) => void
@@ -8,16 +9,24 @@ export interface FootprintCommands {
   setPitchAdjustmentPercent: (pitchAdjustmentPercent: number) => void
 }
 
-export function useFootprintCommands(): FootprintCommands {
-  const { project, session } = useSunCastAppContext()
+interface UseFootprintCommandsArgs {
+  project: ReturnType<typeof useProjectStore>
+  tutorial: Pick<TutorialState, 'setTutorialEditedKwpByFootprint'>
+  geometrySelection: Pick<GeometrySelectionState, 'clearSelectionState'>
+}
 
+export function useFootprintCommands({
+  project,
+  tutorial,
+  geometrySelection,
+}: UseFootprintCommandsArgs): FootprintCommands {
   return useMemo(
     () => ({
       setActiveFootprintKwp: (kwp: number) => {
         project.setActiveFootprintKwp(kwp)
         const footprintId = project.state.activeFootprintId
         if (footprintId) {
-          session.setTutorialEditedKwpByFootprint((current) => ({ ...current, [footprintId]: true }))
+          tutorial.setTutorialEditedKwpByFootprint((current) => ({ ...current, [footprintId]: true }))
         }
       },
       deleteActiveFootprint: () => {
@@ -25,12 +34,12 @@ export function useFootprintCommands(): FootprintCommands {
           return
         }
         project.deleteFootprint(project.state.activeFootprintId)
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
       },
       setPitchAdjustmentPercent: (pitchAdjustmentPercent: number) => {
         project.setActivePitchAdjustmentPercent(clampPitchAdjustmentPercent(pitchAdjustmentPercent))
       },
     }),
-    [project, session],
+    [geometrySelection, project, tutorial],
   )
 }

@@ -44,6 +44,7 @@ Rules:
 - fail-closed on unknown future schema versions
 - must not persist solved geometry/meshes/heatmap outputs
 - must not import `src/app/*`
+- runtime selection/session selectors do not belong here; they live with `src/app/editor-session/*`
 
 ### `src/app/project-store/*` (Store composition + startup hydration)
 
@@ -62,6 +63,7 @@ Rules:
 Responsibilities:
 - transient selection/draft/interaction state
 - editor interaction guards and reducer/selectors
+- runtime selection selectors for active footprint/obstacle state
 
 Rules:
 - never persisted as canonical project data
@@ -85,7 +87,7 @@ Rules:
 
 Responsibilities:
 - compose the final screen tree
-- own the shared app provider and runtime side-effect mounting
+- own runtime side-effect mounting and explicit dependency composition
 - wire feature controllers into screen-level components
 
 Rules:
@@ -96,7 +98,7 @@ Rules:
 ### `src/app/features/*` (Feature-owned UI controllers)
 
 Responsibilities:
-- shape UI props from shared app context
+- shape UI props from explicit dependencies passed by the screen
 - keep feature-specific logic close to the consuming panels/overlays
 - avoid reintroducing a mega presentation model
 
@@ -108,15 +110,29 @@ Rules:
 ### `src/app/hooks/*` (Application orchestration)
 
 Responsibilities:
-- feature orchestration hooks (shading, annual simulation, sharing, keyboard, selection)
+- feature orchestration hooks (shading, annual simulation, sharing, keyboard, selection state)
 - editor-session helpers (`useConstraintEditor`, `useSelectionState`)
-- runtime/effect support (`useSunCastCommands`, `useSunCastEffects`, obstacle mesh derivation)
+- runtime/effect support (`useSunCastEffects`, obstacle mesh derivation)
+- shared geometry helpers consumed by screens/features (`activeFootprintGeometry`)
 
 Rules:
 - this folder is still a mixed boundary in the current app, not only a thin compatibility layer
 - orchestrate flows; do not become the default sink for new business logic
 - no direct geometry algorithm implementations
 - long-running work must preserve UI responsiveness
+- sidebar-specific footprint, constraint, obstacle, selection, and active-footprint state/metric hooks now live in `src/app/features/sidebar/*`
+
+### `src/app/features/sidebar/*` (Sidebar UI controllers)
+
+Responsibilities:
+- sidebar panels for footprints, obstacles, roof constraints, selection, and status
+- sidebar-specific command and state shaping for active footprint, obstacle, constraint, and selection edits
+- feature-local composition around the sidebar app context
+
+Rules:
+- no domain solver/shading math
+- no canonical state ownership
+- keep sidebar-specific editing behavior close to the panels that consume it
 
 ### `src/app/clients/*` (External HTTP transport)
 
@@ -173,12 +189,27 @@ Rules:
 - geometry consumed from derived outputs only
 - rendering math here is adapter/render plumbing, not canonical geometry solving
 
+### `src/app/editor-session/*` (Ephemeral editing/session state)
+
+Responsibilities:
+- roof drawing session transitions
+- obstacle drawing session transitions
+- obstacle selection session transitions
+- draft point lifecycle and draw-completion selection shaping
+- transient selection state and runtime selection selectors
+
+Rules:
+- no canonical project document ownership
+- no geometry solving or mesh generation
+- keep session state transitions close to the session boundary
+
 ### `src/app/features/map-editor/MapView/*` (Map runtime boundary)
 
 Responsibilities:
 - map init/dispose (`useMapInstance`)
+- map-view runtime state (`useMapViewRuntime`)
 - style/sources and map controls
-- interactions, orbit/sun camera sync, map navigation sync
+- interactions, orbit/sun camera sync, map navigation runtime sync
 
 Rules:
 - does not own roof/obstacle/heatmap custom-layer lifecycle
@@ -213,11 +244,24 @@ Responsibilities:
 - provider orchestration for place search
 - request retry/observability policy
 - search panel UI and typed mapping
+- map-navigation runtime shaping from place-search selection
 
 Rules:
 - uses `src/app/clients/photonClient.ts` for transport
 - provider failures must degrade gracefully
 - search results must not mutate canonical geometry implicitly
+
+### `src/app/features/share-project/*` (Share action feature)
+
+Responsibilities:
+- share URL assembly from canonical project inputs
+- browser share / clipboard fallback behavior
+- user-facing share success/error reporting
+
+Rules:
+- uses canonical project state only
+- must not persist derived geometry as share source
+- share failures must degrade gracefully
 
 ### `src/app/features/tutorial/*` (Onboarding)
 

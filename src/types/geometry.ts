@@ -54,9 +54,7 @@ export interface SolvedRoofPlane {
 
 export interface ProjectData {
   footprints: Record<string, StoredFootprint>
-  activeFootprintId: string | null
   obstacles?: Record<string, ObstacleStateEntry>
-  activeObstacleId?: string | null
   solverConfigVersion?: string
   sunProjection?: ProjectSunProjectionSettings
   shadingSettings?: ShadingSettings

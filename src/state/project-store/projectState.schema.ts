@@ -20,20 +20,10 @@ function toProjectData(value: Record<string, unknown>): ProjectData | null {
     return null
   }
 
-  const activeFootprintId = value.activeFootprintId
-  if (activeFootprintId !== null && activeFootprintId !== undefined && typeof activeFootprintId !== 'string') {
-    return null
-  }
-
   const solverConfigVersion =
     typeof value.solverConfigVersion === 'string' ? value.solverConfigVersion : undefined
   const obstacles = value.obstacles
   if (obstacles !== undefined && !isRecord(obstacles)) {
-    return null
-  }
-
-  const activeObstacleId = value.activeObstacleId
-  if (activeObstacleId !== null && activeObstacleId !== undefined && typeof activeObstacleId !== 'string') {
     return null
   }
 
@@ -63,9 +53,7 @@ function toProjectData(value: Record<string, unknown>): ProjectData | null {
 
   return {
     footprints: footprints as ProjectData['footprints'],
-    activeFootprintId: (activeFootprintId as string | null | undefined) ?? null,
     obstacles: (obstacles as ProjectData['obstacles']) ?? undefined,
-    activeObstacleId: (activeObstacleId as string | null | undefined) ?? null,
     solverConfigVersion,
     sunProjection,
     shadingSettings,
@@ -99,9 +87,7 @@ export function migrateProjectStoragePayload(
   return {
     schemaVersion: PROJECT_STORAGE_SCHEMA_VERSION,
     footprints: projectData.footprints,
-    activeFootprintId: projectData.activeFootprintId,
     obstacles: projectData.obstacles,
-    activeObstacleId: projectData.activeObstacleId,
     solverConfigVersion,
     sunProjection: projectData.sunProjection,
     shadingSettings: projectData.shadingSettings,
@@ -115,9 +101,7 @@ export function createProjectStoragePayload(
   return {
     schemaVersion: PROJECT_STORAGE_SCHEMA_VERSION,
     footprints: data.footprints,
-    activeFootprintId: data.activeFootprintId,
     obstacles: data.obstacles,
-    activeObstacleId: data.activeObstacleId,
     solverConfigVersion: currentSolverConfigVersion,
     sunProjection: data.sunProjection,
     shadingSettings: data.shadingSettings,

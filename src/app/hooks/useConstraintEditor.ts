@@ -8,11 +8,11 @@ interface UseConstraintEditorParams {
   isDrawing: boolean
   selectedVertexIndex: number | null
   selectedEdgeIndex: number | null
-  setVertexHeight: (vertexIndex: number, heightM: number) => boolean
-  setVertexHeights: (constraints: VertexHeightConstraint[]) => boolean
-  setEdgeHeight: (edgeIndex: number, heightM: number) => boolean
-  moveVertex: (vertexIndex: number, point: LngLat) => void
-  moveEdge: (edgeIndex: number, delta: LngLat) => void
+  setVertexHeight: (footprintId: string, vertexIndex: number, heightM: number) => boolean
+  setVertexHeights: (footprintId: string, constraints: VertexHeightConstraint[]) => boolean
+  setEdgeHeight: (footprintId: string, edgeIndex: number, heightM: number) => boolean
+  moveFootprintVertex: (footprintId: string, vertexIndex: number, point: LngLat) => void
+  moveFootprintEdge: (footprintId: string, edgeIndex: number, delta: LngLat) => void
 }
 
 export function useConstraintEditor({
@@ -24,8 +24,8 @@ export function useConstraintEditor({
   setVertexHeight,
   setVertexHeights,
   setEdgeHeight,
-  moveVertex,
-  moveEdge,
+  moveFootprintVertex,
+  moveFootprintEdge,
 }: UseConstraintEditorParams) {
   const [interactionError, setInteractionError] = useState<string | null>(null)
 
@@ -49,7 +49,11 @@ export function useConstraintEditor({
   )
 
   const applyVertexHeight = (vertexIndex: number, heightM: number): boolean => {
-    const applied = setVertexHeight(vertexIndex, heightM)
+    if (!activeFootprint) {
+      setInteractionError('Failed to apply vertex height')
+      return false
+    }
+    const applied = setVertexHeight(activeFootprint.id, vertexIndex, heightM)
     if (!applied) {
       setInteractionError('Failed to apply vertex height')
       return false
@@ -63,7 +67,7 @@ export function useConstraintEditor({
       setInteractionError('Failed to apply edge height')
       return false
     }
-    const applied = setEdgeHeight(edgeIndex, heightM)
+    const applied = setEdgeHeight(activeFootprint.id, edgeIndex, heightM)
     if (!applied) {
       setInteractionError('Failed to apply edge height')
       return false
@@ -86,7 +90,7 @@ export function useConstraintEditor({
     if (errors.length > 0) {
       return false
     }
-    moveVertex(vertexIndex, point)
+    moveFootprintVertex(activeFootprint.id, vertexIndex, point)
     setInteractionError(null)
     return true
   }
@@ -109,7 +113,7 @@ export function useConstraintEditor({
     if (errors.length > 0) {
       return false
     }
-    moveEdge(edgeIndex, delta)
+    moveFootprintEdge(activeFootprint.id, edgeIndex, delta)
     setInteractionError(null)
     return true
   }
@@ -131,7 +135,7 @@ export function useConstraintEditor({
       const end = (safeSelectedEdgeIndex + 1) % vertexTotal
       const nextStart = (constraintMap.get(start) ?? 0) + stepM
       const nextEnd = (constraintMap.get(end) ?? 0) + stepM
-      const applied = setVertexHeights([
+      const applied = setVertexHeights(activeFootprint.id, [
         { vertexIndex: start, heightM: nextStart },
         { vertexIndex: end, heightM: nextEnd },
       ])

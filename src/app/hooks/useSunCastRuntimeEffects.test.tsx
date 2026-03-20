@@ -60,8 +60,10 @@ describe('useSunCastEffects', () => {
           isDrawingObstacle: false,
         },
       },
-      editorSession: {
+      geometrySelection: {
         clearSelectionState: vi.fn(),
+      },
+      geometryEditing: {
         interactionError: null,
       },
       analysis: {
@@ -82,7 +84,7 @@ describe('useSunCastEffects', () => {
     })
 
     expect(args.projectDocument.resetState).toHaveBeenCalledTimes(1)
-    expect(args.editorSession.clearSelectionState).toHaveBeenCalledTimes(1)
+    expect(args.geometrySelection.clearSelectionState).toHaveBeenCalledTimes(1)
     expect(args.analysis.setRequestedHeatmapMode).toHaveBeenCalledWith('live-shading')
     expect(window.location.hash).toBe('')
     expect(mockReportAppSuccess).toHaveBeenCalledWith('Project state reset to defaults.', {

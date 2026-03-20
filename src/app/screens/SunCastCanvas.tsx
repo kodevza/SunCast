@@ -1,14 +1,16 @@
 import { MapView } from '../features/map-editor/MapView/MapView'
+import type { useMapViewController } from '../features/map-editor/MapView/useMapViewController'
 import { SunDailyChartPanel } from '../features/sun-tools/SunDailyChartPanel'
 import { SunOverlayColumn } from '../features/sun-tools/SunOverlayColumn'
 import { SunProjectionStatus } from '../features/sun-tools/SunProjectionStatus'
-import { useMapViewController } from '../features/map-editor/MapView/useMapViewController'
-import { useSunToolsController } from '../features/sun-tools/useSunToolsController'
+import type { useSunToolsController } from '../features/sun-tools/useSunToolsController'
 
-export function SunCastCanvas() {
-  const mapView = useMapViewController()
-  const sunTools = useSunToolsController()
+interface SunCastCanvasProps {
+  mapView: ReturnType<typeof useMapViewController>
+  sunTools: ReturnType<typeof useSunToolsController>
+}
 
+export function SunCastCanvas({ mapView, sunTools }: SunCastCanvasProps) {
   return (
     <main className="sun-cast-canvas">
       <MapView model={mapView.model} onInitialized={mapView.onInitialized} />

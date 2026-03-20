@@ -3,8 +3,7 @@ import { act } from 'react'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 import { createRoot } from 'react-dom/client'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { SunCastAppProvider } from './SunCastAppProvider'
+import { describe, expect, it, vi } from 'vitest'
 import { SunCastSidebar } from './SunCastSidebar'
 
 vi.mock('../features/sidebar/FootprintPanel', () => ({ FootprintPanel: () => <div data-testid="footprint-panel" /> }))
@@ -12,37 +11,152 @@ vi.mock('../features/sidebar/RoofEditor', () => ({ RoofEditor: () => <div data-t
 vi.mock('../features/sidebar/ObstaclePanel', () => ({ ObstaclePanel: () => <div data-testid="obstacle-panel" /> }))
 vi.mock('../features/sidebar/StatusPanel', () => ({ StatusPanel: () => null }))
 
-const mockUseAnalysis = vi.fn()
-const mockUseObstacleMeshResults = vi.fn()
-const mockUseSunCastCommands = vi.fn()
-
-vi.mock('../analysis/useAnalysis', () => ({
-  useAnalysis: (...args: unknown[]) => mockUseAnalysis(...args),
-}))
-
-vi.mock('../hooks/useObstacleMeshResults', () => ({
-  useObstacleMeshResults: (...args: unknown[]) => mockUseObstacleMeshResults(...args),
-}))
-
-vi.mock('../hooks/useSunCastCommands', () => ({
-  useSunCastCommands: (...args: unknown[]) => mockUseSunCastCommands(...args),
-}))
-
 function renderSidebar() {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
+  const onStartTutorial = vi.fn()
 
   act(() => {
     root.render(
-      <SunCastAppProvider>
-        <SunCastSidebar />
-      </SunCastAppProvider>,
+      <SunCastSidebar
+        drawTools={{
+          editMode: 'roof',
+          isDrawingRoof: false,
+          isDrawingObstacle: false,
+          roofPointCount: 0,
+          obstaclePointCount: 0,
+          onSetEditMode: vi.fn(),
+          onStartRoofDrawing: vi.fn(),
+          onUndoRoofDrawing: vi.fn(),
+          onCancelRoofDrawing: vi.fn(),
+          onCommitRoofDrawing: vi.fn(),
+          onStartObstacleDrawing: vi.fn(),
+          onUndoObstacleDrawing: vi.fn(),
+          onCancelObstacleDrawing: vi.fn(),
+          onCommitObstacleDrawing: vi.fn(),
+        }}
+        footprintPanel={{
+          footprints: [],
+          activeFootprintId: null,
+          selectedFootprintIds: [],
+          activeFootprintKwp: null,
+          onShareProject: vi.fn(async () => undefined),
+          onSelectFootprint: vi.fn(),
+          onSetActiveFootprintKwp: vi.fn(),
+          onDeleteActiveFootprint: vi.fn(),
+        }}
+        roofEditor={{
+          footprint: null,
+          vertexConstraints: [],
+          selectedVertexIndex: null,
+          selectedEdgeIndex: null,
+          onSetVertex: vi.fn(),
+          onSetEdge: vi.fn(),
+          onClearVertex: vi.fn(),
+          onClearEdge: vi.fn(),
+          onConstraintLimitExceeded: vi.fn(),
+        }}
+        obstaclePanel={{
+          obstacles: [],
+          activeObstacle: null,
+          selectedObstacleIds: [],
+          onSelectObstacle: vi.fn(),
+          onSetActiveObstacleKind: vi.fn(),
+          onSetActiveObstacleHeight: vi.fn(),
+          onDeleteActiveObstacle: vi.fn(),
+        }}
+        statusPanel={{
+          warnings: [],
+          basePitchDeg: null,
+          pitchAdjustmentPercent: 0,
+          adjustedPitchDeg: null,
+          onSetPitchAdjustmentPercent: vi.fn(),
+          azimuthDeg: null,
+          roofAreaM2: null,
+          minHeightM: null,
+          maxHeightM: null,
+          fitRmsErrorM: null,
+          activeFootprintLatDeg: null,
+          activeFootprintLonDeg: null,
+        }}
+        onStartTutorial={onStartTutorial}
+      />,
     )
   })
 
   return {
     container,
+    onStartTutorial,
+    rerender: (editMode: 'roof' | 'obstacle') => {
+      act(() => {
+        root.render(
+          <SunCastSidebar
+            drawTools={{
+              editMode,
+              isDrawingRoof: false,
+              isDrawingObstacle: false,
+              roofPointCount: 0,
+              obstaclePointCount: 0,
+              onSetEditMode: vi.fn(),
+              onStartRoofDrawing: vi.fn(),
+              onUndoRoofDrawing: vi.fn(),
+              onCancelRoofDrawing: vi.fn(),
+              onCommitRoofDrawing: vi.fn(),
+              onStartObstacleDrawing: vi.fn(),
+              onUndoObstacleDrawing: vi.fn(),
+              onCancelObstacleDrawing: vi.fn(),
+              onCommitObstacleDrawing: vi.fn(),
+            }}
+            footprintPanel={{
+              footprints: [],
+              activeFootprintId: null,
+              selectedFootprintIds: [],
+              activeFootprintKwp: null,
+              onShareProject: vi.fn(async () => undefined),
+              onSelectFootprint: vi.fn(),
+              onSetActiveFootprintKwp: vi.fn(),
+              onDeleteActiveFootprint: vi.fn(),
+            }}
+            roofEditor={{
+              footprint: null,
+              vertexConstraints: [],
+              selectedVertexIndex: null,
+              selectedEdgeIndex: null,
+              onSetVertex: vi.fn(),
+              onSetEdge: vi.fn(),
+              onClearVertex: vi.fn(),
+              onClearEdge: vi.fn(),
+              onConstraintLimitExceeded: vi.fn(),
+            }}
+            obstaclePanel={{
+              obstacles: [],
+              activeObstacle: null,
+              selectedObstacleIds: [],
+              onSelectObstacle: vi.fn(),
+              onSetActiveObstacleKind: vi.fn(),
+              onSetActiveObstacleHeight: vi.fn(),
+              onDeleteActiveObstacle: vi.fn(),
+            }}
+            statusPanel={{
+              warnings: [],
+              basePitchDeg: null,
+              pitchAdjustmentPercent: 0,
+              adjustedPitchDeg: null,
+              onSetPitchAdjustmentPercent: vi.fn(),
+              azimuthDeg: null,
+              roofAreaM2: null,
+              minHeightM: null,
+              maxHeightM: null,
+              fitRmsErrorM: null,
+              activeFootprintLatDeg: null,
+              activeFootprintLonDeg: null,
+            }}
+            onStartTutorial={onStartTutorial}
+          />,
+        )
+      })
+    },
     unmount: () => {
       act(() => {
         root.unmount()
@@ -60,35 +174,6 @@ function getModeButtons(container: HTMLElement) {
 }
 
 describe('SunCastSidebar', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-
-    mockUseAnalysis.mockReturnValue({
-      solvedMetrics: {
-        basePitchDeg: null,
-        azimuthDeg: null,
-        roofAreaM2: null,
-        minHeightM: null,
-        maxHeightM: null,
-        fitRmsErrorM: null,
-      },
-      solvedRoofs: {
-        activeSolved: null,
-      },
-    })
-
-    mockUseObstacleMeshResults.mockReturnValue({
-      obstacleMeshResults: [],
-      obstacleMeshes: [],
-    })
-
-    mockUseSunCastCommands.mockReturnValue({
-      mapNavigationTarget: null,
-      onPlaceSearchSelect: vi.fn(),
-      onShareProject: vi.fn(async () => undefined),
-    })
-  })
-
   it('opens intro overlay from start tutorial button', () => {
     const view = renderSidebar()
 
@@ -121,11 +206,12 @@ describe('SunCastSidebar', () => {
       introStartButton.click()
     })
 
+    expect(view.onStartTutorial).toHaveBeenCalledTimes(1)
     expect(view.container.querySelector('[data-testid="start-interactive-tutorial-button"]')).toBeNull()
     view.unmount()
   })
 
-  it('switches edit mode from tab clicks', () => {
+  it('switches rendered panels with the provided edit mode', () => {
     const view = renderSidebar()
 
     const { roofModeButton, obstacleModeButton } = getModeButtons(view.container)
@@ -135,13 +221,11 @@ describe('SunCastSidebar', () => {
     expect(view.container.querySelector('[data-testid="roof-editor-panel"]')).not.toBeNull()
     expect(view.container.querySelector('[data-testid="obstacle-panel"]')).toBeNull()
 
-    act(() => {
-      obstacleModeButton?.click()
-    })
+    view.rerender('obstacle')
 
-    const afterClickButtons = getModeButtons(view.container)
-    expect(afterClickButtons.roofModeButton?.classList.contains('draw-mode-button-active')).toBe(false)
-    expect(afterClickButtons.obstacleModeButton?.classList.contains('draw-mode-button-active')).toBe(true)
+    const afterRerenderButtons = getModeButtons(view.container)
+    expect(afterRerenderButtons.roofModeButton?.classList.contains('draw-mode-button-active')).toBe(false)
+    expect(afterRerenderButtons.obstacleModeButton?.classList.contains('draw-mode-button-active')).toBe(true)
     expect(view.container.querySelector('[data-testid="footprint-panel"]')).toBeNull()
     expect(view.container.querySelector('[data-testid="roof-editor-panel"]')).toBeNull()
     expect(view.container.querySelector('[data-testid="obstacle-panel"]')).not.toBeNull()

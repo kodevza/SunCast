@@ -6,20 +6,14 @@ import { createRoot } from 'react-dom/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSelectedRoofInputs } from './useSelectedRoofInputs'
 
-const mockUseSunCastAppContext = vi.fn()
-
-vi.mock('../../screens/SunCastAppProvider', () => ({
-  useSunCastAppContext: () => mockUseSunCastAppContext(),
-}))
-
-function renderHook() {
+function renderHook(args: Parameters<typeof useSelectedRoofInputs>[0]) {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
   const latestRef: { current: ReturnType<typeof useSelectedRoofInputs> | null } = { current: null }
 
   function Probe() {
-    const latest = useSelectedRoofInputs()
+    const latest = useSelectedRoofInputs(args)
 
     useEffect(() => {
       latestRef.current = latest
@@ -50,11 +44,11 @@ function renderHook() {
 
 describe('useSelectedRoofInputs', () => {
   beforeEach(() => {
-    mockUseSunCastAppContext.mockReset()
+    vi.clearAllMocks()
   })
 
   it('shapes feature-facing sun inputs from project selection and solved roofs', () => {
-    mockUseSunCastAppContext.mockReturnValue({
+    const hook = renderHook({
       project: {
         selectedFootprintIds: ['roof-b', 'roof-a'],
         state: {
@@ -124,9 +118,7 @@ describe('useSelectedRoofInputs', () => {
           ],
         },
       },
-    })
-
-    const hook = renderHook()
+    } as unknown as Parameters<typeof useSelectedRoofInputs>[0])
 
     expect(hook.get()).toHaveLength(1)
     expect(hook.get()[0]).toMatchObject({

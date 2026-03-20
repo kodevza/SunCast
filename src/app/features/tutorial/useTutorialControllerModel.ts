@@ -1,26 +1,43 @@
 import { useMemo } from 'react'
-import { useSunCastAppContext } from '../../screens/SunCastAppProvider'
+import type { TutorialState } from '../../editor-session/editorSession.types'
+import type { useMapViewRuntime } from '../map-editor/MapView/useMapViewRuntime'
+import type { useProjectStore } from '../../project-store/useProjectStore'
 import type { SunCastTutorialModel } from './tutorial.types'
 
-export function useTutorialControllerModel(): SunCastTutorialModel {
-  const { project, session } = useSunCastAppContext()
+interface UseTutorialControllerModelArgs {
+  project: ReturnType<typeof useProjectStore>
+  mapView: ReturnType<typeof useMapViewRuntime>
+  tutorial: TutorialState
+}
 
+export function useTutorialControllerModel({
+  project,
+  mapView,
+  tutorial,
+}: UseTutorialControllerModelArgs): SunCastTutorialModel {
   return useMemo(
     () => ({
-      mapInitialized: session.mapInitialized,
+      mapInitialized: mapView.mapInitialized,
       draftVertexCount: project.state.drawDraft.length,
       hasFinishedPolygon: Boolean(project.activeFootprint),
       kwp: project.activeFootprint?.kwp ?? null,
       hasEditedKwp: project.activeFootprint
-        ? Boolean(session.tutorialEditedKwpByFootprint[project.activeFootprint.id])
+        ? Boolean(tutorial.tutorialEditedKwpByFootprint[project.activeFootprint.id])
         : false,
       constrainedVertexCount: project.activeConstraints.vertexHeights.length,
-      orbitEnabled: session.orbitEnabled,
-      hasEditedDatetime: session.tutorialDatetimeEdited,
+      orbitEnabled: mapView.orbitEnabled,
+      hasEditedDatetime: tutorial.tutorialDatetimeEdited,
       onReady: ({ startTutorial }) => {
-        session.setTutorialStart(startTutorial)
+        tutorial.setTutorialStart(startTutorial)
       },
     }),
-    [project.activeConstraints.vertexHeights.length, project.activeFootprint, project.state.drawDraft.length, session],
+    [
+      mapView.mapInitialized,
+      mapView.orbitEnabled,
+      project.activeConstraints.vertexHeights.length,
+      project.activeFootprint,
+      project.state.drawDraft.length,
+      tutorial,
+    ],
   )
 }

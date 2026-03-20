@@ -9,7 +9,7 @@ const DEFAULT_KWP = 4.3
 
 function createState(): Pick<
   ProjectState,
-  'footprints' | 'activeFootprintId' | 'obstacles' | 'activeObstacleId' | 'sunProjection' | 'shadingSettings'
+  'footprints' | 'obstacles' | 'sunProjection' | 'shadingSettings'
 > {
   return {
     footprints: {
@@ -27,7 +27,6 @@ function createState(): Pick<
         pitchAdjustmentPercent: 0,
       },
     },
-    activeFootprintId: 'a',
     obstacles: {
       ob1: {
         id: 'ob1',
@@ -43,7 +42,6 @@ function createState(): Pick<
         heightAboveGroundM: 9,
       },
     },
-    activeObstacleId: 'ob1',
     sunProjection: {
       enabled: false,
       datetimeIso: '2026-03-07T11:00',
@@ -66,12 +64,10 @@ describe('projectState.storage', () => {
 
     const loaded = readStorage(DEFAULT_SUN, DEFAULT_SHADING, DEFAULT_KWP, 'uc6')
     expect(loaded).not.toBeNull()
-    expect(loaded?.activeFootprintId).toBe('a')
     expect(loaded?.footprints.a.footprint.kwp).toBe(5)
     expect(loaded?.footprints.a.constraints.vertexHeights).toEqual([{ vertexIndex: 1, heightM: 2.2 }])
     expect(loaded?.obstacles.ob1.kind).toBe('building')
     expect(loaded?.obstacles.ob1.heightAboveGroundM).toBe(9)
-    expect(loaded?.activeObstacleId).toBe('ob1')
     expect(loaded?.sunProjection).toEqual({
       enabled: false,
       datetimeIso: '2026-03-07T11:00',
@@ -148,12 +144,10 @@ describe('projectState.storage', () => {
             pitchAdjustmentPercent: 0,
           },
         },
-        activeFootprintId: 'b',
       }),
     )
 
     const loaded = readStorage(DEFAULT_SUN, DEFAULT_SHADING, DEFAULT_KWP, 'uc8')
-    expect(loaded?.activeFootprintId).toBe('b')
     expect(loaded?.footprints.b.constraints.vertexHeights).toEqual([{ vertexIndex: 0, heightM: 1.4 }])
     expect(loaded?.obstacles).toEqual({})
   })
@@ -176,7 +170,6 @@ describe('projectState.storage', () => {
             pitchAdjustmentPercent: 0,
           },
         },
-        activeFootprintId: 'b',
         solverConfigVersion: 'uc6',
         shadingSettings: {
           enabled: true,
@@ -195,7 +188,6 @@ describe('projectState.storage', () => {
       JSON.stringify({
         schemaVersion: 999,
         footprints: {},
-        activeFootprintId: null,
       }),
     )
 

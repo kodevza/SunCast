@@ -1,37 +1,20 @@
 import { useCallback } from 'react'
-import { buildSharePayload, serializeSharePayload } from '../../state/project-store/projectState.share'
-import type { ProjectState } from '../../state/project-store/projectState.types'
-import { encodeSharePayload } from '../../shared/utils/shareCodec'
-import { reportAppErrorCode, reportAppSuccess } from '../../shared/errors'
+import { buildSharePayload, serializeSharePayload } from '../../../state/project-store/projectState.share'
+import { encodeSharePayload } from '../../../shared/utils/shareCodec'
+import { reportAppErrorCode, reportAppSuccess } from '../../../shared/errors'
+import type { ReturnTypeUseProjectDocument } from '../../hooks/hookReturnTypes'
 
 const MAX_SHARE_URL_LENGTH = 3500
 
-interface UseShareProjectArgs {
-  footprints: ProjectState['footprints']
-  activeFootprintId: ProjectState['activeFootprintId']
-  obstacles: ProjectState['obstacles']
-  activeObstacleId: ProjectState['activeObstacleId']
-  sunProjection: ProjectState['sunProjection']
-}
-
-interface UseShareProjectResult {
+interface UseShareProjectActionResult {
   onShareProject: () => Promise<void>
-  resetShareStatus: () => void
 }
 
-export function useShareProject({
-  footprints,
-  activeFootprintId,
-  obstacles,
-  activeObstacleId,
-  sunProjection,
-}: UseShareProjectArgs): UseShareProjectResult {
-  const resetShareStatus = useCallback(() => {
-    // no-op kept for API compatibility
-  }, [])
-
+export function useShareProjectAction(projectDocument: ReturnTypeUseProjectDocument): UseShareProjectActionResult {
   const onShareProject = useCallback(async () => {
-    if (Object.keys(footprints).length === 0) {
+    const store = projectDocument
+
+    if (Object.keys(store.state.footprints).length === 0) {
       reportAppErrorCode('SHARE_OPERATION_FAILED', 'Nothing to share yet. Add at least one footprint.', {
         context: { area: 'share-project', reason: 'empty-project' },
       })
@@ -40,11 +23,9 @@ export function useShareProject({
 
     try {
       const payload = buildSharePayload({
-        footprints,
-        activeFootprintId,
-        obstacles,
-        activeObstacleId,
-        sunProjection,
+        footprints: store.state.footprints,
+        obstacles: store.state.obstacles,
+        sunProjection: store.state.sunProjection,
       })
       const encoded = await encodeSharePayload(serializeSharePayload(payload))
       const shareUrl = new URL(window.location.href)
@@ -85,10 +66,9 @@ export function useShareProject({
         context: { area: 'share-project', reason: 'encode-failed' },
       })
     }
-  }, [activeFootprintId, activeObstacleId, footprints, obstacles, sunProjection])
+  }, [projectDocument])
 
   return {
     onShareProject,
-    resetShareStatus,
   }
 }

@@ -1,24 +1,33 @@
 import { useEffect, useState } from 'react'
 import { DrawTools } from '../features/map-editor/DrawTools/DrawTools'
+import type { DrawToolsProps } from '../features/map-editor/DrawTools/DrawTools.types'
 import { FootprintPanel } from '../features/sidebar/FootprintPanel'
+import type { FootprintPanelProps } from '../features/sidebar/FootprintPanel'
 import { ObstaclePanel } from '../features/sidebar/ObstaclePanel'
+import type { ObstaclePanelProps } from '../features/sidebar/ObstaclePanel'
 import { RoofEditor } from '../features/sidebar/RoofEditor'
+import type { RoofEditorProps } from '../features/sidebar/RoofEditor'
 import { StatusPanel } from '../features/sidebar/StatusPanel'
-import { useDrawToolsController } from '../features/sidebar/useDrawToolsController'
+import type { StatusPanelProps } from '../features/sidebar/StatusPanel'
 import { TutorialIntroOverlay } from '../features/tutorial/Tutorial/TutorialIntroOverlay'
-import { useSunCastAppContext } from './SunCastAppProvider'
-import { useFootprintPanelController } from '../features/sidebar/useFootprintPanelController'
-import { useObstaclePanelController } from '../features/sidebar/useObstaclePanelController'
-import { useRoofEditorController } from '../features/sidebar/useRoofEditorController'
-import { useStatusPanelController } from '../features/sidebar/useStatusPanelController'
 
-export function SunCastSidebar() {
-  const { session } = useSunCastAppContext()
-  const drawTools = useDrawToolsController()
-  const footprintPanel = useFootprintPanelController()
-  const roofEditor = useRoofEditorController()
-  const obstaclePanel = useObstaclePanelController()
-  const statusPanel = useStatusPanelController()
+interface SunCastSidebarProps {
+  drawTools: DrawToolsProps
+  footprintPanel: FootprintPanelProps
+  roofEditor: RoofEditorProps
+  obstaclePanel: ObstaclePanelProps
+  statusPanel: StatusPanelProps
+  onStartTutorial: () => void
+}
+
+export function SunCastSidebar({
+  drawTools,
+  footprintPanel,
+  roofEditor,
+  obstaclePanel,
+  statusPanel,
+  onStartTutorial,
+}: SunCastSidebarProps) {
   const [tutorialIntroVisible, setTutorialIntroVisible] = useState(false)
   const activeEditorTab = drawTools.editMode
 
@@ -54,7 +63,7 @@ export function SunCastSidebar() {
         <TutorialIntroOverlay
           onStartInteractiveTutorial={() => {
             setTutorialIntroVisible(false)
-            session.tutorialStartRef.current()
+            onStartTutorial()
           }}
           onClose={() => setTutorialIntroVisible(false)}
         />

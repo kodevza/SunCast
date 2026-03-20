@@ -1,18 +1,18 @@
-import { useCallback, useRef, useState } from 'react'
-import type { PlaceSearchResult } from '../features/place-search/placeSearch.types'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import type { PlaceSearchResult } from './placeSearch.types'
 
-interface MapNavigationTarget {
+export interface MapNavigationTarget {
   id: number
   lon: number
   lat: number
 }
 
-interface UseMapNavigationTargetResult {
+export interface MapNavigationRuntime {
   mapNavigationTarget: MapNavigationTarget | null
   onPlaceSearchSelect: (result: PlaceSearchResult) => void
 }
 
-export function useMapNavigationTarget(): UseMapNavigationTargetResult {
+export function useMapNavigationRuntime(): MapNavigationRuntime {
   const [mapNavigationTarget, setMapNavigationTarget] = useState<MapNavigationTarget | null>(null)
   const mapNavigationIdRef = useRef(0)
 
@@ -25,8 +25,11 @@ export function useMapNavigationTarget(): UseMapNavigationTargetResult {
     })
   }, [])
 
-  return {
-    mapNavigationTarget,
-    onPlaceSearchSelect,
-  }
+  return useMemo(
+    () => ({
+      mapNavigationTarget,
+      onPlaceSearchSelect,
+    }),
+    [mapNavigationTarget, onPlaceSearchSelect],
+  )
 }

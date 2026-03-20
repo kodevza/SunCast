@@ -33,19 +33,30 @@ Stage 1 editor is production-like for deterministic single-plane roof modeling a
 
 - `src/app/project-store/useProjectStore.ts`: runtime store composition, hydration, and canonical persistence wiring.
 - `src/app/screens/SunCastSidebar.tsx`: sidebar composition and tutorial trigger wiring.
-- `src/app/features/sidebar/useDrawToolsController.ts`: sidebar draw-tool controller.
+- `src/app/features/map-editor/DrawTools/hooks/useDrawToolsController.ts`: draw-tool controller used by the sidebar.
 - `src/app/features/sidebar/useFootprintPanelController.ts`: roof-polygon panel controller.
+- `src/app/features/sidebar/useFootprintCommands.ts`: active footprint command helpers.
+- `src/app/features/sidebar/useConstraintCommands.ts`: active constraint command helpers.
+- `src/app/features/sidebar/useObstacleCommands.ts`: active obstacle command helpers.
+- `src/app/features/sidebar/useActiveFootprintMetrics.ts`: active footprint metric shaping for the status panel.
+- `src/app/features/sidebar/useActiveFootprintState.ts`: derived active-footprint state helper.
 - `src/app/features/sidebar/useRoofEditorController.ts`: constraint editor controller.
 - `src/app/features/sidebar/useObstaclePanelController.ts`: obstacle panel controller.
 - `src/app/features/sidebar/useStatusPanelController.ts`: roof status / pitch-adjustment controller.
-- `src/app/screens/SunCastAppProvider.tsx`: shared document/session/analysis/command composition.
-- `src/app/screens/SunCastScreen.tsx`: final screen composition and runtime provider/effect mounting.
+- `src/app/editor-session/editorSession.reducer.ts`: session reducer composition for drawing and selection state.
+- `src/app/editor-session/roofDrawing.reducer.ts`: roof drawing session reducer.
+- `src/app/editor-session/obstacleDrawing.reducer.ts`: obstacle drawing session reducer.
+- `src/app/editor-session/obstacleSelection.reducer.ts`: obstacle selection session reducer.
+- `src/app/screens/SunCastScreen.tsx`: final screen composition and runtime effect mounting.
 - `src/app/screens/SunCastCanvas.tsx`: top-level canvas wiring for map and sun-tool controllers.
 - `src/app/features/map-editor/MapView/useMapViewController.ts`: map runtime composition.
+- `src/app/features/place-search/useMapNavigationRuntime.ts`: map navigation target state for place-search selection.
+- `src/app/features/share-project/useShareProjectAction.ts`: share URL assembly and browser fallback behavior.
 - `src/app/features/sun-tools/useSunToolsController.ts`: sun projection / annual simulation controller.
 - `src/app/features/sun-tools/useAnnualSunAccessController.ts`: annual sun-access controller extracted from the sun-tools flow.
 - `src/app/features/sun-tools/useSelectedRoofInputs.ts`: feature-owned shaping for sun chart/forecast roof inputs.
 - `src/app/features/map-editor/MapView/hooks/useMapInteractions.ts`: interaction coordinator.
+- `src/app/features/map-editor/MapView/useMapViewRuntime.ts`: shared map-view runtime state for orbit and map lifecycle.
 - `src/app/features/map-editor/MapObjects/hooks/useMapObjectsSync.ts`: custom-layer lifecycle and visibility sync.
 - `src/geometry/shading/*`: deterministic sun/shade business logic and annual aggregation.
 - `src/state/project-store/projectState.reducer.ts`: canonical project-document transitions.

@@ -3,12 +3,14 @@ import { useEditorKeyboardShortcuts } from './useEditorKeyboardShortcuts'
 import { useGlobalToastActions } from './useGlobalToastActions'
 import { useObstacleMeshErrorReporting } from './useObstacleMeshErrorReporting'
 import { useUiErrorReporting } from './useUiErrorReporting'
-import type { ReturnTypeUseAnalysis, ReturnTypeUseEditorSession, ReturnTypeUseProjectDocument } from './hookReturnTypes'
+import type { ReturnTypeUseAnalysis, ReturnTypeUseProjectDocument } from './hookReturnTypes'
 import type { useObstacleMeshResults } from './useObstacleMeshResults'
+import type { GeometryEditingState, GeometrySelectionState } from '../editor-session/editorSession.types'
 
 interface UseSunCastEffectsArgs {
   projectDocument: ReturnTypeUseProjectDocument
-  editorSession: ReturnTypeUseEditorSession
+  geometrySelection: GeometrySelectionState
+  geometryEditing: GeometryEditingState
   analysis: ReturnTypeUseAnalysis
   activeFootprintErrors: string[]
   obstacleMeshResults: ReturnType<typeof useObstacleMeshResults>['obstacleMeshResults']
@@ -17,15 +19,16 @@ interface UseSunCastEffectsArgs {
 
 export function useSunCastEffects({
   projectDocument,
-  editorSession,
+  geometrySelection,
+  geometryEditing,
   analysis,
   activeFootprintErrors,
   obstacleMeshResults,
   onShareProject,
 }: UseSunCastEffectsArgs): void {
   useComputeProcessingToast(analysis.computeProcessingActive)
-  useEditorKeyboardShortcuts(projectDocument, editorSession)
-  useGlobalToastActions({ projectDocument, editorSession, analysis, onShareProject })
-  useUiErrorReporting({ activeFootprintErrors, editorSession, analysis })
+  useEditorKeyboardShortcuts(projectDocument, geometrySelection)
+  useGlobalToastActions({ projectDocument, geometrySelection, analysis, onShareProject })
+  useUiErrorReporting({ activeFootprintErrors, geometryEditing, analysis })
   useObstacleMeshErrorReporting(obstacleMeshResults)
 }

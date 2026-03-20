@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { useSunCastAppContext } from '../screens/SunCastAppProvider'
+import type { GeometrySelectionState } from '../../editor-session/editorSession.types'
+import type { useProjectStore } from '../../project-store/useProjectStore'
 
 export interface ObstacleCommands {
   selectObstacle: (obstacleId: string, multiSelect: boolean) => void
@@ -8,9 +9,12 @@ export interface ObstacleCommands {
   deleteActiveObstacle: () => void
 }
 
-export function useObstacleCommands(): ObstacleCommands {
-  const { project, session } = useSunCastAppContext()
+interface UseObstacleCommandsArgs {
+  project: ReturnType<typeof useProjectStore>
+  geometrySelection: Pick<GeometrySelectionState, 'clearSelectionState'>
+}
 
+export function useObstacleCommands({ project, geometrySelection }: UseObstacleCommandsArgs): ObstacleCommands {
   return useMemo(
     () => ({
       selectObstacle: (obstacleId: string, multiSelect: boolean) => {
@@ -19,7 +23,7 @@ export function useObstacleCommands(): ObstacleCommands {
         } else {
           project.selectOnlyObstacle(obstacleId)
         }
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
       },
       setActiveObstacleHeight: (heightM: number) => {
         if (!project.state.activeObstacleId) {
@@ -38,9 +42,9 @@ export function useObstacleCommands(): ObstacleCommands {
           return
         }
         project.deleteObstacle(project.state.activeObstacleId)
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
       },
     }),
-    [project, session],
+    [geometrySelection, project],
   )
 }

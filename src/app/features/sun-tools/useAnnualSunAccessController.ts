@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import type { AnnualSunAccessResult } from '../../../geometry/shading'
 import type { AnnualSimulationOptions, AnnualSimulationState } from '../../analysis/analysis.types'
-import { useSunCastAppContext } from '../../screens/SunCastAppProvider'
+import type { ReturnTypeUseAnalysis } from '../../hooks/hookReturnTypes'
+import type { useProjectStore } from '../../project-store/useProjectStore'
 
 export interface AnnualSunAccessController {
   selectedRoofCount: number
@@ -18,9 +19,15 @@ export interface AnnualSunAccessController {
   onHideAnnualHeatmap: () => void
 }
 
-export function useAnnualSunAccessController(): AnnualSunAccessController {
-  const { project, analysis } = useSunCastAppContext()
+interface UseAnnualSunAccessControllerArgs {
+  project: ReturnType<typeof useProjectStore>
+  analysis: ReturnTypeUseAnalysis
+}
 
+export function useAnnualSunAccessController({
+  project,
+  analysis,
+}: UseAnnualSunAccessControllerArgs): AnnualSunAccessController {
   return useMemo(
     () => ({
       selectedRoofCount: analysis.shadingRoofs.length,

@@ -1,13 +1,21 @@
 import { useMemo } from 'react'
-import { useObstacleCommands } from '../../hooks/useObstacleCommands'
-import { useSelectionCommands } from '../../hooks/useSelectionCommands'
-import { useSunCastAppContext } from '../../screens/SunCastAppProvider'
+import { useObstacleCommands } from './useObstacleCommands'
+import { useSelectionCommands } from './useSelectionCommands'
+import type { GeometrySelectionState } from '../../editor-session/editorSession.types'
+import type { useProjectStore } from '../../project-store/useProjectStore'
 import type { ObstaclePanelProps } from './ObstaclePanel'
 
-export function useObstaclePanelController(): ObstaclePanelProps {
-  const { project } = useSunCastAppContext()
-  const selection = useSelectionCommands()
-  const obstacle = useObstacleCommands()
+interface UseObstaclePanelControllerArgs {
+  project: ReturnType<typeof useProjectStore>
+  geometrySelection: Pick<GeometrySelectionState, 'clearSelectionState'>
+}
+
+export function useObstaclePanelController({
+  project,
+  geometrySelection,
+}: UseObstaclePanelControllerArgs): ObstaclePanelProps {
+  const selection = useSelectionCommands({ project, geometrySelection })
+  const obstacle = useObstacleCommands({ project, geometrySelection })
 
   return useMemo(
     () => ({

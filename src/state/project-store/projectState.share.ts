@@ -23,7 +23,6 @@ export interface SharedFootprintPayload {
 export interface SharedProjectPayloadV1 {
   version: 1
   footprints: SharedFootprintPayload[]
-  activeFootprintId: string | null
   sunProjection?: {
     enabled: boolean
     datetimeIso: string | null
@@ -34,7 +33,6 @@ export interface SharedProjectPayloadV1 {
 export interface SharedProjectPayloadV2 {
   schemaVersion: 2
   footprints: SharedFootprintPayload[]
-  activeFootprintId: string | null
   sunProjection?: {
     enabled: boolean
     datetimeIso: string | null
@@ -53,9 +51,7 @@ export interface SharedObstaclePayload {
 export interface SharedProjectPayloadV3 {
   schemaVersion: 3
   footprints: SharedFootprintPayload[]
-  activeFootprintId: string | null
   obstacles: SharedObstaclePayload[]
-  activeObstacleId: string | null
   sunProjection?: {
     enabled: boolean
     datetimeIso: string | null
@@ -103,7 +99,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function buildSharePayload(
-  state: Pick<ProjectState, 'footprints' | 'activeFootprintId' | 'obstacles' | 'activeObstacleId' | 'sunProjection'>,
+  state: Pick<ProjectState, 'footprints' | 'obstacles' | 'sunProjection'>,
 ): SharedProjectPayload {
   return {
     schemaVersion: CURRENT_SHARE_SCHEMA_VERSION,
@@ -121,9 +117,7 @@ export function buildSharePayload(
         pitchAdjustmentPercent: entry.pitchAdjustmentPercent,
       }
     }),
-    activeFootprintId: state.activeFootprintId,
     obstacles: Object.values(state.obstacles),
-    activeObstacleId: state.activeObstacleId,
     sunProjection: state.sunProjection,
   }
 }
@@ -137,14 +131,7 @@ function hasValidCommonShape(value: Record<string, unknown>): boolean {
     return false
   }
 
-  const activeFootprintId = value.activeFootprintId
-  if (activeFootprintId !== null && typeof activeFootprintId !== 'string') {
-    return false
-  }
   if (value.obstacles !== undefined && !Array.isArray(value.obstacles)) {
-    return false
-  }
-  if (value.activeObstacleId !== undefined && value.activeObstacleId !== null && typeof value.activeObstacleId !== 'string') {
     return false
   }
 
@@ -231,9 +218,7 @@ function migrateSharePayload(value: unknown): SharedProjectPayloadV3 | null {
     return {
       schemaVersion: CURRENT_SHARE_SCHEMA_VERSION,
       footprints: v2.footprints,
-      activeFootprintId: v2.activeFootprintId,
       obstacles: [],
-      activeObstacleId: null,
       sunProjection: v2.sunProjection,
     }
   }
@@ -243,9 +228,7 @@ function migrateSharePayload(value: unknown): SharedProjectPayloadV3 | null {
     return {
       schemaVersion: CURRENT_SHARE_SCHEMA_VERSION,
       footprints: legacy.footprints,
-      activeFootprintId: legacy.activeFootprintId,
       obstacles: [],
-      activeObstacleId: null,
       sunProjection: legacy.sunProjection,
     }
   }
@@ -322,15 +305,7 @@ export function deserializeSharePayloadResult(
 
   const loaded: ProjectState = {
     footprints,
-    activeFootprintId: migrated.activeFootprintId,
-    selectedFootprintIds: migrated.activeFootprintId ? [migrated.activeFootprintId] : [],
-    drawDraft: [],
-    isDrawing: false,
     obstacles: Object.fromEntries(migrated.obstacles.map((obstacle) => [obstacle.id, obstacle])),
-    activeObstacleId: migrated.activeObstacleId,
-    selectedObstacleIds: migrated.activeObstacleId ? [migrated.activeObstacleId] : [],
-    obstacleDrawDraft: [],
-    isDrawingObstacle: false,
     sunProjection: {
       enabled: migrated.sunProjection?.enabled ?? defaultSunProjection.enabled,
       datetimeIso: migrated.sunProjection?.datetimeIso ?? defaultSunProjection.datetimeIso,

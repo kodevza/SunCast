@@ -19,9 +19,10 @@ vi.mock('../globalServices/shareService', () => ({
 }))
 
 import { useProjectStore } from './useProjectStore'
-import type { ProjectState } from '../../state/project-store/projectState.types'
+import { initialEditorSessionState } from '../editor-session/editorSession.types'
+import type { ProjectStoreState } from './projectStore.types'
 
-function createState(id: string): ProjectState {
+function createState(id: string): ProjectStoreState {
   return {
     footprints: {
       [id]: {
@@ -38,6 +39,7 @@ function createState(id: string): ProjectState {
         pitchAdjustmentPercent: 0,
       },
     },
+    ...initialEditorSessionState,
     activeFootprintId: id,
     selectedFootprintIds: [id],
     drawDraft: [],
@@ -108,7 +110,7 @@ describe('useProjectStore startup hydration', () => {
     const hook = renderStore()
     await hook.waitForHydrate()
 
-    expect(hook.get().state.activeFootprintId).toBe('shared')
+    expect(hook.get().state.activeFootprintId).toBeNull()
     expect(mockReadStorage).not.toHaveBeenCalled()
     hook.unmount()
   })
@@ -137,7 +139,7 @@ describe('useProjectStore startup hydration', () => {
     window.history.replaceState({}, '', '/#c=abc')
     const hook = renderStore()
     await hook.waitForHydrate()
-    expect(hook.get().state.activeFootprintId).toBe('shared')
+    expect(hook.get().state.activeFootprintId).toBeNull()
 
     act(() => {
       hook.get().resetState()
@@ -146,6 +148,104 @@ describe('useProjectStore startup hydration', () => {
     expect(hook.get().state.activeFootprintId).toBeNull()
     expect(Object.keys(hook.get().state.footprints)).toHaveLength(0)
     expect(hook.get().state.obstacles).toEqual({})
+    hook.unmount()
+  })
+
+  it('commits the current roof draft through the store bridge', async () => {
+    mockReadSharedStateFromHashResult.mockResolvedValue({ ok: true, value: null })
+    mockReadStorage.mockReturnValue({ ok: true, value: null })
+
+    const hook = renderStore()
+    await hook.waitForHydrate()
+
+    act(() => {
+      hook.get().startDrawing()
+      hook.get().addDraftPoint([0, 0])
+      hook.get().addDraftPoint([1, 0])
+      hook.get().addDraftPoint([1, 1])
+    })
+
+    act(() => {
+      hook.get().commitFootprint()
+    })
+
+    const footprintIds = Object.keys(hook.get().state.footprints)
+    expect(footprintIds).toHaveLength(1)
+    expect(hook.get().state.activeFootprintId).toBe(footprintIds[0])
+    expect(hook.get().state.selectedFootprintIds).toEqual([footprintIds[0]])
+    expect(hook.get().state.drawDraft).toEqual([])
+    hook.unmount()
+  })
+
+  it('updates the active footprint kwp through the current selection', async () => {
+    const stored = createState('a')
+    stored.footprints.b = {
+      footprint: {
+        id: 'b',
+        vertices: [
+          [3, 3],
+          [4, 3],
+          [4, 4],
+        ],
+        kwp: 5,
+      },
+      constraints: { vertexHeights: [] },
+      pitchAdjustmentPercent: 0,
+    }
+    stored.selectedFootprintIds = ['a']
+
+    mockReadSharedStateFromHashResult.mockResolvedValue({ ok: false, error: { code: 'SHARE_PAYLOAD_INVALID', message: 'Invalid shared URL payload.' } })
+    mockReadStorage.mockReturnValue({ ok: true, value: stored })
+
+    const hook = renderStore()
+    await hook.waitForHydrate()
+
+    act(() => {
+      hook.get().selectOnlyFootprint('b')
+    })
+
+    act(() => {
+      hook.get().setActiveFootprintKwp(7.2)
+    })
+
+    expect(hook.get().state.footprints.b.footprint.kwp).toBe(7.2)
+    expect(hook.get().state.footprints.a.footprint.kwp).toBe(4.3)
+    hook.unmount()
+  })
+
+  it('derives the active footprint from editor-session active selection', async () => {
+    const stored = createState('a')
+    stored.footprints.b = {
+      footprint: {
+        id: 'b',
+        vertices: [
+          [3, 3],
+          [4, 3],
+          [4, 4],
+        ],
+        kwp: 5,
+      },
+      constraints: { vertexHeights: [] },
+      pitchAdjustmentPercent: 0,
+    }
+    stored.selectedFootprintIds = ['a']
+
+    mockReadSharedStateFromHashResult.mockResolvedValue({ ok: false, error: { code: 'SHARE_PAYLOAD_INVALID', message: 'Invalid shared URL payload.' } })
+    mockReadStorage.mockReturnValue({ ok: true, value: stored })
+
+    const hook = renderStore()
+    await hook.waitForHydrate()
+
+    act(() => {
+      hook.get().selectOnlyFootprint('a')
+    })
+
+    act(() => {
+      hook.get().setActiveFootprint('b')
+    })
+
+    expect(hook.get().activeFootprint?.id).toBe('b')
+    expect(hook.get().selectedFootprintIds).toEqual(['a'])
     hook.unmount()
   })
 
@@ -185,8 +285,6 @@ describe('useProjectStore startup hydration', () => {
       obstacles: expect.any(Object),
       sunProjection: expect.any(Object),
       shadingSettings: expect.any(Object),
-      activeFootprintId: null,
-      activeObstacleId: null,
     })
     expect(latestCall?.[0].drawDraft).toBeUndefined()
     expect(latestCall?.[0].selectedFootprintIds).toBeUndefined()
@@ -229,7 +327,7 @@ describe('useProjectStore startup hydration', () => {
     expect(hook.get().stateRevision).toBe(afterHydrationRevision)
 
     act(() => {
-      hook.get().moveVertex(0, [3.1, 3.1])
+      hook.get().moveFootprintVertex('a', 0, [3.1, 3.1])
     })
 
     expect(hook.get().stateRevision).toBe(afterHydrationRevision + 1)

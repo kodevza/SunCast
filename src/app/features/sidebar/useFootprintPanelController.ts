@@ -1,13 +1,25 @@
 import { useMemo } from 'react'
-import { useSelectionCommands } from '../../hooks/useSelectionCommands'
-import { useFootprintCommands } from '../../hooks/useFootprintCommands'
-import { useSunCastAppContext } from '../../screens/SunCastAppProvider'
+import { useSelectionCommands } from './useSelectionCommands'
+import { useFootprintCommands } from './useFootprintCommands'
+import { useShareProjectAction } from '../share-project/useShareProjectAction'
+import type { GeometrySelectionState, TutorialState } from '../../editor-session/editorSession.types'
+import type { useProjectStore } from '../../project-store/useProjectStore'
 import type { FootprintPanelProps } from './FootprintPanel'
 
-export function useFootprintPanelController(): FootprintPanelProps {
-  const { project, commands } = useSunCastAppContext()
-  const selection = useSelectionCommands()
-  const footprint = useFootprintCommands()
+interface UseFootprintPanelControllerArgs {
+  project: ReturnType<typeof useProjectStore>
+  tutorial: Pick<TutorialState, 'setTutorialEditedKwpByFootprint'>
+  geometrySelection: Pick<GeometrySelectionState, 'clearSelectionState'>
+}
+
+export function useFootprintPanelController({
+  project,
+  tutorial,
+  geometrySelection,
+}: UseFootprintPanelControllerArgs): FootprintPanelProps {
+  const selection = useSelectionCommands({ project, geometrySelection })
+  const footprint = useFootprintCommands({ project, tutorial, geometrySelection })
+  const shareProject = useShareProjectAction(project)
   const footprints = useMemo(
     () => Object.values(project.state.footprints).map((entry) => entry.footprint),
     [project.state.footprints],
@@ -19,13 +31,12 @@ export function useFootprintPanelController(): FootprintPanelProps {
       activeFootprintId: project.state.activeFootprintId,
       selectedFootprintIds: project.selectedFootprintIds,
       activeFootprintKwp: project.activeFootprint?.kwp ?? null,
-      onShareProject: commands.onShareProject,
+      onShareProject: shareProject.onShareProject,
       onSelectFootprint: selection.selectFootprint,
       onSetActiveFootprintKwp: footprint.setActiveFootprintKwp,
       onDeleteActiveFootprint: footprint.deleteActiveFootprint,
     }),
     [
-      commands.onShareProject,
       footprint.deleteActiveFootprint,
       footprint.setActiveFootprintKwp,
       project.activeFootprint,
@@ -33,6 +44,7 @@ export function useFootprintPanelController(): FootprintPanelProps {
       project.state.activeFootprintId,
       footprints,
       selection.selectFootprint,
+      shareProject.onShareProject,
     ],
   )
 }

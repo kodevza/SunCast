@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { computeFootprintCentroid } from '../../../shared/utils/footprintGeometry'
 import type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
-import { useSunCastAppContext } from '../../screens/SunCastAppProvider'
+import type { ReturnTypeUseAnalysis } from '../../hooks/hookReturnTypes'
+import type { useProjectStore } from '../../project-store/useProjectStore'
 
 function clampPitchAdjustmentPercent(value: number): number {
   if (!Number.isFinite(value)) {
@@ -11,9 +12,12 @@ function clampPitchAdjustmentPercent(value: number): number {
   return Math.min(200, Math.max(-90, value))
 }
 
-export function useSelectedRoofInputs(): SelectedRoofSunInput[] {
-  const { project, analysis } = useSunCastAppContext()
+interface UseSelectedRoofInputsArgs {
+  project: ReturnType<typeof useProjectStore>
+  analysis: ReturnTypeUseAnalysis
+}
 
+export function useSelectedRoofInputs({ project, analysis }: UseSelectedRoofInputsArgs): SelectedRoofSunInput[] {
   const solvedByFootprintId = useMemo(
     () => new Map(analysis.solvedRoofs.entries.map((entry) => [entry.footprintId, entry])),
     [analysis.solvedRoofs.entries],
