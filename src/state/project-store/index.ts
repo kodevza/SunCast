@@ -1,14 +1,10 @@
 export { createProjectCommands } from './projectState.commands'
 export { projectStateReducer, initialProjectState } from './projectState.reducer'
 export {
-  getActiveFootprint,
-  getActiveConstraints,
-  getSelectedFootprintIds,
-  getSelectedFootprintEntries,
   getShadingReadyFootprintEntries,
   getFootprintEntries,
-  isFootprintSelected,
+  getFootprintEntryById,
   getObstacleEntries,
-  getActiveObstacle,
-  getSelectedObstacleEntries,
+  getObstacleEntryById,
+  getObstacleEntriesByIds,
 } from './projectState.selectors'

@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
-import { useSunCastAppContext } from '../../screens/SunCastAppProvider'
+import type { ReturnTypeUseAnalysis } from '../../hooks/hookReturnTypes'
+import type { TutorialState } from '../../editor-session/editorSession.types'
+import type { useProjectStore } from '../../project-store/useProjectStore'
 import { useAnnualSunAccessController } from './useAnnualSunAccessController'
 import { useSelectedRoofInputs } from './useSelectedRoofInputs'
 
@@ -17,10 +19,19 @@ interface SunToolsController {
   annualSunAccess: ReturnType<typeof useAnnualSunAccessController>
 }
 
-export function useSunToolsController(): SunToolsController {
-  const { project, session, analysis } = useSunCastAppContext()
-  const annualSunAccess = useAnnualSunAccessController()
-  const selectedRoofInputs = useSelectedRoofInputs()
+interface UseSunToolsControllerArgs {
+  project: ReturnType<typeof useProjectStore>
+  analysis: ReturnTypeUseAnalysis
+  tutorial: Pick<TutorialState, 'setTutorialDatetimeEdited'>
+}
+
+export function useSunToolsController({
+  project,
+  analysis,
+  tutorial,
+}: UseSunToolsControllerArgs): SunToolsController {
+  const annualSunAccess = useAnnualSunAccessController({ project, analysis })
+  const selectedRoofInputs = useSelectedRoofInputs({ project, analysis })
 
   return useMemo(
     () => ({
@@ -30,7 +41,7 @@ export function useSunToolsController(): SunToolsController {
         project.setSunProjectionEnabled(enabled)
       },
       onSunDatetimeInputChange: (datetimeIsoRaw: string) => {
-        session.setTutorialDatetimeEdited(true)
+        tutorial.setTutorialDatetimeEdited(true)
         analysis.sunProjection.onDatetimeInputChange(datetimeIsoRaw)
       },
       sunDatetimeRaw: analysis.sunProjection.datetimeRaw,
@@ -41,6 +52,6 @@ export function useSunToolsController(): SunToolsController {
       productionComputationEnabled: analysis.productionComputationEnabled,
       annualSunAccess,
     }),
-    [analysis, annualSunAccess, project, selectedRoofInputs, session],
+    [analysis, annualSunAccess, project, selectedRoofInputs, tutorial],
   )
 }

@@ -6,20 +6,14 @@ import { createRoot } from 'react-dom/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAnnualSunAccessController } from './useAnnualSunAccessController'
 
-const mockUseSunCastAppContext = vi.fn()
-
-vi.mock('../../screens/SunCastAppProvider', () => ({
-  useSunCastAppContext: () => mockUseSunCastAppContext(),
-}))
-
-function renderHook() {
+function renderHook(args: Parameters<typeof useAnnualSunAccessController>[0]) {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
   const latestRef: { current: ReturnType<typeof useAnnualSunAccessController> | null } = { current: null }
 
   function Probe() {
-    const latest = useAnnualSunAccessController()
+    const latest = useAnnualSunAccessController(args)
 
     useEffect(() => {
       latestRef.current = latest
@@ -50,7 +44,7 @@ function renderHook() {
 
 describe('useAnnualSunAccessController', () => {
   beforeEach(() => {
-    mockUseSunCastAppContext.mockReset()
+    vi.clearAllMocks()
   })
 
   it('keeps annual simulation controls inside the sun-tools feature boundary', () => {
@@ -58,7 +52,7 @@ describe('useAnnualSunAccessController', () => {
     const clearSimulation = vi.fn()
     const setRequestedHeatmapMode = vi.fn()
 
-    mockUseSunCastAppContext.mockReturnValue({
+    const hook = renderHook({
       project: {
         state: {
           shadingSettings: {
@@ -84,9 +78,7 @@ describe('useAnnualSunAccessController', () => {
         },
         setRequestedHeatmapMode,
       },
-    })
-
-    const hook = renderHook()
+    } as unknown as Parameters<typeof useAnnualSunAccessController>[0])
 
     expect(hook.get()).toMatchObject({
       selectedRoofCount: 2,

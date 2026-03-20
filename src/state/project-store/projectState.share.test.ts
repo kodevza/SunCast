@@ -31,7 +31,6 @@ describe('projectState.share', () => {
           pitchAdjustmentPercent: 12,
         },
       },
-      activeFootprintId: 'fp1',
       obstacles: {
         ob1: {
           id: 'ob1',
@@ -47,7 +46,6 @@ describe('projectState.share', () => {
           heightAboveGroundM: 6,
         },
       },
-      activeObstacleId: 'ob1',
       sunProjection: {
         enabled: false,
         datetimeIso: '2026-03-07T11:00',
@@ -56,15 +54,11 @@ describe('projectState.share', () => {
     })
 
     const loaded = deserializeSharePayload(serializeSharePayload(payload), DEFAULT_SUN, DEFAULT_KWP, DEFAULT_SHADING)
-    expect(loaded.activeFootprintId).toBe('fp1')
-    expect(loaded.selectedFootprintIds).toEqual(['fp1'])
     expect(loaded.footprints.fp1.footprint.kwp).toBe(6)
     expect(loaded.footprints.fp1.constraints.vertexHeights).toEqual([{ vertexIndex: 1, heightM: 3.2 }])
     expect(loaded.footprints.fp1.pitchAdjustmentPercent).toBe(12)
     expect(loaded.obstacles.ob1.kind).toBe('building')
     expect(loaded.obstacles.ob1.shape.type).toBe('polygon-prism')
-    expect(loaded.activeObstacleId).toBe('ob1')
-    expect(loaded.selectedObstacleIds).toEqual(['ob1'])
     expect(payload.schemaVersion).toBe(3)
   })
 
@@ -73,9 +67,7 @@ describe('projectState.share', () => {
       validateSharePayload({
         schemaVersion: 3,
         footprints: [{ id: 'fp1', polygon: [], vertexHeights: {}, kwp: 5 }],
-        activeFootprintId: 'fp1',
         obstacles: [],
-        activeObstacleId: null,
       }),
     ).toBe(false)
     expect(
@@ -93,9 +85,7 @@ describe('projectState.share', () => {
             kwp: 5,
           },
         ],
-        activeFootprintId: 'fp1',
         obstacles: [{ id: 'ob1', kind: 'building', shape: { type: 'polygon-prism', polygon: [] }, heightAboveGroundM: 5 }],
-        activeObstacleId: 'ob1',
       }),
     ).toBe(false)
 
@@ -120,14 +110,11 @@ describe('projectState.share', () => {
           pitchAdjustmentPercent: 0,
         },
       ],
-      activeFootprintId: 'legacy',
     })
 
     const loaded = deserializeSharePayload(legacy, DEFAULT_SUN, DEFAULT_KWP, DEFAULT_SHADING)
-    expect(loaded.activeFootprintId).toBe('legacy')
     expect(loaded.footprints.legacy.constraints.vertexHeights).toEqual([{ vertexIndex: 2, heightM: 4.1 }])
     expect(loaded.obstacles).toEqual({})
-    expect(loaded.activeObstacleId).toBeNull()
   })
 
   it('migrates v2 payload into current schema with empty obstacles', () => {
@@ -146,13 +133,10 @@ describe('projectState.share', () => {
           pitchAdjustmentPercent: 0,
         },
       ],
-      activeFootprintId: 'v2',
     })
 
     const loaded = deserializeSharePayload(v2, DEFAULT_SUN, DEFAULT_KWP, DEFAULT_SHADING)
-    expect(loaded.activeFootprintId).toBe('v2')
     expect(loaded.obstacles).toEqual({})
-    expect(loaded.activeObstacleId).toBeNull()
   })
 
   it('marks invalid share payload errors as resettable', () => {

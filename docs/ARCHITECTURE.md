@@ -29,11 +29,11 @@ Derived-only artifacts (never canonical persisted source data):
 - `src/geometry/shading/*`: deterministic shade snapshot/grid/annual sun-access computations.
 - `src/state/project-store/*`: reducer/commands/selectors/storage/share mapping for canonical project-document state. It does not import `app/*`.
 - `src/app/project-store/*`: application-level store composition and startup hydration. It composes canonical document transitions with editor-session runtime state and browser-facing hydration/persistence entry points.
-- `src/app/editor-session/*`: ephemeral editing/session boundary for selection, camera flags, and input guards; currently implemented as React hooks plus reducer/selectors.
+- `src/app/editor-session/*`: ephemeral editing/session boundary for selection, drawing reducers, camera flags, input guards, and runtime selection selectors; currently implemented as React hooks plus reducer/selectors.
 - `src/app/analysis/*`: derived computation boundary for solved roofs, heatmap mode, shading, annual simulation, sun-projection derived state, and diagnostics.
-- `src/app/screens/*`: final screen composition plus the app provider/effect boundary.
+- `src/app/screens/*`: final screen composition plus runtime side-effect mounting.
 - `src/app/features/*`: feature-owned controllers and UI composition.
-- `src/app/hooks/*`: mixed application-orchestration boundary for selection, constraint editing, share/runtime effects, and obstacle-mesh derivation.
+- `src/app/hooks/*`: mixed application-orchestration boundary for constraint editing, share/runtime effects, and obstacle-mesh derivation.
 - `src/app/clients/*`: thin external HTTP clients (request assembly, fetch, HTTP status handling, raw payload return).
 - `src/app/globalServices/*`: browser-global services for share/hash decoding and toast dispatch.
 - `src/application/services/*`: small cross-cutting application services; currently `projectRecovery.ts` coordinates reset/recovery flow.
@@ -41,12 +41,14 @@ Derived-only artifacts (never canonical persisted source data):
 - `src/rendering/*`: reusable Three/MapLibre rendering primitives, shared world-geometry adapters, heatmap-overlay worker/build logic, and Three.js renderer lifecycle helpers.
 - `src/app/components/*`: shared UI components and global error UI.
 - `src/app/features/map-editor/*`: map interactions and runtime integration split into DrawTools, MapView, and MapObjects.
+- `src/app/features/map-editor/MapView/useMapViewRuntime.ts`: shared map-view runtime state for orbit and map lifecycle flags.
 - `src/app/features/map-editor/DrawTools/*`: drawing workflow controls, hints, and shortcuts.
-- `src/app/features/map-editor/MapView/*`: base MapLibre runtime, base-style/sources, interactions, camera/navigation sync, attribution UI.
+- `src/app/features/map-editor/MapView/*`: base MapLibre runtime, base-style/sources, interactions, map-navigation runtime, camera/navigation sync, attribution UI.
 - `src/app/features/map-editor/MapObjects/*`: rendered roof/obstacle meshes and heatmap layer synchronization.
+- `src/app/features/share-project/*`: share URL assembly and browser share/clipboard behavior.
 - `src/app/features/sun-tools/*`: projection controls, feature-owned selected-roof shaping, charts, weather forecast integration, and annual sun-access UI.
-- `src/app/features/place-search/*`: place-search provider orchestration + UI mapping.
-- `src/app/features/sidebar/*`: sidebar editors/panels for constraints, obstacles, status, and roof metadata.
+- `src/app/features/place-search/*`: place-search provider orchestration and UI mapping.
+- `src/app/features/sidebar/*`: sidebar-owned panels, controllers, and command/state shaping for roof footprints, constraints, obstacles, and status metadata.
 - `src/app/features/tutorial/*`: onboarding state + overlay UI.
 - `src/app/screens/*`: final screen/layout composition.
 
@@ -58,10 +60,10 @@ Recent violations had accumulated in:
 - `src/app/hooks/*` still holding session/runtime behavior that has not yet been moved into tighter owning boundaries.
 
 Current and target direction:
-- `SunCastScreen` is the top composition point, but sidebar/canvas/tutorial screen components now own their feature controllers directly.
-- `src/app/screens/SunCastAppProvider.tsx` owns the shared app context for document/session/analysis/command wiring.
-- `src/app/features/*` owns the feature-specific controllers that shape UI props from the shared context.
-- session/runtime helpers still live in `app/hooks/*`.
+- `SunCastScreen` is the top composition point and instantiates project, map-view, analysis, and editor runtime slices directly.
+- `src/app/features/*` owns feature-specific controllers that shape UI props from explicit dependencies passed by the screen.
+- `src/app/screens/*` stays thin and passes composed props into sidebar/canvas/tutorial screen components.
+- session/runtime helpers still live in `app/hooks/*`, while sidebar-specific footprint/constraint/obstacle/selection command hooks live in `app/features/sidebar/*`.
 - import direction is documented in `docs/runtime_boundaries.md`; treat it as the real current boundary map plus the intended cleanup direction.
 
 ## Main Data Flows
@@ -81,27 +83,29 @@ Current top-level composition is intentionally split:
 
 ```text
 SunCastScreen
-  -> SunCastAppProvider()
-      -> useProjectStore()
-      -> useEditorSession()
-      -> useAnalysis()
-      -> useSunCastCommands()
+  -> useProjectStore()
+  -> useMapViewRuntime()
+  -> useEditModeState()
+  -> useTutorialState()
+  -> useGeometrySelectionState()
+  -> useGeometryEditing()
+  -> useAnalysis()
   -> SunCastEffects()
       -> useSunCastEffects()
+  -> useDrawToolsController()
+  -> useFootprintPanelController()
+  -> useRoofEditorController()
+  -> useObstaclePanelController()
+  -> useStatusPanelController()
+  -> useMapViewController()
+  -> useSunToolsController()
+  -> useTutorialControllerModel()
   -> SunCastSidebar()
-      -> useDrawToolsController()
-      -> useFootprintPanelController()
-      -> useRoofEditorController()
-      -> useObstaclePanelController()
-      -> useStatusPanelController()
   -> SunCastCanvas()
-      -> useMapViewController()
-      -> useSunToolsController()
   -> TutorialController()
-      -> useTutorialControllerModel()
 ```
 
-`SunCastScreen` now owns the final runtime-to-screen wiring by composing screen-level providers/effects and feature-owned controllers directly.
+`SunCastScreen` owns the final runtime-to-screen wiring by composing explicit runtime slices and feature-owned controllers directly.
 
 ## Performance Model
 

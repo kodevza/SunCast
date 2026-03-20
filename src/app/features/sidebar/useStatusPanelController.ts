@@ -1,12 +1,25 @@
 import { useMemo } from 'react'
-import { useActiveFootprintMetrics } from '../../hooks/useActiveFootprintMetrics'
-import { useFootprintCommands } from '../../hooks/useFootprintCommands'
-import { useSunCastAppContext } from '../../screens/SunCastAppProvider'
+import { useActiveFootprintMetrics } from './useActiveFootprintMetrics'
+import { useFootprintCommands } from './useFootprintCommands'
+import type { ReturnTypeUseAnalysis } from '../../hooks/hookReturnTypes'
+import type { GeometrySelectionState, TutorialState } from '../../editor-session/editorSession.types'
+import type { useProjectStore } from '../../project-store/useProjectStore'
 import type { StatusPanelProps } from './StatusPanel'
 
-export function useStatusPanelController(): StatusPanelProps {
-  const { project, analysis } = useSunCastAppContext()
-  const footprint = useFootprintCommands()
+interface UseStatusPanelControllerArgs {
+  project: ReturnType<typeof useProjectStore>
+  analysis: ReturnTypeUseAnalysis
+  tutorial: Pick<TutorialState, 'setTutorialEditedKwpByFootprint'>
+  geometrySelection: Pick<GeometrySelectionState, 'clearSelectionState'>
+}
+
+export function useStatusPanelController({
+  project,
+  analysis,
+  tutorial,
+  geometrySelection,
+}: UseStatusPanelControllerArgs): StatusPanelProps {
+  const footprint = useFootprintCommands({ project, tutorial, geometrySelection })
   const activeFootprintMetrics = useActiveFootprintMetrics({
     activeFootprint: project.activeFootprint,
     basePitchDeg: analysis.solvedMetrics.basePitchDeg,

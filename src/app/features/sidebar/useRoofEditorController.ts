@@ -1,18 +1,28 @@
 import { useMemo } from 'react'
-import { useConstraintCommands } from '../../hooks/useConstraintCommands'
-import { useSunCastAppContext } from '../../screens/SunCastAppProvider'
+import { useConstraintCommands } from './useConstraintCommands'
+import type { GeometryEditingState, GeometrySelectionState } from '../../editor-session/editorSession.types'
+import type { useProjectStore } from '../../project-store/useProjectStore'
 import type { RoofEditorProps } from './RoofEditor'
 
-export function useRoofEditorController(): RoofEditorProps {
-  const { project, session } = useSunCastAppContext()
-  const constraints = useConstraintCommands()
+interface UseRoofEditorControllerArgs {
+  project: ReturnType<typeof useProjectStore>
+  geometrySelection: Pick<GeometrySelectionState, 'safeSelectedVertexIndex' | 'safeSelectedEdgeIndex'>
+  geometryEditing: Pick<GeometryEditingState, 'setConstraintLimitError'>
+}
+
+export function useRoofEditorController({
+  project,
+  geometrySelection,
+  geometryEditing,
+}: UseRoofEditorControllerArgs): RoofEditorProps {
+  const constraints = useConstraintCommands({ project, geometryEditing })
 
   return useMemo(
     () => ({
       footprint: project.activeFootprint,
       vertexConstraints: project.activeConstraints.vertexHeights,
-      selectedVertexIndex: session.safeSelectedVertexIndex,
-      selectedEdgeIndex: session.safeSelectedEdgeIndex,
+      selectedVertexIndex: geometrySelection.safeSelectedVertexIndex,
+      selectedEdgeIndex: geometrySelection.safeSelectedEdgeIndex,
       onSetVertex: constraints.setVertex,
       onSetEdge: constraints.setEdge,
       onClearVertex: constraints.clearVertex,
@@ -25,10 +35,10 @@ export function useRoofEditorController(): RoofEditorProps {
       constraints.onConstraintLimitExceeded,
       constraints.setEdge,
       constraints.setVertex,
+      geometrySelection.safeSelectedEdgeIndex,
+      geometrySelection.safeSelectedVertexIndex,
       project.activeConstraints.vertexHeights,
       project.activeFootprint,
-      session.safeSelectedEdgeIndex,
-      session.safeSelectedVertexIndex,
     ],
   )
 }

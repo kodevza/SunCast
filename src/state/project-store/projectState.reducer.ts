@@ -21,30 +21,26 @@ export const DEFAULT_SHADING_SETTINGS: ShadingSettings = {
 
 export const initialProjectState: ProjectState = {
   footprints: {},
-  activeFootprintId: null,
-  selectedFootprintIds: [],
-  drawDraft: [],
-  isDrawing: false,
   obstacles: {},
-  activeObstacleId: null,
-  selectedObstacleIds: [],
-  obstacleDrawDraft: [],
-  isDrawingObstacle: false,
   sunProjection: DEFAULT_SUN_PROJECTION,
   shadingSettings: DEFAULT_SHADING_SETTINGS,
 }
 
-export function projectStateReducer(state: ProjectState, action: Action): ProjectState {
+export function projectStateReducer<T extends ProjectState>(state: T, action: Action): T {
   if (action.type === 'LOAD') {
-    return validateLoadedState(action.payload, DEFAULT_SUN_PROJECTION, DEFAULT_FOOTPRINT_KWP, DEFAULT_SHADING_SETTINGS)
+    return {
+      ...state,
+      ...validateLoadedState(action.payload, DEFAULT_SUN_PROJECTION, DEFAULT_FOOTPRINT_KWP, DEFAULT_SHADING_SETTINGS),
+    } as T
   }
 
   if (action.type === 'RESET_STATE') {
     return {
+      ...state,
       ...initialProjectState,
       sunProjection: { ...DEFAULT_SUN_PROJECTION },
       shadingSettings: { ...DEFAULT_SHADING_SETTINGS },
-    }
+    } as T
   }
 
   return projectDocumentReducer(state, action)

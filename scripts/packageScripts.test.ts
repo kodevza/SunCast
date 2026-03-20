@@ -9,5 +9,6 @@ describe('package scripts', () => {
 
     expect(packageJson.scripts).toBeDefined()
     expect(packageJson.scripts?.['test:coverage:e2e']).toBeDefined()
+    expect(packageJson.scripts?.['extract:feature-contracts']).toBeDefined()
   })
 })

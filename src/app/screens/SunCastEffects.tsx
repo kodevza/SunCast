@@ -1,18 +1,30 @@
+import type { ReturnTypeUseAnalysis, ReturnTypeUseProjectDocument } from '../hooks/hookReturnTypes'
 import { prepareActiveFootprintGeometry } from '../hooks/activeFootprintGeometry'
 import { useSunCastEffects } from '../hooks/useSunCastEffects'
-import { useSunCastAppContext } from './SunCastAppProvider'
+import type { useObstacleMeshResults } from '../hooks/useObstacleMeshResults'
+import { useShareProjectAction } from '../features/share-project/useShareProjectAction'
+import type { GeometryEditingState, GeometrySelectionState } from '../editor-session/editorSession.types'
 
-export function SunCastEffects() {
-  const { project, session, analysis, obstacleMeshResults, commands } = useSunCastAppContext()
+interface SunCastEffectsProps {
+  project: ReturnTypeUseProjectDocument
+  geometrySelection: GeometrySelectionState
+  geometryEditing: GeometryEditingState
+  analysis: ReturnTypeUseAnalysis
+  obstacleMeshResults: ReturnType<typeof useObstacleMeshResults>['obstacleMeshResults']
+}
+
+export function SunCastEffects({ project, geometrySelection, geometryEditing, analysis, obstacleMeshResults }: SunCastEffectsProps) {
   const activeFootprintErrors = prepareActiveFootprintGeometry(project.activeFootprint).activeFootprintErrors
+  const shareProject = useShareProjectAction(project)
 
   useSunCastEffects({
     projectDocument: project,
-    editorSession: session,
+    geometrySelection,
+    geometryEditing,
     analysis,
     activeFootprintErrors,
     obstacleMeshResults,
-    onShareProject: commands.onShareProject,
+    onShareProject: shareProject.onShareProject,
   })
 
   return null

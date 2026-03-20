@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import { clampPitchAdjustmentPercent } from '../features/sidebar/statusPanel.types'
-import { prepareActiveFootprintGeometry } from './activeFootprintGeometry'
-import type { FootprintPolygon } from '../../types/geometry'
+import { clampPitchAdjustmentPercent } from './statusPanel.types'
+import { prepareActiveFootprintGeometry } from '../../hooks/activeFootprintGeometry'
+import type { FootprintPolygon } from '../../../types/geometry'
 import { useActiveFootprintState } from './useActiveFootprintState'
 
 interface UseActiveFootprintMetricsArgs {

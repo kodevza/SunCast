@@ -82,15 +82,7 @@ export function readStorageResult(
 
     return ok({
       footprints,
-      activeFootprintId: migrated.activeFootprintId ?? null,
-      selectedFootprintIds: [],
-      drawDraft: [],
-      isDrawing: false,
       obstacles,
-      activeObstacleId: migrated.activeObstacleId && obstacles[migrated.activeObstacleId] ? migrated.activeObstacleId : null,
-      selectedObstacleIds: [],
-      obstacleDrawDraft: [],
-      isDrawingObstacle: false,
       sunProjection: {
         enabled: migrated.sunProjection?.enabled ?? defaultSunProjection.enabled,
         datetimeIso: migrated.sunProjection?.datetimeIso ?? defaultSunProjection.datetimeIso,
@@ -116,7 +108,7 @@ export function readStorageResult(
 export function writeStorage(
   state: Pick<
     ProjectState,
-    'footprints' | 'activeFootprintId' | 'obstacles' | 'activeObstacleId' | 'sunProjection' | 'shadingSettings'
+    'footprints' | 'obstacles' | 'sunProjection' | 'shadingSettings'
   >,
   currentSolverConfigVersion: string,
   defaultFootprintKwp: number,
@@ -127,9 +119,7 @@ export function writeStorage(
 
   const data: ProjectData = {
     footprints,
-    activeFootprintId: state.activeFootprintId,
     obstacles: state.obstacles,
-    activeObstacleId: state.activeObstacleId,
     solverConfigVersion: currentSolverConfigVersion,
     sunProjection: state.sunProjection,
     shadingSettings: state.shadingSettings,

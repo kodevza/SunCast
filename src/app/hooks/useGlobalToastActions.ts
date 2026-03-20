@@ -2,18 +2,19 @@ import { useEffect } from 'react'
 import { runResetProjectFlow } from '../../application/services/projectRecovery'
 import { reportAppSuccess } from '../../shared/errors'
 import { toastActionService } from '../globalServices/toastActionService'
-import type { ReturnTypeUseAnalysis, ReturnTypeUseEditorSession, ReturnTypeUseProjectDocument } from './hookReturnTypes'
+import type { ReturnTypeUseAnalysis, ReturnTypeUseProjectDocument } from './hookReturnTypes'
+import type { GeometrySelectionState } from '../editor-session/editorSession.types'
 
 interface UseGlobalToastActionsArgs {
   projectDocument: ReturnTypeUseProjectDocument
-  editorSession: ReturnTypeUseEditorSession
+  geometrySelection: GeometrySelectionState
   analysis: ReturnTypeUseAnalysis
   onShareProject: () => Promise<void>
 }
 
 export function useGlobalToastActions({
   projectDocument,
-  editorSession,
+  geometrySelection,
   analysis,
   onShareProject,
 }: UseGlobalToastActionsArgs): void {
@@ -29,7 +30,7 @@ export function useGlobalToastActions({
       if (action === 'reset-state') {
         runResetProjectFlow({
           resetState: store.resetState,
-          clearSelectionState: editorSession.clearSelectionState,
+          clearSelectionState: geometrySelection.clearSelectionState,
           setRequestedHeatmapMode: analysis.setRequestedHeatmapMode,
           onSuccess: () => {
             reportAppSuccess('Project state reset to defaults.', {
@@ -40,5 +41,5 @@ export function useGlobalToastActions({
         })
       }
     })
-  }, [analysis.setRequestedHeatmapMode, editorSession.clearSelectionState, onShareProject, store.resetState])
+  }, [analysis.setRequestedHeatmapMode, geometrySelection.clearSelectionState, onShareProject, store.resetState])
 }

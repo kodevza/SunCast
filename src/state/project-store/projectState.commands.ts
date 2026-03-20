@@ -1,47 +1,42 @@
 import type { Dispatch } from 'react'
-import type { ObstacleKind, VertexHeightConstraint } from '../../types/geometry'
-import { obstacleShapeVertexCount } from '../../geometry/obstacles/obstacleModels'
-import { getActiveFootprint } from './projectState.selectors'
-import type { Action, ImportedFootprintEntry, ProjectState } from './projectState.types'
+import type { ObstacleKind, ObstacleStateEntry, FootprintPolygon, VertexHeightConstraint } from '../../types/geometry'
+import { assertValidVertexHeights, setOrReplaceVertexConstraint } from './projectState.constraints'
+import type { Action, ImportedFootprintEntry } from './projectState.types'
+
+type ProjectCommandFootprintEntry = {
+  footprint: {
+    vertices: Array<[number, number]>
+  }
+  constraints: {
+    vertexHeights: VertexHeightConstraint[]
+  }
+}
+
+type ProjectCommandState = {
+  footprints: Record<string, ProjectCommandFootprintEntry>
+  obstacles: Record<string, ObstacleStateEntry>
+}
 
 export interface ProjectCommands {
-  startDrawing: () => void
-  cancelDrawing: () => void
-  addDraftPoint: (point: [number, number]) => void
-  undoDraftPoint: () => void
-  commitFootprint: () => void
-  setActiveFootprint: (footprintId: string) => void
-  selectOnlyFootprint: (footprintId: string) => void
-  toggleFootprintSelection: (footprintId: string) => void
-  selectAllFootprints: () => void
-  clearFootprintSelection: () => void
+  addFootprint: (footprint: FootprintPolygon) => void
   deleteFootprint: (footprintId: string) => void
-  moveVertex: (vertexIndex: number, point: [number, number]) => void
-  moveEdge: (edgeIndex: number, delta: [number, number]) => void
-  setVertexHeight: (vertexIndex: number, heightM: number) => boolean
-  setEdgeHeight: (edgeIndex: number, heightM: number) => boolean
-  setVertexHeights: (constraints: VertexHeightConstraint[]) => boolean
-  setActiveFootprintKwp: (kwp: number) => boolean
-  setActivePitchAdjustmentPercent: (pitchAdjustmentPercent: number) => boolean
-  clearVertexHeight: (vertexIndex: number) => void
-  clearEdgeHeight: (edgeIndex: number) => void
-  setSunProjectionEnabled: (enabled: boolean) => void
-  setSunProjectionDatetimeIso: (datetimeIso: string | null) => void
-  setSunProjectionDailyDateIso: (dailyDateIso: string | null) => void
-  startObstacleDrawing: () => void
-  cancelObstacleDrawing: () => void
-  addObstacleDraftPoint: (point: [number, number]) => void
-  undoObstacleDraftPoint: () => void
-  commitObstacle: () => void
-  setActiveObstacle: (obstacleId: string) => void
-  selectOnlyObstacle: (obstacleId: string) => void
-  toggleObstacleSelection: (obstacleId: string) => void
-  selectAllObstacles: () => void
-  clearObstacleSelection: () => void
+  moveFootprintVertex: (footprintId: string, vertexIndex: number, point: [number, number]) => void
+  moveFootprintEdge: (footprintId: string, edgeIndex: number, delta: [number, number]) => void
+  setFootprintVertexHeight: (footprintId: string, vertexIndex: number, heightM: number) => boolean
+  setFootprintEdgeHeight: (footprintId: string, edgeIndex: number, heightM: number) => boolean
+  setFootprintVertexHeights: (footprintId: string, constraints: VertexHeightConstraint[]) => boolean
+  clearFootprintVertexHeight: (footprintId: string, vertexIndex: number) => void
+  clearFootprintEdgeHeight: (footprintId: string, edgeIndex: number) => void
+  setFootprintKwp: (footprintId: string, kwp: number) => boolean
+  setFootprintPitchAdjustmentPercent: (footprintId: string, pitchAdjustmentPercent: number) => boolean
+  addObstacle: (obstacle: ObstacleStateEntry) => void
   deleteObstacle: (obstacleId: string) => void
   moveObstacleVertex: (obstacleId: string, vertexIndex: number, point: [number, number]) => boolean
   setObstacleHeight: (obstacleId: string, heightAboveGroundM: number) => boolean
   setObstacleKind: (obstacleId: string, kind: ObstacleKind) => boolean
+  setSunProjectionEnabled: (enabled: boolean) => void
+  setSunProjectionDatetimeIso: (datetimeIso: string | null) => void
+  setSunProjectionDailyDateIso: (dailyDateIso: string | null) => void
   setShadingEnabled: (enabled: boolean) => void
   setShadingGridResolutionM: (gridResolutionM: number) => boolean
   upsertImportedFootprints: (entries: ImportedFootprintEntry[]) => boolean
@@ -50,36 +45,19 @@ export interface ProjectCommands {
 
 function withDispatch(dispatch: Dispatch<Action>) {
   return {
-    startDrawing: () => dispatch({ type: 'START_DRAW' }),
-    cancelDrawing: () => dispatch({ type: 'CANCEL_DRAW' }),
-    addDraftPoint: (point: [number, number]) => dispatch({ type: 'ADD_DRAFT_POINT', point }),
-    undoDraftPoint: () => dispatch({ type: 'UNDO_DRAFT_POINT' }),
-    commitFootprint: () => dispatch({ type: 'COMMIT_FOOTPRINT' }),
-    setActiveFootprint: (footprintId: string) => dispatch({ type: 'SET_ACTIVE_FOOTPRINT', footprintId }),
-    selectOnlyFootprint: (footprintId: string) => dispatch({ type: 'SELECT_ONLY_FOOTPRINT', footprintId }),
-    toggleFootprintSelection: (footprintId: string) => dispatch({ type: 'TOGGLE_FOOTPRINT_SELECTION', footprintId }),
-    selectAllFootprints: () => dispatch({ type: 'SELECT_ALL_FOOTPRINTS' }),
-    clearFootprintSelection: () => dispatch({ type: 'CLEAR_FOOTPRINT_SELECTION' }),
+    addFootprint: (footprint: FootprintPolygon) => dispatch({ type: 'ADD_FOOTPRINT', payload: { footprint } }),
     deleteFootprint: (footprintId: string) => dispatch({ type: 'DELETE_FOOTPRINT', footprintId }),
-    moveVertex: (vertexIndex: number, point: [number, number]) =>
-      dispatch({ type: 'MOVE_VERTEX', payload: { vertexIndex, point } }),
-    moveEdge: (edgeIndex: number, delta: [number, number]) => dispatch({ type: 'MOVE_EDGE', payload: { edgeIndex, delta } }),
-    clearVertexHeight: (vertexIndex: number) => dispatch({ type: 'CLEAR_VERTEX_HEIGHT', vertexIndex }),
-    clearEdgeHeight: (edgeIndex: number) => dispatch({ type: 'CLEAR_EDGE_HEIGHT', edgeIndex }),
-    setSunProjectionEnabled: (enabled: boolean) => dispatch({ type: 'SET_SUN_PROJECTION_ENABLED', enabled }),
-    setSunProjectionDatetimeIso: (datetimeIso: string | null) => dispatch({ type: 'SET_SUN_PROJECTION_DATETIME', datetimeIso }),
-    setSunProjectionDailyDateIso: (dailyDateIso: string | null) => dispatch({ type: 'SET_SUN_PROJECTION_DAILY_DATE', dailyDateIso }),
-    startObstacleDrawing: () => dispatch({ type: 'START_OBSTACLE_DRAW' }),
-    cancelObstacleDrawing: () => dispatch({ type: 'CANCEL_OBSTACLE_DRAW' }),
-    addObstacleDraftPoint: (point: [number, number]) => dispatch({ type: 'ADD_OBSTACLE_DRAFT_POINT', point }),
-    undoObstacleDraftPoint: () => dispatch({ type: 'UNDO_OBSTACLE_DRAFT_POINT' }),
-    commitObstacle: () => dispatch({ type: 'COMMIT_OBSTACLE' }),
-    setActiveObstacle: (obstacleId: string) => dispatch({ type: 'SET_ACTIVE_OBSTACLE', obstacleId }),
-    selectOnlyObstacle: (obstacleId: string) => dispatch({ type: 'SELECT_ONLY_OBSTACLE', obstacleId }),
-    toggleObstacleSelection: (obstacleId: string) => dispatch({ type: 'TOGGLE_OBSTACLE_SELECTION', obstacleId }),
-    selectAllObstacles: () => dispatch({ type: 'SELECT_ALL_OBSTACLES' }),
-    clearObstacleSelection: () => dispatch({ type: 'CLEAR_OBSTACLE_SELECTION' }),
+    moveFootprintVertex: (footprintId: string, vertexIndex: number, point: [number, number]) =>
+      dispatch({ type: 'MOVE_FOOTPRINT_VERTEX', payload: { footprintId, vertexIndex, point } }),
+    moveFootprintEdge: (footprintId: string, edgeIndex: number, delta: [number, number]) =>
+      dispatch({ type: 'MOVE_FOOTPRINT_EDGE', payload: { footprintId, edgeIndex, delta } }),
+    addObstacle: (obstacle: ObstacleStateEntry) => dispatch({ type: 'ADD_OBSTACLE', payload: { obstacle } }),
     deleteObstacle: (obstacleId: string) => dispatch({ type: 'DELETE_OBSTACLE', obstacleId }),
+    setSunProjectionEnabled: (enabled: boolean) => dispatch({ type: 'SET_SUN_PROJECTION_ENABLED', enabled }),
+    setSunProjectionDatetimeIso: (datetimeIso: string | null) =>
+      dispatch({ type: 'SET_SUN_PROJECTION_DATETIME', datetimeIso }),
+    setSunProjectionDailyDateIso: (dailyDateIso: string | null) =>
+      dispatch({ type: 'SET_SUN_PROJECTION_DAILY_DATE', dailyDateIso }),
     setShadingEnabled: (enabled: boolean) => dispatch({ type: 'SET_SHADING_ENABLED', enabled }),
     resetState: () => dispatch({ type: 'RESET_STATE' }),
   }
@@ -87,82 +65,134 @@ function withDispatch(dispatch: Dispatch<Action>) {
 
 export function createProjectCommands(
   dispatch: Dispatch<Action>,
-  getState: () => ProjectState,
+  getState: () => ProjectCommandState,
 ): ProjectCommands {
   const dispatchOnly = withDispatch(dispatch)
 
   return {
     ...dispatchOnly,
-    setVertexHeight: (vertexIndex: number, heightM: number) => {
-      const activeFootprint = getActiveFootprint(getState())
-      if (!activeFootprint || vertexIndex < 0 || vertexIndex >= activeFootprint.vertices.length) {
+    setFootprintVertexHeight: (footprintId: string, vertexIndex: number, heightM: number) => {
+      if (!Number.isFinite(heightM)) {
         return false
       }
-      dispatch({ type: 'SET_VERTEX_HEIGHT', payload: { vertexIndex, heightM } })
+
+      const footprint = getState().footprints[footprintId]
+      if (!footprint || vertexIndex < 0 || vertexIndex >= footprint.footprint.vertices.length) {
+        return false
+      }
+
+      const nextConstraints = setOrReplaceVertexConstraint(footprint.constraints.vertexHeights, {
+        vertexIndex,
+        heightM,
+      })
+      dispatch({
+        type: 'SET_FOOTPRINT_VERTEX_HEIGHTS',
+        payload: { footprintId, constraints: nextConstraints },
+      })
       return true
     },
-    setEdgeHeight: (edgeIndex: number, heightM: number) => {
-      const activeFootprint = getActiveFootprint(getState())
-      if (!activeFootprint || edgeIndex < 0 || edgeIndex >= activeFootprint.vertices.length) {
+    setFootprintEdgeHeight: (footprintId: string, edgeIndex: number, heightM: number) => {
+      if (!Number.isFinite(heightM)) {
         return false
       }
-      dispatch({ type: 'SET_EDGE_HEIGHT', payload: { edgeIndex, heightM } })
+
+      const footprint = getState().footprints[footprintId]
+      if (!footprint) {
+        return false
+      }
+
+      const vertexCount = footprint.footprint.vertices.length
+      if (edgeIndex < 0 || edgeIndex >= vertexCount) {
+        return false
+      }
+
+      const start = edgeIndex
+      const end = (edgeIndex + 1) % vertexCount
+      let nextConstraints = setOrReplaceVertexConstraint(footprint.constraints.vertexHeights, {
+        vertexIndex: start,
+        heightM,
+      })
+      nextConstraints = setOrReplaceVertexConstraint(nextConstraints, {
+        vertexIndex: end,
+        heightM,
+      })
+      dispatch({
+        type: 'SET_FOOTPRINT_VERTEX_HEIGHTS',
+        payload: { footprintId, constraints: nextConstraints },
+      })
       return true
     },
-    setVertexHeights: (constraints: VertexHeightConstraint[]) => {
-      const activeFootprint = getActiveFootprint(getState())
-      if (!activeFootprint || constraints.length === 0) {
+    setFootprintVertexHeights: (footprintId: string, constraints: VertexHeightConstraint[]) => {
+      if (constraints.length === 0) {
         return false
       }
+
+      const footprint = getState().footprints[footprintId]
+      if (!footprint) {
+        return false
+      }
+
+      const vertexCount = footprint.footprint.vertices.length
       const hasInvalidIndex = constraints.some(
-        (constraint) => constraint.vertexIndex < 0 || constraint.vertexIndex >= activeFootprint.vertices.length,
+        (constraint) => constraint.vertexIndex < 0 || constraint.vertexIndex >= vertexCount,
       )
       if (hasInvalidIndex) {
         return false
       }
-      dispatch({ type: 'SET_VERTEX_HEIGHTS', payload: constraints })
+
+      dispatch({
+        type: 'SET_FOOTPRINT_VERTEX_HEIGHTS',
+        payload: {
+          footprintId,
+          constraints: assertValidVertexHeights(constraints, vertexCount),
+        },
+      })
       return true
     },
-    setActiveFootprintKwp: (kwp: number) => {
-      if (!Number.isFinite(kwp) || !getActiveFootprint(getState())) {
+    clearFootprintVertexHeight: (footprintId: string, vertexIndex: number) => {
+      dispatch({ type: 'CLEAR_FOOTPRINT_VERTEX_HEIGHT', payload: { footprintId, vertexIndex } })
+    },
+    clearFootprintEdgeHeight: (footprintId: string, edgeIndex: number) => {
+      dispatch({ type: 'CLEAR_FOOTPRINT_EDGE_HEIGHT', payload: { footprintId, edgeIndex } })
+    },
+    setFootprintKwp: (footprintId: string, kwp: number) => {
+      if (!Number.isFinite(kwp)) {
         return false
       }
-      dispatch({ type: 'SET_ACTIVE_FOOTPRINT_KWP', kwp })
+      dispatch({ type: 'SET_FOOTPRINT_KWP', payload: { footprintId, kwp } })
       return true
     },
-    setActivePitchAdjustmentPercent: (pitchAdjustmentPercent: number) => {
-      if (!Number.isFinite(pitchAdjustmentPercent) || !getActiveFootprint(getState())) {
+    setFootprintPitchAdjustmentPercent: (footprintId: string, pitchAdjustmentPercent: number) => {
+      if (!Number.isFinite(pitchAdjustmentPercent)) {
         return false
       }
-      dispatch({ type: 'SET_ACTIVE_PITCH_ADJUSTMENT_PERCENT', pitchAdjustmentPercent })
-      return true
-    },
-    upsertImportedFootprints: (entries: ImportedFootprintEntry[]) => {
-      if (entries.length === 0) {
-        return false
-      }
-      dispatch({ type: 'UPSERT_IMPORTED_FOOTPRINTS', entries })
+      dispatch({
+        type: 'SET_FOOTPRINT_PITCH_ADJUSTMENT_PERCENT',
+        payload: { footprintId, pitchAdjustmentPercent },
+      })
       return true
     },
     moveObstacleVertex: (obstacleId: string, vertexIndex: number, point: [number, number]) => {
       const obstacle = getState().obstacles[obstacleId]
-      if (!obstacle || vertexIndex < 0 || vertexIndex >= obstacleShapeVertexCount(obstacle.shape)) {
+      if (!obstacle || obstacle.shape.type !== 'polygon-prism') {
         return false
       }
+
+      if (vertexIndex < 0 || vertexIndex >= obstacle.shape.polygon.length) {
+        return false
+      }
+
       dispatch({ type: 'MOVE_OBSTACLE_VERTEX', payload: { obstacleId, vertexIndex, point } })
       return true
     },
     setObstacleHeight: (obstacleId: string, heightAboveGroundM: number) => {
-      if (!getState().obstacles[obstacleId] || !Number.isFinite(heightAboveGroundM)) {
+      if (!Number.isFinite(heightAboveGroundM)) {
         return false
       }
       dispatch({ type: 'SET_OBSTACLE_HEIGHT', payload: { obstacleId, heightAboveGroundM } })
       return true
     },
     setObstacleKind: (obstacleId: string, kind: ObstacleKind) => {
-      if (!getState().obstacles[obstacleId]) {
-        return false
-      }
       dispatch({ type: 'SET_OBSTACLE_KIND', payload: { obstacleId, kind } })
       return true
     },
@@ -171,6 +201,13 @@ export function createProjectCommands(
         return false
       }
       dispatch({ type: 'SET_SHADING_GRID_RESOLUTION', gridResolutionM })
+      return true
+    },
+    upsertImportedFootprints: (entries: ImportedFootprintEntry[]) => {
+      if (entries.length === 0) {
+        return false
+      }
+      dispatch({ type: 'UPSERT_IMPORTED_FOOTPRINTS', entries })
       return true
     },
   }

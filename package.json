@@ -12,6 +12,7 @@
     "prepush:check": "npm run build",
     "hooks:install": "bash scripts/install-git-hooks.sh",
     "prepare": "npm run hooks:install",
+    "extract:feature-contracts": "node scripts/feature-controller-contracts.mjs",
     "test": "vitest run --exclude \"**/e2e/**\"",
     "test:coverage": "vitest run --exclude \"**/e2e/**\" --coverage --coverage.reporter=text-summary --coverage.reporter=lcov --coverage.reporter=json-summary",
     "test:e2e": "playwright test",

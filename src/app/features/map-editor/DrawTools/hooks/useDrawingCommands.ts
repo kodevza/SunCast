@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
-import { useSunCastAppContext } from '../screens/SunCastAppProvider'
+import type { EditModeState, GeometrySelectionState } from '../../../../editor-session/editorSession.types'
+import type { useMapViewRuntime } from '../../MapView/useMapViewRuntime'
+import type { useProjectStore } from '../../../../project-store/useProjectStore'
 
 export interface DrawingCommands {
   setEditMode: (mode: 'roof' | 'obstacle') => void
@@ -13,13 +15,23 @@ export interface DrawingCommands {
   commitObstacle: () => void
 }
 
-export function useDrawingCommands(): DrawingCommands {
-  const { project, session } = useSunCastAppContext()
+interface UseDrawingCommandsArgs {
+  project: ReturnType<typeof useProjectStore>
+  mapView: ReturnType<typeof useMapViewRuntime>
+  editMode: EditModeState
+  geometrySelection: Pick<GeometrySelectionState, 'clearSelectionState'>
+}
 
+export function useDrawingCommands({
+  project,
+  mapView,
+  editMode,
+  geometrySelection,
+}: UseDrawingCommandsArgs): DrawingCommands {
   return useMemo(
     () => ({
       setEditMode: (mode) => {
-        session.setEditMode(mode)
+        editMode.setEditMode(mode)
         if (mode === 'roof' && project.state.isDrawingObstacle) {
           project.cancelObstacleDrawing()
         }
@@ -28,36 +40,36 @@ export function useDrawingCommands(): DrawingCommands {
         }
       },
       startRoof: () => {
-        session.setOrbitEnabled(false)
+        mapView.setOrbitEnabled(false)
         project.cancelObstacleDrawing()
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
         project.startDrawing()
       },
       undoRoof: project.undoDraftPoint,
       cancelRoof: () => {
         project.cancelDrawing()
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
       },
       commitRoof: () => {
         project.commitFootprint()
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
       },
       startObstacle: () => {
-        session.setOrbitEnabled(false)
+        mapView.setOrbitEnabled(false)
         project.cancelDrawing()
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
         project.startObstacleDrawing()
       },
       undoObstacle: project.undoObstacleDraftPoint,
       cancelObstacle: () => {
         project.cancelObstacleDrawing()
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
       },
       commitObstacle: () => {
         project.commitObstacle()
-        session.clearSelectionState()
+        geometrySelection.clearSelectionState()
       },
     }),
-    [project, session],
+    [editMode, geometrySelection, mapView, project],
   )
 }

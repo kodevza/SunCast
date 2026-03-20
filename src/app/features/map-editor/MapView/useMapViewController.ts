@@ -1,6 +1,11 @@
 import { useMemo } from 'react'
-import { useSelectionCommands } from '../../../hooks/useSelectionCommands'
-import { useSunCastAppContext } from '../../../screens/SunCastAppProvider'
+import { useMapNavigationRuntime } from '../../place-search/useMapNavigationRuntime'
+import { useSelectionCommands } from '../../sidebar/useSelectionCommands'
+import type { ReturnTypeUseAnalysis } from '../../../hooks/hookReturnTypes'
+import type { EditModeState, GeometryEditingState, GeometrySelectionState } from '../../../editor-session/editorSession.types'
+import type { useMapViewRuntime } from './useMapViewRuntime'
+import type { useObstacleMeshResults } from '../../../hooks/useObstacleMeshResults'
+import type { useProjectStore } from '../../../project-store/useProjectStore'
 import type { SunCastMapViewModel } from './mapView.types'
 
 interface UseMapViewControllerResult {
@@ -8,9 +13,27 @@ interface UseMapViewControllerResult {
   onInitialized: () => void
 }
 
-export function useMapViewController(): UseMapViewControllerResult {
-  const { project, session, analysis, commands, obstacleMeshResults } = useSunCastAppContext()
-  const selection = useSelectionCommands()
+interface UseMapViewControllerArgs {
+  project: ReturnType<typeof useProjectStore>
+  mapView: ReturnType<typeof useMapViewRuntime>
+  analysis: ReturnTypeUseAnalysis
+  obstacleMeshResults: ReturnType<typeof useObstacleMeshResults>['obstacleMeshResults']
+  editMode: EditModeState
+  geometrySelection: GeometrySelectionState
+  geometryEditing: GeometryEditingState
+}
+
+export function useMapViewController({
+  project,
+  mapView,
+  analysis,
+  obstacleMeshResults,
+  editMode,
+  geometrySelection,
+  geometryEditing,
+}: UseMapViewControllerArgs): UseMapViewControllerResult {
+  const selection = useSelectionCommands({ project, geometrySelection })
+  const mapNavigation = useMapNavigationRuntime()
   const footprints = useMemo(
     () => Object.values(project.state.footprints).map((entry) => entry.footprint),
     [project.state.footprints],
@@ -28,7 +51,7 @@ export function useMapViewController(): UseMapViewControllerResult {
 
     return {
       drawing: {
-        editMode: session.editMode,
+        editMode: editMode.editMode,
         footprints,
         activeFootprint: project.activeFootprint,
         selectedFootprintIds: project.selectedFootprintIds,
@@ -42,44 +65,39 @@ export function useMapViewController(): UseMapViewControllerResult {
         onMapClick: project.addDraftPoint,
         onCloseDrawing: () => {
           project.commitFootprint()
-          session.clearSelectionState()
+          geometrySelection.clearSelectionState()
         },
         onObstacleMapClick: project.addObstacleDraftPoint,
         onCloseObstacleDrawing: () => {
           project.commitObstacle()
-          session.clearSelectionState()
+          geometrySelection.clearSelectionState()
         },
       },
       selection: {
         vertexConstraints: project.activeConstraints.vertexHeights,
-        selectedVertexIndex: session.safeSelectedVertexIndex,
-        selectedEdgeIndex: session.safeSelectedEdgeIndex,
-        onSelectVertex: (vertexIndex: number) => {
-          session.selectVertex(vertexIndex)
-        },
-        onSelectEdge: (edgeIndex: number) => {
-          session.selectEdge(edgeIndex)
-        },
+        selectedVertexIndex: geometrySelection.safeSelectedVertexIndex,
+        selectedEdgeIndex: geometrySelection.safeSelectedEdgeIndex,
+        onSelectVertex: geometrySelection.selectVertex,
+        onSelectEdge: geometrySelection.selectEdge,
         onSelectFootprint: selection.selectFootprint,
         onSelectObstacle: selection.selectObstacle,
         onClearSelection: selection.clearSelection,
-        onMoveVertex: session.moveVertexIfValid,
-        onMoveEdge: session.moveEdgeIfValid,
+        onMoveVertex: geometryEditing.moveVertexIfValid,
+        onMoveEdge: geometryEditing.moveEdgeIfValid,
         onMoveObstacleVertex: project.moveObstacleVertex,
-        onMoveRejected: session.setMoveRejectedError,
-        onAdjustHeight: session.applyHeightStep,
+        onMoveRejected: geometryEditing.setMoveRejectedError,
+        onAdjustHeight: geometryEditing.applyHeightStep,
       },
       view: {
-        orbitEnabled: session.orbitEnabled,
+        orbitEnabled: mapView.orbitEnabled,
         showSolveHint: !analysis.solvedRoofs.activeSolved,
         sunProjectionResult,
         sunPerspectiveCameraPose,
-        mapNavigationTarget: commands.mapNavigationTarget,
-        onPlaceSearchSelect: commands.onPlaceSearchSelect,
-        onToggleOrbit: () => session.setOrbitEnabled((enabled) => !enabled),
-        onBearingChange: session.setMapBearingDeg,
-        onPitchChange: session.setMapPitchDeg,
-        onGeometryDragStateChange: session.setIsGeometryDragActive,
+        mapNavigation,
+        onToggleOrbit: () => mapView.setOrbitEnabled((enabled) => !enabled),
+        onBearingChange: mapView.setMapBearingDeg,
+        onPitchChange: mapView.setMapPitchDeg,
+        onGeometryDragStateChange: geometryEditing.setIsGeometryDragActive,
       },
       render: {
         shadingEnabled: analysis.heatmap.mapEnabled,
@@ -91,10 +109,21 @@ export function useMapViewController(): UseMapViewControllerResult {
           .map((result) => result.value),
       },
     } satisfies SunCastMapViewModel
-  }, [analysis, commands, footprints, obstacleMeshResults, project, selection, session])
+  }, [
+    analysis,
+    editMode.editMode,
+    footprints,
+    geometryEditing,
+    geometrySelection,
+    mapNavigation,
+    mapView,
+    obstacleMeshResults,
+    project,
+    selection,
+  ])
 
   return {
     model,
-    onInitialized: () => session.setMapInitialized(true),
+    onInitialized: () => mapView.setMapInitialized(true),
   }
 }

@@ -145,25 +145,6 @@ function assertObstacleEntry(obstacleId: string, obstacle: ObstacleStateEntry): 
   }
 }
 
-function assertActiveIdExists(ids: Record<string, unknown>, activeId: string | null, label: string): string | null {
-  if (activeId === null) {
-    return null
-  }
-  if (!ids[activeId]) {
-    throw new Error(`${label} ${activeId} does not exist`)
-  }
-  return activeId
-}
-
-function assertSelectedIdsExist(ids: Record<string, unknown>, selected: string[], label: string): string[] {
-  for (const id of selected) {
-    if (!ids[id]) {
-      throw new Error(`${label} ${id} does not exist`)
-    }
-  }
-  return [...selected]
-}
-
 export function validateLoadedState(
   state: ProjectState,
   defaultSunProjection: ProjectSunProjectionSettings,
@@ -200,15 +181,8 @@ export function validateLoadedState(
   }
 
   return {
-    ...state,
     footprints: validated,
-    selectedFootprintIds: assertSelectedIdsExist(validated, state.selectedFootprintIds, 'Selected footprint'),
-    activeFootprintId: assertActiveIdExists(validated, state.activeFootprintId, 'Active footprint'),
     obstacles: validatedObstacles,
-    selectedObstacleIds: assertSelectedIdsExist(validatedObstacles, state.selectedObstacleIds ?? [], 'Selected obstacle'),
-    activeObstacleId: assertActiveIdExists(validatedObstacles, state.activeObstacleId, 'Active obstacle'),
-    obstacleDrawDraft: [],
-    isDrawingObstacle: false,
     sunProjection: {
       enabled: sunProjection.enabled,
       datetimeIso: sunProjection.datetimeIso,

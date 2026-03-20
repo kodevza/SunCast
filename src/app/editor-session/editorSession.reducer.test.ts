@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { editorSessionReducer } from './editorSession.reducer'
+import type { ProjectStoreState } from '../project-store/projectStore.types'
+import { initialEditorSessionState, type EditorAction } from './editorSession.types'
 import { initialProjectState } from '../../state/project-store/projectState.reducer'
-import type { ProjectState } from '../../state/project-store/projectState.types'
 
-function withFootprints(state: ProjectState): ProjectState {
+function withFootprints(state: ProjectStoreState): ProjectStoreState {
   return {
     ...state,
     footprints: {
@@ -36,109 +37,55 @@ function withFootprints(state: ProjectState): ProjectState {
     },
     activeFootprintId: 'a',
     selectedFootprintIds: ['a'],
+  } as ProjectStoreState
+}
+
+const baseState = {
+  ...initialProjectState,
+  ...initialEditorSessionState,
+} as ProjectStoreState
+
+function applySessionReducer(state: ProjectStoreState, action: EditorAction): ProjectStoreState {
+  return {
+    ...state,
+    ...editorSessionReducer(state, action),
   }
 }
 
 describe('editorSessionReducer', () => {
-  it('handles draw flow and commit selection', () => {
-    let state = editorSessionReducer(initialProjectState, { type: 'START_DRAW' })
-    state = editorSessionReducer(state, { type: 'ADD_DRAFT_POINT', point: [1, 1] })
-    state = editorSessionReducer(state, { type: 'ADD_DRAFT_POINT', point: [2, 1] })
-    state = editorSessionReducer(state, { type: 'ADD_DRAFT_POINT', point: [2, 2] })
-    state = editorSessionReducer(
-      {
-        ...state,
-        footprints: {
-          created: {
-            footprint: {
-              id: 'created',
-              vertices: [
-                [1, 1],
-                [2, 1],
-                [2, 2],
-              ],
-              kwp: 4.3,
-            },
-            constraints: { vertexHeights: [] },
-            pitchAdjustmentPercent: 0,
-          },
-        },
-      },
-      { type: 'COMMIT_FOOTPRINT' },
-    )
-
-    expect(state.isDrawing).toBe(false)
-    expect(state.drawDraft).toEqual([])
-    expect(state.activeFootprintId).toBe('created')
-    expect(state.selectedFootprintIds).toEqual(['created'])
-  })
-
   it('handles footprint selection flow', () => {
-    let state = withFootprints(initialProjectState)
-    state = editorSessionReducer(state, { type: 'TOGGLE_FOOTPRINT_SELECTION', footprintId: 'b' })
+    let state = withFootprints(baseState)
+    state = applySessionReducer(state, { type: 'TOGGLE_FOOTPRINT_SELECTION', footprintId: 'b' })
     expect(state.selectedFootprintIds).toEqual(['a', 'b'])
     expect(state.activeFootprintId).toBe('b')
 
-    state = editorSessionReducer(state, { type: 'SELECT_ONLY_FOOTPRINT', footprintId: 'a' })
+    state = applySessionReducer(state, { type: 'SELECT_ONLY_FOOTPRINT', footprintId: 'a' })
     expect(state.selectedFootprintIds).toEqual(['a'])
     expect(state.activeFootprintId).toBe('a')
 
-    state = editorSessionReducer(state, { type: 'CLEAR_FOOTPRINT_SELECTION' })
+    state = applySessionReducer(state, { type: 'CLEAR_FOOTPRINT_SELECTION' })
     expect(state.selectedFootprintIds).toEqual([])
   })
 
-  it('clears active footprint when active entry is deleted upstream', () => {
-    const state = editorSessionReducer(
-      {
-        ...withFootprints(initialProjectState),
-        footprints: {
-          b: withFootprints(initialProjectState).footprints.b,
-        },
-        selectedFootprintIds: ['a', 'b'],
-        activeFootprintId: 'a',
-      },
-      { type: 'DELETE_FOOTPRINT', footprintId: 'a' },
+  it('ignores select-all at the session reducer boundary', () => {
+    const state = applySessionReducer(withFootprints(baseState), { type: 'SELECT_ALL_FOOTPRINTS' })
+
+    expect(state.selectedFootprintIds).toEqual(['a'])
+    expect(state.activeFootprintId).toBe('a')
+  })
+
+  it('clears the active footprint when toggling off the active selection', () => {
+    const state = applySessionReducer(
+      withFootprints(baseState),
+      { type: 'TOGGLE_FOOTPRINT_SELECTION', footprintId: 'a' },
     )
 
     expect(state.activeFootprintId).toBeNull()
-    expect(state.selectedFootprintIds).toEqual(['b'])
-  })
-
-  it('handles obstacle draw and selection flow', () => {
-    let state = editorSessionReducer(initialProjectState, { type: 'START_OBSTACLE_DRAW' })
-    state = editorSessionReducer(state, { type: 'ADD_OBSTACLE_DRAFT_POINT', point: [1, 1] })
-    state = editorSessionReducer(state, { type: 'ADD_OBSTACLE_DRAFT_POINT', point: [2, 1] })
-    state = editorSessionReducer(state, { type: 'ADD_OBSTACLE_DRAFT_POINT', point: [2, 2] })
-    state = editorSessionReducer(
-      {
-        ...state,
-        obstacles: {
-          obstacle: {
-            id: 'obstacle',
-            kind: 'custom',
-            shape: {
-              type: 'polygon-prism',
-              polygon: [
-                [1, 1],
-                [2, 1],
-                [2, 2],
-              ],
-            },
-            heightAboveGroundM: 8,
-          },
-        },
-      },
-      { type: 'COMMIT_OBSTACLE' },
-    )
-
-    expect(state.isDrawingObstacle).toBe(false)
-    expect(state.obstacleDrawDraft).toEqual([])
-    expect(state.activeObstacleId).toBe('obstacle')
-    expect(state.selectedObstacleIds).toEqual(['obstacle'])
+    expect(state.selectedFootprintIds).toEqual([])
   })
 
   it('resets session state to defaults', () => {
-    const state = editorSessionReducer(withFootprints(initialProjectState), { type: 'RESET_STATE' })
+    const state = applySessionReducer(withFootprints(baseState), { type: 'RESET_STATE' })
 
     expect(state.activeFootprintId).toBeNull()
     expect(state.selectedFootprintIds).toEqual([])

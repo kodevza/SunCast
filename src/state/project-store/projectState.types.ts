@@ -22,53 +22,43 @@ export interface ImportedFootprintEntry {
 
 export interface ProjectState {
   footprints: Record<string, FootprintStateEntry>
-  activeFootprintId: string | null
-  selectedFootprintIds: string[]
-  drawDraft: Array<[number, number]>
-  isDrawing: boolean
   obstacles: Record<string, ObstacleStateEntry>
-  activeObstacleId: string | null
-  selectedObstacleIds: string[]
-  obstacleDrawDraft: Array<[number, number]>
-  isDrawingObstacle: boolean
   sunProjection: ProjectSunProjectionSettings
   shadingSettings: ShadingSettings
 }
 
 export type Action =
-  | { type: 'START_DRAW' }
-  | { type: 'CANCEL_DRAW' }
-  | { type: 'ADD_DRAFT_POINT'; point: [number, number] }
-  | { type: 'UNDO_DRAFT_POINT' }
-  | { type: 'COMMIT_FOOTPRINT' }
-  | { type: 'SET_ACTIVE_FOOTPRINT'; footprintId: string }
-  | { type: 'SELECT_ONLY_FOOTPRINT'; footprintId: string }
-  | { type: 'TOGGLE_FOOTPRINT_SELECTION'; footprintId: string }
-  | { type: 'SELECT_ALL_FOOTPRINTS' }
-  | { type: 'CLEAR_FOOTPRINT_SELECTION' }
+
+
   | { type: 'DELETE_FOOTPRINT'; footprintId: string }
-  | { type: 'MOVE_VERTEX'; payload: { vertexIndex: number; point: [number, number] } }
-  | { type: 'MOVE_EDGE'; payload: { edgeIndex: number; delta: [number, number] } }
-  | { type: 'SET_VERTEX_HEIGHT'; payload: VertexHeightConstraint }
-  | { type: 'SET_VERTEX_HEIGHTS'; payload: VertexHeightConstraint[] }
-  | { type: 'SET_EDGE_HEIGHT'; payload: { edgeIndex: number; heightM: number } }
-  | { type: 'SET_ACTIVE_FOOTPRINT_KWP'; kwp: number }
-  | { type: 'SET_ACTIVE_PITCH_ADJUSTMENT_PERCENT'; pitchAdjustmentPercent: number }
-  | { type: 'CLEAR_VERTEX_HEIGHT'; vertexIndex: number }
-  | { type: 'CLEAR_EDGE_HEIGHT'; edgeIndex: number }
+  | {
+      type: 'ADD_FOOTPRINT'
+      payload: { footprint: FootprintPolygon }
+    }
+  | {
+      type: 'MOVE_FOOTPRINT_VERTEX'
+      payload: { footprintId: string; vertexIndex: number; point: [number, number] }
+    }
+  | {
+      type: 'MOVE_FOOTPRINT_EDGE'
+      payload: { footprintId: string; edgeIndex: number; delta: [number, number] }
+    }
+  | { type: 'SET_FOOTPRINT_VERTEX_HEIGHTS'; payload: { footprintId: string; constraints: VertexHeightConstraint[] } }
+  | { type: 'SET_FOOTPRINT_EDGE_HEIGHT'; payload: { footprintId: string; edgeIndex: number; heightM: number } }
+  | { type: 'SET_FOOTPRINT_KWP'; payload: { footprintId: string; kwp: number } }
+  | { type: 'SET_FOOTPRINT_PITCH_ADJUSTMENT_PERCENT'; payload: { footprintId: string; pitchAdjustmentPercent: number } }
+  | { type: 'CLEAR_FOOTPRINT_VERTEX_HEIGHT'; payload: { footprintId: string; vertexIndex: number } }
+  | { type: 'CLEAR_FOOTPRINT_EDGE_HEIGHT'; payload: { footprintId: string; edgeIndex: number } }
   | { type: 'SET_SUN_PROJECTION_ENABLED'; enabled: boolean }
   | { type: 'SET_SUN_PROJECTION_DATETIME'; datetimeIso: string | null }
   | { type: 'SET_SUN_PROJECTION_DAILY_DATE'; dailyDateIso: string | null }
-  | { type: 'START_OBSTACLE_DRAW' }
-  | { type: 'CANCEL_OBSTACLE_DRAW' }
-  | { type: 'ADD_OBSTACLE_DRAFT_POINT'; point: [number, number] }
-  | { type: 'UNDO_OBSTACLE_DRAFT_POINT' }
-  | { type: 'COMMIT_OBSTACLE' }
-  | { type: 'SET_ACTIVE_OBSTACLE'; obstacleId: string }
-  | { type: 'SELECT_ONLY_OBSTACLE'; obstacleId: string }
-  | { type: 'TOGGLE_OBSTACLE_SELECTION'; obstacleId: string }
-  | { type: 'SELECT_ALL_OBSTACLES' }
-  | { type: 'CLEAR_OBSTACLE_SELECTION' }
+  
+  | {
+      type: 'ADD_OBSTACLE'
+      payload: {
+        obstacle: ObstacleStateEntry
+      }
+    }
   | { type: 'DELETE_OBSTACLE'; obstacleId: string }
   | { type: 'SET_OBSTACLE_HEIGHT'; payload: { obstacleId: string; heightAboveGroundM: number } }
   | { type: 'SET_OBSTACLE_KIND'; payload: { obstacleId: string; kind: ObstacleKind } }

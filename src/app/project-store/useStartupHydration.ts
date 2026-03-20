@@ -8,10 +8,10 @@ import {
   DEFAULT_SUN_PROJECTION,
 } from '../../state/project-store/projectState.reducer'
 import { readStorageResult } from '../../state/project-store/projectState.storage'
-import type { Action } from '../../state/project-store/projectState.types'
+import type { ProjectStoreAction } from './projectStore.types'
 
 type UseStartupHydrationParams = {
-  dispatch: (action: Action) => void
+  dispatch: (action: ProjectStoreAction) => void
   markHydrationFinished: () => void
   solverConfigVersion: string
 }

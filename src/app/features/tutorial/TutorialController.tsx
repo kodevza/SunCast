@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { TutorialOverlay } from './Tutorial/TutorialOverlay'
 import { useTutorial } from './useTutorial'
-import { useTutorialControllerModel } from './useTutorialControllerModel'
+import type { useTutorialControllerModel } from './useTutorialControllerModel'
 
 const TUTORIAL_STEPS = [
   {
@@ -38,8 +38,11 @@ const TUTORIAL_STEPS = [
   },
 ] as const
 
-export function TutorialController() {
-  const model = useTutorialControllerModel()
+interface TutorialControllerProps {
+  model: ReturnType<typeof useTutorialControllerModel>
+}
+
+export function TutorialController({ model }: TutorialControllerProps) {
   const tutorial = useTutorial({
     draftVertexCount: model.draftVertexCount,
     hasFinishedPolygon: model.hasFinishedPolygon,

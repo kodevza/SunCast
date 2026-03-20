@@ -1,12 +1,7 @@
 import { useEffect, type RefObject } from 'react'
 import maplibregl from 'maplibre-gl'
 import { buildHashWithMapCenter } from '../mapCenterFromHash'
-
-interface MapNavigationTarget {
-  id: number
-  lon: number
-  lat: number
-}
+import type { MapNavigationTarget } from '../../../place-search/useMapNavigationRuntime'
 
 interface UseMapNavigationSyncArgs {
   mapRef: RefObject<maplibregl.Map | null>

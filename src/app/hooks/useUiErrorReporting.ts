@@ -1,16 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { reportAppErrorCode } from '../../shared/errors'
-import type { ReturnTypeUseAnalysis, ReturnTypeUseEditorSession } from './hookReturnTypes'
+import type { ReturnTypeUseAnalysis } from './hookReturnTypes'
+import type { GeometryEditingState } from '../editor-session/editorSession.types'
 
 interface UseUiErrorReportingArgs {
   activeFootprintErrors: string[]
-  editorSession: ReturnTypeUseEditorSession
+  geometryEditing: GeometryEditingState
   analysis: ReturnTypeUseAnalysis
 }
 
 export function useUiErrorReporting({
   activeFootprintErrors,
-  editorSession,
+  geometryEditing,
   analysis,
 }: UseUiErrorReportingArgs): void {
   const reportedUiErrorSignaturesRef = useRef<Set<string>>(new Set())
@@ -28,11 +29,11 @@ export function useUiErrorReporting({
       }
     }
 
-    if (editorSession.interactionError) {
-      const signature = `INTERACTION_FAILED:${editorSession.interactionError}`
+    if (geometryEditing.interactionError) {
+      const signature = `INTERACTION_FAILED:${geometryEditing.interactionError}`
       signatures.add(signature)
       if (!reportedUiErrorSignaturesRef.current.has(signature)) {
-        reportAppErrorCode('INTERACTION_FAILED', editorSession.interactionError, {
+        reportAppErrorCode('INTERACTION_FAILED', geometryEditing.interactionError, {
           context: { area: 'status-panel', source: 'interaction' },
         })
         reportedUiErrorSignaturesRef.current.add(signature)
@@ -71,5 +72,10 @@ export function useUiErrorReporting({
         reportedUiErrorSignaturesRef.current.delete(existing)
       }
     }
-  }, [activeFootprintErrors, analysis.diagnostics.solverError, analysis.sunProjection.datetimeError, editorSession.interactionError])
+  }, [
+    activeFootprintErrors,
+    analysis.diagnostics.solverError,
+    analysis.sunProjection.datetimeError,
+    geometryEditing.interactionError,
+  ])
 }

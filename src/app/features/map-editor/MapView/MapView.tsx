@@ -211,7 +211,7 @@ export function MapView({ model, onInitialized }: MapViewProps) {
   useMapNavigationSync({
     mapRef,
     mapLoaded,
-    mapNavigationTarget: view.mapNavigationTarget,
+    mapNavigationTarget: view.mapNavigation.mapNavigationTarget,
   })
 
   return (
@@ -243,7 +243,7 @@ export function MapView({ model, onInitialized }: MapViewProps) {
         onDrawLengthInputSubmit={submitDrawLengthInput}
         showSolveHint={view.showSolveHint}
         onAdjustOrbitCamera={adjustOrbitCamera}
-        onPlaceSearchSelect={view.onPlaceSearchSelect}
+        onPlaceSearchSelect={view.mapNavigation.onPlaceSearchSelect}
       />
       <MapAttributionControl basemapMode={basemapMode} arcgisProviderAttribution={arcgisProviderAttribution} />
     </div>
