@@ -286,6 +286,22 @@ export function projectDocumentReducer<T extends ProjectState>(state: T, action:
           dailyDateIso: action.dailyDateIso,
         },
       } as T
+    case 'SET_SUN_PROJECTION_DATE_START':
+      return {
+        ...state,
+        sunProjection: {
+          ...state.sunProjection,
+          dateStartIso: action.dateStartIso,
+        },
+      } as T
+    case 'SET_SUN_PROJECTION_DATE_END':
+      return {
+        ...state,
+        sunProjection: {
+          ...state.sunProjection,
+          dateEndIso: action.dateEndIso,
+        },
+      } as T
     case 'ADD_OBSTACLE': {
       const {obstacle} = action.payload
 

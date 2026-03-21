@@ -72,11 +72,15 @@ export function SunOverlayColumn({
               <AnnualSunAccessPanel
                 selectedRoofCount={annualSunAccess.selectedRoofCount}
                 gridResolutionM={annualSunAccess.gridResolutionM}
+                dateStartIso={annualSunAccess.dateStartIso}
+                dateEndIso={annualSunAccess.dateEndIso}
                 state={annualSunAccess.state}
                 progressRatio={annualSunAccess.progressRatio}
                 result={annualSunAccess.result}
                 isAnnualHeatmapVisible={annualSunAccess.isAnnualHeatmapVisible}
                 onGridResolutionChange={annualSunAccess.onGridResolutionChange}
+                onDateStartIsoChange={annualSunAccess.onDateStartIsoChange}
+                onDateEndIsoChange={annualSunAccess.onDateEndIsoChange}
                 onRunSimulation={annualSunAccess.onRunSimulation}
                 onClearSimulation={annualSunAccess.onClearSimulation}
                 onShowAnnualHeatmap={annualSunAccess.onShowAnnualHeatmap}

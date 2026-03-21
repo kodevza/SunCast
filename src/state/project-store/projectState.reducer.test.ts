@@ -265,6 +265,8 @@ describe('projectStateReducer', () => {
         enabled: undefined as unknown as boolean,
         datetimeIso: undefined as unknown as string,
         dailyDateIso: undefined as unknown as string,
+        dateStartIso: undefined as unknown as string,
+        dateEndIso: undefined as unknown as string,
       },
     }
 

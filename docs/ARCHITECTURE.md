@@ -14,7 +14,8 @@ Canonical persisted inputs:
 - footprints
 - height constraints
 - obstacle definitions (shape/kind/height)
-- sun projection + shading settings
+- sun projection settings, including datetime, daily date, and annual date window
+- shading settings
 
 Derived-only artifacts (never canonical persisted source data):
 - solved roof planes

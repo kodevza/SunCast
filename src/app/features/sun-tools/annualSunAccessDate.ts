@@ -1,46 +1,34 @@
-import { parseDateIsoUtc } from '../../../shared/utils/dateIsoUtc'
+import { formatDateIsoParts, parseDateDdMmInput } from '../../../shared/utils/dateIsoUtc'
 
-export function currentYear(): number {
-  return new Date().getFullYear()
+export const ANNUAL_SUN_ACCESS_SIMULATION_YEAR = 2026
+
+export function annualSunAccessSimulationYear(): number {
+  return ANNUAL_SUN_ACCESS_SIMULATION_YEAR
 }
 
-export function formatDateIso(year: number, month1Based: number, day: number): string {
-  return `${String(year).padStart(4, '0')}-${String(month1Based).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-}
-
-export function formatDateIsoEu(dateIso: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateIso)
-  if (!match) {
-    return dateIso
-  }
-  return `${match[3]}.${match[2]}.${match[1]}`
-}
-
-export function parseDateEuToIso(value: string): string | null {
-  const match = /^\s*(\d{1,2})\.(\d{1,2})\.(\d{4})\s*$/.exec(value)
-  if (!match) {
+export function normalizeAnnualSunAccessDateRange(
+  dateStartInput: string,
+  dateEndInput: string,
+  year = ANNUAL_SUN_ACCESS_SIMULATION_YEAR,
+): { dateStartIso: string; dateEndIso: string } | null {
+  const parsedStart = parseDateDdMmInput(dateStartInput)
+  const parsedEnd = parseDateDdMmInput(dateEndInput)
+  if (!parsedStart || !parsedEnd) {
     return null
   }
 
-  const day = Number(match[1])
-  const month = Number(match[2])
-  const year = Number(match[3])
-  if (!Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year)) {
+  const endYear = parsedEnd.year ?? year
+  const startYear =
+    parsedStart.year ??
+    (parsedStart.month > parsedEnd.month || (parsedStart.month === parsedEnd.month && parsedStart.day > parsedEnd.day)
+      ? year - 1
+      : year)
+
+  const dateStartIso = formatDateIsoParts(startYear, parsedStart.month, parsedStart.day)
+  const dateEndIso = formatDateIsoParts(endYear, parsedEnd.month, parsedEnd.day)
+  if (!dateStartIso || !dateEndIso || dateStartIso > dateEndIso) {
     return null
   }
 
-  const dateIso = formatDateIso(year, month, day)
-  if (parseDateIsoUtc(dateIso) === null) {
-    return null
-  }
-
-  return dateIso
-}
-
-export function firstDayOfYearIso(year: number): string {
-  return formatDateIso(year, 1, 1)
-}
-
-export function lastDayOfYearIso(year: number): string {
-  return formatDateIso(year, 12, 31)
+  return { dateStartIso, dateEndIso }
 }

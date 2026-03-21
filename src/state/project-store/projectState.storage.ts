@@ -87,6 +87,8 @@ export function readStorageResult(
         enabled: migrated.sunProjection?.enabled ?? defaultSunProjection.enabled,
         datetimeIso: migrated.sunProjection?.datetimeIso ?? defaultSunProjection.datetimeIso,
         dailyDateIso: migrated.sunProjection?.dailyDateIso ?? defaultSunProjection.dailyDateIso,
+        dateStartIso: migrated.sunProjection?.dateStartIso ?? defaultSunProjection.dateStartIso,
+        dateEndIso: migrated.sunProjection?.dateEndIso ?? defaultSunProjection.dateEndIso,
       },
       shadingSettings: {
         enabled: migrated.shadingSettings?.enabled ?? defaultShadingSettings.enabled,

@@ -64,6 +64,8 @@ export interface ProjectSunProjectionSettings {
   enabled: boolean
   datetimeIso: string | null
   dailyDateIso: string | null
+  dateStartIso: string | null
+  dateEndIso: string | null
 }
 
 export type ObstacleKind = 'building' | 'tree' | 'pole' | 'custom'

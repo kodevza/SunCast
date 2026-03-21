@@ -12,6 +12,8 @@ export const DEFAULT_SUN_PROJECTION: ProjectSunProjectionSettings = {
   enabled: true,
   datetimeIso: null,
   dailyDateIso: null,
+  dateStartIso: null,
+  dateEndIso: null,
 }
 
 export const DEFAULT_SHADING_SETTINGS: ShadingSettings = {

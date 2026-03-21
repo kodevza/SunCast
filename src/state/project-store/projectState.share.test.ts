@@ -7,7 +7,7 @@ import {
   validateSharePayload,
 } from './projectState.share'
 
-const DEFAULT_SUN = { enabled: true, datetimeIso: null, dailyDateIso: null }
+const DEFAULT_SUN = { enabled: true, datetimeIso: null, dailyDateIso: null, dateStartIso: null, dateEndIso: null }
 const DEFAULT_KWP = 4.3
 const DEFAULT_SHADING = { enabled: true, gridResolutionM: 0.1 }
 
@@ -50,6 +50,8 @@ describe('projectState.share', () => {
         enabled: false,
         datetimeIso: '2026-03-07T11:00',
         dailyDateIso: '2026-03-07',
+        dateStartIso: '2026-01-01',
+        dateEndIso: '2026-12-31',
       },
     })
 
@@ -60,6 +62,8 @@ describe('projectState.share', () => {
     expect(loaded.obstacles.ob1.kind).toBe('building')
     expect(loaded.obstacles.ob1.shape.type).toBe('polygon-prism')
     expect(payload.schemaVersion).toBe(3)
+    expect(loaded.sunProjection.dateStartIso).toBe('2026-01-01')
+    expect(loaded.sunProjection.dateEndIso).toBe('2026-12-31')
   })
 
   it('rejects invalid payload schema', () => {

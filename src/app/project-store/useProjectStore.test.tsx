@@ -49,7 +49,7 @@ function createState(id: string): ProjectStoreState {
     selectedObstacleIds: [],
     obstacleDrawDraft: [],
     isDrawingObstacle: false,
-    sunProjection: { enabled: true, datetimeIso: null, dailyDateIso: null },
+    sunProjection: { enabled: true, datetimeIso: null, dailyDateIso: null, dateStartIso: null, dateEndIso: null },
     shadingSettings: { enabled: true, gridResolutionM: 0.5 },
   }
 }

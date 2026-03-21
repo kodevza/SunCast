@@ -103,6 +103,8 @@ function makeArgs(overrides: Partial<UseAnalysisArgs> = {}): UseAnalysisArgs {
     enabled: true,
     datetimeIso: '2026-03-08T11:00',
     dailyDateIso: '2026-03-08',
+    dateStartIso: '2026-01-01',
+    dateEndIso: '2026-12-31',
   }
   const shadingSettings: ShadingSettings = {
     enabled: true,

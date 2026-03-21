@@ -9,7 +9,7 @@ If this document conflicts with higher-priority contracts, follow:
 
 ## Invariants
 
-- Canonical persisted state is project inputs only: footprints, constraints, obstacles, and explicit sun/shading settings.
+- Canonical persisted state is project inputs only: footprints, constraints, obstacles, and explicit sun/shading settings, including the annual shading date window.
 - Derived artifacts are never canonical persisted truth: solved planes, meshes, heatmap/grid outputs, map/view state, rendering buffers.
 - Geometry computations run in local metric coordinates, not raw lon/lat.
 

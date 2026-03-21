@@ -171,6 +171,12 @@ export function validateLoadedState(
   if (sunProjection.dailyDateIso !== null && typeof sunProjection.dailyDateIso !== 'string') {
     throw new Error('Sun projection daily date is invalid')
   }
+  if (sunProjection.dateStartIso !== null && typeof sunProjection.dateStartIso !== 'string') {
+    throw new Error('Sun projection date start is invalid')
+  }
+  if (sunProjection.dateEndIso !== null && typeof sunProjection.dateEndIso !== 'string') {
+    throw new Error('Sun projection date end is invalid')
+  }
 
   const shadingSettings = state.shadingSettings ?? defaultShadingSettings
   if (typeof shadingSettings.enabled !== 'boolean') {
@@ -187,6 +193,8 @@ export function validateLoadedState(
       enabled: sunProjection.enabled,
       datetimeIso: sunProjection.datetimeIso,
       dailyDateIso: sunProjection.dailyDateIso,
+      dateStartIso: sunProjection.dateStartIso ?? null,
+      dateEndIso: sunProjection.dateEndIso ?? null,
     },
     shadingSettings: {
       enabled: shadingSettings.enabled,

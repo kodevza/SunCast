@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readStorage, readStorageResult, writeStorage } from './projectState.storage'
 import type { ProjectState } from './projectState.types'
 
-const DEFAULT_SUN = { enabled: true, datetimeIso: null, dailyDateIso: null }
+const DEFAULT_SUN = { enabled: true, datetimeIso: null, dailyDateIso: null, dateStartIso: null, dateEndIso: null }
 const DEFAULT_SHADING = { enabled: true, gridResolutionM: 0.1 }
 const DEFAULT_KWP = 4.3
 
@@ -46,6 +46,8 @@ function createState(): Pick<
       enabled: false,
       datetimeIso: '2026-03-07T11:00',
       dailyDateIso: '2026-03-07',
+      dateStartIso: '2026-01-01',
+      dateEndIso: '2026-12-31',
     },
     shadingSettings: {
       enabled: false,
@@ -72,6 +74,8 @@ describe('projectState.storage', () => {
       enabled: false,
       datetimeIso: '2026-03-07T11:00',
       dailyDateIso: '2026-03-07',
+      dateStartIso: '2026-01-01',
+      dateEndIso: '2026-12-31',
     })
     expect(loaded?.shadingSettings).toEqual({
       enabled: false,
@@ -174,6 +178,13 @@ describe('projectState.storage', () => {
         shadingSettings: {
           enabled: true,
           gridResolutionM: 0.5,
+        },
+        sunProjection: {
+          enabled: true,
+          datetimeIso: null,
+          dailyDateIso: null,
+          dateStartIso: '2026-01-01',
+          dateEndIso: '2026-12-31',
         },
       }),
     )
