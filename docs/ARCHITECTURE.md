@@ -36,8 +36,7 @@ Derived-only artifacts (never canonical persisted source data):
 - `src/app/hooks/*`: mixed application-orchestration boundary for constraint editing, share/runtime effects, and obstacle-mesh derivation.
 - `src/app/clients/*`: thin external HTTP clients (request assembly, fetch, HTTP status handling, raw payload return).
 - `src/app/globalServices/*`: browser-global services for share/hash decoding and toast dispatch.
-- `src/application/services/*`: small cross-cutting application services; currently `projectRecovery.ts` coordinates reset/recovery flow.
-- `src/adapters/*`: platform adapter wrappers; currently only `map-runtime` around MapLibre creation/disposal.
+- `src/shared/utils/*`: cross-cutting utility helpers; currently `projectRecovery.ts` coordinates reset/recovery flow alongside deterministic date/share helpers.
 - `src/rendering/*`: reusable Three/MapLibre rendering primitives, shared world-geometry adapters, heatmap-overlay worker/build logic, and Three.js renderer lifecycle helpers.
 - `src/app/components/*`: shared UI components and global error UI.
 - `src/app/features/map-editor/*`: map interactions and runtime integration split into DrawTools, MapView, and MapObjects.
@@ -74,7 +73,7 @@ Current and target direction:
 4. Screen and feature controllers shape UI-facing contracts for sidebar/canvas/tutorial from document/session/analysis boundaries and wire runtime actions/effects.
 5. `MapView` owns map runtime + interactions while `MapObjects/hooks` synchronize typed derived outputs into MapLibre/Three layers (roof/obstacle meshes + heatmap); `rendering/*` provides lower-level custom-layer primitives used there.
 6. `app/clients` perform raw provider HTTP calls; feature modules apply retry/cache/mapping/observability policy.
-7. `app/project-store/*`, `app/globalServices/*`, and `application/services/*` coordinate hash-share recovery, startup hydration, reset flow, and global toast side effects.
+7. `app/project-store/*`, `app/globalServices/*`, and `shared/utils/*` coordinate hash-share recovery, startup hydration, reset flow, and global toast side effects.
 8. Storage/share persist and hydrate canonical document data; active/selection ids are intentionally non-canonical in persisted payloads.
 
 ## Presentation Composition

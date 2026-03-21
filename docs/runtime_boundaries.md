@@ -157,14 +157,14 @@ Rules:
 - browser/runtime side effects are allowed here
 - no geometry solving or rendering ownership
 
-### `src/application/services/*` (Cross-cutting app services)
+### `src/shared/utils/*` (Cross-cutting utility helpers)
 
 Responsibilities:
-- small application flows that do not fit a single feature; currently project reset/recovery
+- deterministic utility helpers plus small browser-assisted utilities; currently date/time helpers, share codec helpers, and `projectRecovery.ts`
 
 Rules:
-- may coordinate store/session/global-service calls
-- should stay thin and explicit; do not turn into a second generic hooks bucket
+- utility behavior must remain deterministic where used for cache/storage/share contracts
+- browser-assisted helpers should stay thin and explicit
 
 ### `src/adapters/*` (Platform adapters)
 
@@ -343,7 +343,7 @@ Observed imports by boundary:
 - `app/hooks/*` imports `state/project-store/*`, `geometry/*`, `shared/*`, `app/globalServices/*`, and selected feature contracts.
 - `app/clients/*` currently uses browser/web APIs such as `fetch`, `AbortSignal`, and `URL`, plus `shared/*` and `types/*`.
 - `app/globalServices/*` imports browser APIs, `shared/*`, and `state/project-store/*`.
-- `application/services/*` currently imports `app/globalServices/*`.
+- `shared/utils/*` imports browser APIs where needed, `shared/errors/*`, and selected app globals for thin browser-assisted helpers.
 - `adapters/*` currently wraps platform libraries only.
 - `rendering/*` imports `types/*` and `shared/*`, plus rendering-internal helpers.
 - `app/components/*` imports `shared/*`, `types/*`, and selected app/feature contracts.

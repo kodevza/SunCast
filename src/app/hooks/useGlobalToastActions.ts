@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { runResetProjectFlow } from '../../application/services/projectRecovery'
+import { runResetProjectFlow } from '../../shared/utils/projectRecovery'
 import { reportAppSuccess } from '../../shared/errors'
 import { toastActionService } from '../globalServices/toastActionService'
 import type { ReturnTypeUseAnalysis, ReturnTypeUseProjectDocument } from './hookReturnTypes'
