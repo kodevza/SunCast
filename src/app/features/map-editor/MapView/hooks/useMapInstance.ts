@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import type maplibregl from 'maplibre-gl'
-import { createMapRuntime, startLoadTimeout } from '../../../../../adapters/map-runtime/mapRuntime'
 import { MAX_ORBIT_PITCH_DEG } from '../mapViewConstants'
 import { createMapStyle } from '../createMapStyle'
 import { parseMapCenterFromHash } from '../mapCenterFromHash'
 import { useLatest } from '../useLatest'
 import { reportAppErrorCode } from '../../../../../shared/errors'
+import { createMapRuntime, startLoadTimeout } from './mapRuntime'
 
 interface UseMapInstanceArgs {
   onInitialized?: () => void
