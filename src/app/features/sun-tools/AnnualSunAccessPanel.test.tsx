@@ -8,10 +8,18 @@ import { AnnualSunAccessPanel } from './AnnualSunAccessPanel'
 
 const getContextMock = vi.fn()
 
-function renderPanel() {
+function setInputValue(input: HTMLInputElement, value: string) {
+  const prototype = Object.getPrototypeOf(input) as HTMLInputElement
+  const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value')
+  descriptor?.set?.call(input, value)
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+function renderPanel(overrides?: Partial<Parameters<typeof AnnualSunAccessPanel>[0]>) {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
+  const onRunSimulation = overrides?.onRunSimulation ?? vi.fn(async () => undefined)
 
   const annualResult = {
     roofs: [
@@ -50,23 +58,28 @@ function renderPanel() {
   act(() => {
     root.render(
       <AnnualSunAccessPanel
-        selectedRoofCount={1}
-        gridResolutionM={0.1}
-        state="READY"
-        progressRatio={1}
-        result={annualResult}
-        isAnnualHeatmapVisible={true}
-        onGridResolutionChange={vi.fn()}
-        onRunSimulation={vi.fn(async () => undefined)}
-        onClearSimulation={vi.fn()}
-        onShowAnnualHeatmap={vi.fn()}
-        onHideAnnualHeatmap={vi.fn()}
+        selectedRoofCount={overrides?.selectedRoofCount ?? 1}
+        gridResolutionM={overrides?.gridResolutionM ?? 0.1}
+        dateStartIso={overrides?.dateStartIso ?? '2026-01-01'}
+        dateEndIso={overrides?.dateEndIso ?? '2026-12-31'}
+        state={overrides?.state ?? 'READY'}
+        progressRatio={overrides?.progressRatio ?? 1}
+        result={overrides?.result ?? annualResult}
+        isAnnualHeatmapVisible={overrides?.isAnnualHeatmapVisible ?? true}
+        onGridResolutionChange={overrides?.onGridResolutionChange ?? vi.fn()}
+        onDateStartIsoChange={overrides?.onDateStartIsoChange ?? vi.fn()}
+        onDateEndIsoChange={overrides?.onDateEndIsoChange ?? vi.fn()}
+        onRunSimulation={onRunSimulation}
+        onClearSimulation={overrides?.onClearSimulation ?? vi.fn()}
+        onShowAnnualHeatmap={overrides?.onShowAnnualHeatmap ?? vi.fn()}
+        onHideAnnualHeatmap={overrides?.onHideAnnualHeatmap ?? vi.fn()}
       />,
     )
   })
 
   return {
     container,
+    onRunSimulation,
     unmount: () => {
       act(() => {
         root.unmount()
@@ -108,6 +121,41 @@ describe('AnnualSunAccessPanel', () => {
     expect(getContextMock).toHaveBeenCalledWith('2d')
     expect((canvas?.width ?? 0) > 0).toBe(true)
     expect((canvas?.height ?? 0) > 0).toBe(true)
+    view.unmount()
+  })
+
+  it('uses fixed 2026 annual dates without a year field', async () => {
+    const view = renderPanel()
+    const yearLabels = Array.from(view.container.querySelectorAll('label')).filter((label) =>
+      label.textContent?.includes('Year'),
+    )
+    expect(yearLabels).toHaveLength(0)
+
+    const startInput = view.container.querySelector('[data-testid="annual-date-start-input"]') as HTMLInputElement | null
+    const endInput = view.container.querySelector('[data-testid="annual-date-end-input"]') as HTMLInputElement | null
+    const runButton = view.container.querySelector('[data-testid="annual-sim-run"]') as HTMLButtonElement | null
+
+    expect(startInput).not.toBeNull()
+    expect(endInput).not.toBeNull()
+    expect(runButton).not.toBeNull()
+
+    act(() => {
+      setInputValue(startInput!, '31/12')
+      setInputValue(endInput!, '01/01')
+    })
+
+    act(() => {
+      runButton!.click()
+    })
+
+    expect(view.onRunSimulation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        year: 2026,
+        dateStartIso: '2025-12-31',
+        dateEndIso: '2026-01-01',
+      }),
+    )
+
     view.unmount()
   })
 })

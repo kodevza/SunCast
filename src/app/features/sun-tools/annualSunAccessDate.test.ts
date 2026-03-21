@@ -1,31 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import {
-  firstDayOfYearIso,
-  formatDateIso,
-  formatDateIsoEu,
-  lastDayOfYearIso,
-  parseDateEuToIso,
-} from './annualSunAccessDate'
+import { annualSunAccessSimulationYear, normalizeAnnualSunAccessDateRange } from './annualSunAccessDate'
 
 describe('annualSunAccessDate', () => {
-  it('formats ISO date parts', () => {
-    expect(formatDateIso(2026, 3, 7)).toBe('2026-03-07')
+  it('normalizes wrapped annual date ranges across year-end', () => {
+    expect(normalizeAnnualSunAccessDateRange('31/12', '01/01')).toEqual({
+      dateStartIso: '2025-12-31',
+      dateEndIso: '2026-01-01',
+    })
+    expect(normalizeAnnualSunAccessDateRange('01/02', '15/02')).toEqual({
+      dateStartIso: '2026-02-01',
+      dateEndIso: '2026-02-15',
+    })
   })
 
-  it('formats ISO date as EU string', () => {
-    expect(formatDateIsoEu('2026-03-07')).toBe('07.03.2026')
-    expect(formatDateIsoEu('not-a-date')).toBe('not-a-date')
-  })
-
-  it('parses EU date into validated ISO date', () => {
-    expect(parseDateEuToIso('7.3.2026')).toBe('2026-03-07')
-    expect(parseDateEuToIso(' 07.03.2026 ')).toBe('2026-03-07')
-    expect(parseDateEuToIso('31.02.2026')).toBeNull()
-    expect(parseDateEuToIso('invalid')).toBeNull()
-  })
-
-  it('returns first and last day of year ISO', () => {
-    expect(firstDayOfYearIso(2026)).toBe('2026-01-01')
-    expect(lastDayOfYearIso(2026)).toBe('2026-12-31')
+  it('uses the fixed annual simulation year', () => {
+    expect(annualSunAccessSimulationYear()).toBe(2026)
   })
 })

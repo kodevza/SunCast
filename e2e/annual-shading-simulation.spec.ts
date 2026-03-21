@@ -23,10 +23,10 @@ test('annual shading simulation generates varied output and reacts to obstacles'
   await expect(page.getByTestId('status-pitch-value')).toBeVisible()
 
   await drawObstacle(page, [
-    [0.39, 0.41],
-    [0.45, 0.42],
-    [0.44, 0.49],
-    [0.39, 0.48],
+    [0.34, 0.34],
+    [0.5, 0.34],
+    [0.5, 0.5],
+    [0.34, 0.5],
   ])
 
   await page.getByRole('button', { name: 'Obstacle Mode' }).click()

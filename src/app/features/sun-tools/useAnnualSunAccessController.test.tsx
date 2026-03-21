@@ -49,6 +49,8 @@ describe('useAnnualSunAccessController', () => {
 
   it('keeps annual simulation controls inside the sun-tools feature boundary', () => {
     const setShadingGridResolutionM = vi.fn()
+    const setSunProjectionDateStartIso = vi.fn()
+    const setSunProjectionDateEndIso = vi.fn()
     const clearSimulation = vi.fn()
     const setRequestedHeatmapMode = vi.fn()
 
@@ -59,8 +61,17 @@ describe('useAnnualSunAccessController', () => {
             enabled: true,
             gridResolutionM: 0.75,
           },
+          sunProjection: {
+            enabled: true,
+            datetimeIso: null,
+            dailyDateIso: null,
+            dateStartIso: '2026-01-01',
+            dateEndIso: '2026-12-31',
+          },
         },
         setShadingGridResolutionM,
+        setSunProjectionDateStartIso,
+        setSunProjectionDateEndIso,
       },
       analysis: {
         shadingRoofs: [{ roofId: 'roof-1' }, { roofId: 'roof-2' }],
@@ -83,6 +94,8 @@ describe('useAnnualSunAccessController', () => {
     expect(hook.get()).toMatchObject({
       selectedRoofCount: 2,
       gridResolutionM: 0.75,
+      dateStartIso: '2026-01-01',
+      dateEndIso: '2026-12-31',
       state: 'READY',
       progressRatio: 0.6,
       result: null,
@@ -91,11 +104,15 @@ describe('useAnnualSunAccessController', () => {
     })
 
     hook.get().onGridResolutionChange(1.2)
+    hook.get().onDateStartIsoChange('2026-02-01')
+    hook.get().onDateEndIsoChange('2026-11-30')
     hook.get().onShowAnnualHeatmap()
     hook.get().onClearSimulation()
     hook.get().onHideAnnualHeatmap()
 
     expect(setShadingGridResolutionM).toHaveBeenCalledWith(1.2)
+    expect(setSunProjectionDateStartIso).toHaveBeenCalledWith('2026-02-01')
+    expect(setSunProjectionDateEndIso).toHaveBeenCalledWith('2026-11-30')
     expect(clearSimulation).toHaveBeenCalledTimes(1)
     expect(setRequestedHeatmapMode).toHaveBeenNthCalledWith(1, 'annual-sun-access')
     expect(setRequestedHeatmapMode).toHaveBeenNthCalledWith(2, 'live-shading')

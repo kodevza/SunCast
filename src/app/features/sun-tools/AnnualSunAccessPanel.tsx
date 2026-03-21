@@ -3,12 +3,15 @@ import type { AnnualSunAccessResult } from '../../../geometry/shading'
 import type { AnnualSimulationOptions, AnnualSimulationState } from '../../analysis/analysis.types'
 import { AnnualHeatmapCanvas } from './AnnualHeatmapCanvas'
 import {
-  currentYear,
-  firstDayOfYearIso,
-  formatDateIsoEu,
-  lastDayOfYearIso,
-  parseDateEuToIso,
+  annualSunAccessSimulationYear,
+  normalizeAnnualSunAccessDateRange,
 } from './annualSunAccessDate'
+import {
+  firstDayOfYearIso,
+  formatDateDdMm,
+  lastDayOfYearIso,
+  parseDateDdMmToIso,
+} from '../../../shared/utils/dateIsoUtc'
 import { toCanvasDimensions } from './annualSunAccessHeatmap'
 
 const HEATMAP_MAX_CANVAS_PX_PANEL = 1200
@@ -17,11 +20,15 @@ const HEATMAP_MAX_CANVAS_PX_OVERLAY = 2800
 interface AnnualSunAccessPanelProps {
   selectedRoofCount: number
   gridResolutionM: number
+  dateStartIso: string | null
+  dateEndIso: string | null
   state: AnnualSimulationState
   progressRatio: number
   result: AnnualSunAccessResult | null
   isAnnualHeatmapVisible: boolean
   onGridResolutionChange: (gridResolutionM: number) => void
+  onDateStartIsoChange: (dateStartIso: string | null) => void
+  onDateEndIsoChange: (dateEndIso: string | null) => void
   onRunSimulation: (options: AnnualSimulationOptions) => Promise<void>
   onClearSimulation: () => void
   onShowAnnualHeatmap: () => void
@@ -31,23 +38,48 @@ interface AnnualSunAccessPanelProps {
 export function AnnualSunAccessPanel({
   selectedRoofCount,
   gridResolutionM,
+  dateStartIso,
+  dateEndIso,
   state,
   progressRatio,
   result,
   isAnnualHeatmapVisible,
   onGridResolutionChange,
+  onDateStartIsoChange,
+  onDateEndIsoChange,
   onRunSimulation,
   onClearSimulation,
   onShowAnnualHeatmap,
   onHideAnnualHeatmap,
 }: AnnualSunAccessPanelProps) {
+  const simulationYear = annualSunAccessSimulationYear()
   const [heatmapOverlayOpen, setHeatmapOverlayOpen] = useState(false)
-  const [year, setYear] = useState<number>(() => currentYear())
-  const [dateStartInput, setDateStartInput] = useState<string>(() => formatDateIsoEu(firstDayOfYearIso(currentYear())))
-  const [dateEndInput, setDateEndInput] = useState<string>(() => formatDateIsoEu(lastDayOfYearIso(currentYear())))
+  const [dateStartInput, setDateStartInput] = useState<string>(
+    () => formatDateDdMm(dateStartIso ?? firstDayOfYearIso(simulationYear)),
+  )
+  const [dateEndInput, setDateEndInput] = useState<string>(
+    () => formatDateDdMm(dateEndIso ?? lastDayOfYearIso(simulationYear)),
+  )
   const [sampleWindowDays, setSampleWindowDays] = useState<number>(5)
   const [stepMinutes, setStepMinutes] = useState<number>(30)
   const [halfYearMirror, setHalfYearMirror] = useState(true)
+
+  const applyNormalizedDateRange = (nextDateStartInput: string, nextDateEndInput: string): boolean => {
+    const normalizedDateRange = normalizeAnnualSunAccessDateRange(
+      nextDateStartInput,
+      nextDateEndInput,
+      simulationYear,
+    )
+    if (!normalizedDateRange) {
+      return false
+    }
+
+    onDateStartIsoChange(normalizedDateRange.dateStartIso)
+    onDateEndIsoChange(normalizedDateRange.dateEndIso)
+    setDateStartInput(formatDateDdMm(normalizedDateRange.dateStartIso))
+    setDateEndInput(formatDateDdMm(normalizedDateRange.dateEndIso))
+    return true
+  }
 
   const summary = useMemo(() => {
     if (!result) {
@@ -82,40 +114,18 @@ export function AnnualSunAccessPanel({
       </p>
       <div className="constraint-grid">
         <label className="ui-label">
-          Year
-          <input
-            className="ui-input"
-            type="number"
-            min={2000}
-            max={2100}
-            value={year}
-            onChange={(event) => {
-              const nextYear = Number.parseInt(event.target.value, 10) || currentYear()
-              const nextDateStartIso = firstDayOfYearIso(nextYear)
-              const nextDateEndIso = lastDayOfYearIso(nextYear)
-              setYear(nextYear)
-              setDateStartInput(formatDateIsoEu(nextDateStartIso))
-              setDateEndInput(formatDateIsoEu(nextDateEndIso))
-            }}
-          />
-        </label>
-        <label className="ui-label">
           Date from
           <input
             className="ui-input"
             type="text"
             inputMode="numeric"
-            placeholder="DD.MM.YYYY"
+            placeholder="DD/MM"
             value={dateStartInput}
             onChange={(event) => {
               setDateStartInput(event.target.value)
             }}
-            onBlur={() => {
-              const parsedIso = parseDateEuToIso(dateStartInput)
-              if (!parsedIso) {
-                return
-              }
-              setDateStartInput(formatDateIsoEu(parsedIso))
+            onBlur={(event) => {
+              applyNormalizedDateRange(event.currentTarget.value, dateEndInput)
             }}
             data-testid="annual-date-start-input"
           />
@@ -126,17 +136,13 @@ export function AnnualSunAccessPanel({
             className="ui-input"
             type="text"
             inputMode="numeric"
-            placeholder="DD.MM.YYYY"
+            placeholder="DD/MM"
             value={dateEndInput}
             onChange={(event) => {
               setDateEndInput(event.target.value)
             }}
-            onBlur={() => {
-              const parsedIso = parseDateEuToIso(dateEndInput)
-              if (!parsedIso) {
-                return
-              }
-              setDateEndInput(formatDateIsoEu(parsedIso))
+            onBlur={(event) => {
+              applyNormalizedDateRange(dateStartInput, event.currentTarget.value)
             }}
             data-testid="annual-date-end-input"
           />
@@ -197,12 +203,23 @@ export function AnnualSunAccessPanel({
         <button
           type="button"
           onClick={() => {
-            const parsedDateStartIso = parseDateEuToIso(dateStartInput)
-            const parsedDateEndIso = parseDateEuToIso(dateEndInput)
+            const normalizedDateRange = normalizeAnnualSunAccessDateRange(
+              dateStartInput,
+              dateEndInput,
+              simulationYear,
+            )
+            if (normalizedDateRange) {
+              onDateStartIsoChange(normalizedDateRange.dateStartIso)
+              onDateEndIsoChange(normalizedDateRange.dateEndIso)
+              setDateStartInput(formatDateDdMm(normalizedDateRange.dateStartIso))
+              setDateEndInput(formatDateDdMm(normalizedDateRange.dateEndIso))
+            }
             void onRunSimulation({
-              year,
-              dateStartIso: parsedDateStartIso ?? dateStartInput.trim(),
-              dateEndIso: parsedDateEndIso ?? dateEndInput.trim(),
+              year: simulationYear,
+              dateStartIso:
+                normalizedDateRange?.dateStartIso ?? parseDateDdMmToIso(dateStartInput, simulationYear) ?? dateStartInput.trim(),
+              dateEndIso:
+                normalizedDateRange?.dateEndIso ?? parseDateDdMmToIso(dateEndInput, simulationYear) ?? dateEndInput.trim(),
               sampleWindowDays,
               stepMinutes,
               halfYearMirror,
@@ -229,7 +246,7 @@ export function AnnualSunAccessPanel({
       {selectedRoofCount === 0 && <p>Select at least one solved roof to run annual simulation.</p>}
       {state === 'RUNNING' && <p>Simulation running: {progressPercent}%</p>}
       {summary && result && (
-        <div data-testid="annual-sim-results">
+        <div data-testid="annual-sim-results" data-sun-access-ratio={summary.ratio * 100}>
           <p>Sun hours / year: {summary.sunHours.toFixed(1)} h</p>
           <p>Sun-facing hours considered: {summary.frontSideHours.toFixed(1)} h</p>
           <p>Daylight hours considered: {summary.daylightHours.toFixed(1)} h</p>
@@ -239,7 +256,7 @@ export function AnnualSunAccessPanel({
             {result.meta.simulatedHalfYear ? ' mirrored half-year' : ' full year'}.
           </p>
           <p>
-            Simulated dates: {formatDateIsoEu(result.meta.dateStartIso)} - {formatDateIsoEu(result.meta.dateEndIso)}.
+            Simulated dates: {formatDateDdMm(result.meta.dateStartIso)} - {formatDateDdMm(result.meta.dateEndIso)}.
           </p>
           <p>Heatmap cells: {result.heatmapCells.length}</p>
           {heatmapCanvasSize && (

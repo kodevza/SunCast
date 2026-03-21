@@ -27,6 +27,8 @@ export interface SharedProjectPayloadV1 {
     enabled: boolean
     datetimeIso: string | null
     dailyDateIso: string | null
+    dateStartIso: string | null
+    dateEndIso: string | null
   }
 }
 
@@ -37,6 +39,8 @@ export interface SharedProjectPayloadV2 {
     enabled: boolean
     datetimeIso: string | null
     dailyDateIso: string | null
+    dateStartIso: string | null
+    dateEndIso: string | null
   }
 }
 
@@ -56,6 +60,8 @@ export interface SharedProjectPayloadV3 {
     enabled: boolean
     datetimeIso: string | null
     dailyDateIso: string | null
+    dateStartIso: string | null
+    dateEndIso: string | null
   }
 }
 
@@ -144,6 +150,18 @@ function hasValidCommonShape(value: Record<string, unknown>): boolean {
       return false
     }
     if (sunProjection.dailyDateIso !== null && typeof sunProjection.dailyDateIso !== 'string') {
+      return false
+    }
+    if (sunProjection.dateStartIso !== null && typeof sunProjection.dateStartIso !== 'string') {
+      return false
+    }
+    if (sunProjection.dateEndIso !== null && typeof sunProjection.dateEndIso !== 'string') {
+      return false
+    }
+    if (!Object.prototype.hasOwnProperty.call(sunProjection, 'dateStartIso')) {
+      return false
+    }
+    if (!Object.prototype.hasOwnProperty.call(sunProjection, 'dateEndIso')) {
       return false
     }
   }
@@ -310,6 +328,8 @@ export function deserializeSharePayloadResult(
       enabled: migrated.sunProjection?.enabled ?? defaultSunProjection.enabled,
       datetimeIso: migrated.sunProjection?.datetimeIso ?? defaultSunProjection.datetimeIso,
       dailyDateIso: migrated.sunProjection?.dailyDateIso ?? defaultSunProjection.dailyDateIso,
+      dateStartIso: migrated.sunProjection?.dateStartIso ?? defaultSunProjection.dateStartIso,
+      dateEndIso: migrated.sunProjection?.dateEndIso ?? defaultSunProjection.dateEndIso,
     },
     shadingSettings: defaultShadingSettings,
   }

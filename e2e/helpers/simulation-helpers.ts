@@ -3,22 +3,33 @@ import { openAnnualSunAccessTab } from './app-helpers'
 
 export async function runAnnualSimulation(page: Page) {
   await openAnnualSunAccessTab(page)
+  const results = page.getByTestId('annual-sim-results')
+  const resultsWasVisible = await results.isVisible().catch(() => false)
 
   await page.getByLabel('Day step').fill('60')
   await page.getByLabel('Time step (min)').fill('180')
   await page.getByTestId('annual-grid-resolution-input').fill('2')
 
   await page.getByTestId('annual-sim-run').click()
-  await expect(page.getByTestId('annual-sim-results')).toBeVisible({ timeout: 120_000 })
+  if (resultsWasVisible) {
+    await expect(results).toBeHidden({ timeout: 120_000 })
+  }
+  await expect(results).toBeVisible({ timeout: 120_000 })
   await expect(page.getByText(/Heatmap cells:/)).toBeVisible()
 }
 
 export async function readAnnualSunAccessRatio(page: Page): Promise<number> {
-  const ratioLine = page.locator('[data-testid="annual-sim-results"] p').filter({ hasText: 'Sun access ratio:' })
-  const ratioText = await ratioLine.innerText()
-  const parsedPercent = Number.parseFloat(ratioText.replace(/[^0-9.]/g, ''))
+  const ratioContainer = page.getByTestId('annual-sim-results')
+  const ratioText = await ratioContainer.getAttribute('data-sun-access-ratio')
+  const parsedPercent = Number.parseFloat(ratioText ?? '')
   if (!Number.isFinite(parsedPercent)) {
-    throw new Error(`Unable to parse annual ratio from: ${ratioText}`)
+    const ratioLine = page.locator('[data-testid="annual-sim-results"] p').filter({ hasText: 'Sun access ratio:' })
+    const fallbackText = await ratioLine.innerText()
+    const parsedFallbackPercent = Number.parseFloat(fallbackText.replace(/[^0-9.]/g, ''))
+    if (!Number.isFinite(parsedFallbackPercent)) {
+      throw new Error(`Unable to parse annual ratio from: ${fallbackText}`)
+    }
+    return parsedFallbackPercent
   }
   return parsedPercent
 }

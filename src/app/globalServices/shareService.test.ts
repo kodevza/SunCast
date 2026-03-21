@@ -13,7 +13,7 @@ vi.mock('../../state/project-store/projectState.share', () => ({
   deserializeSharePayloadResult: (...args: unknown[]) => mockDeserializeSharePayloadResult(...args),
 }))
 
-const DEFAULT_SUN = { enabled: true, datetimeIso: null, dailyDateIso: null }
+const DEFAULT_SUN = { enabled: true, datetimeIso: null, dailyDateIso: null, dateStartIso: null, dateEndIso: null }
 const DEFAULT_SHADING = { enabled: true, gridResolutionM: 0.5 }
 const DEFAULT_KWP = 4.3
 

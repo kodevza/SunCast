@@ -9,6 +9,77 @@ export function formatDateIsoUtc(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
+export function formatDateIsoParts(year: number, month1Based: number, day: number): string {
+  return `${String(year).padStart(4, '0')}-${String(month1Based).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+export function formatDateDdMm(dateIso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateIso)
+  if (!match) {
+    return dateIso
+  }
+  return `${match[3]}/${match[2]}`
+}
+
+export interface DateDdMmInput {
+  day: number
+  month: number
+  year: number | null
+}
+
+export function parseDateDdMmInput(value: string): DateDdMmInput | null {
+  const trimmedValue = value.trim()
+  const slashMatch = /^(\d{1,2})[/.](\d{1,2})(?:[/.](\d{4}))?$/.exec(trimmedValue)
+  if (slashMatch) {
+    const day = Number(slashMatch[1])
+    const month = Number(slashMatch[2])
+    const year = slashMatch[3] ? Number(slashMatch[3]) : null
+    if (!Number.isInteger(day) || !Number.isInteger(month) || (year !== null && !Number.isInteger(year))) {
+      return null
+    }
+    return { day, month, year }
+  }
+
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmedValue)
+  if (!isoMatch) {
+    return null
+  }
+
+  const year = Number(isoMatch[1])
+  const month = Number(isoMatch[2])
+  const day = Number(isoMatch[3])
+  if (!Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year)) {
+    return null
+  }
+
+  return { day, month, year }
+}
+
+function toIsoDate(year: number, month1Based: number, day: number): string | null {
+  const dateIso = formatDateIsoParts(year, month1Based, day)
+  if (parseDateIsoUtc(dateIso) === null) {
+    return null
+  }
+  return dateIso
+}
+
+export function parseDateDdMmToIso(value: string, year: number): string | null {
+  const parsed = parseDateDdMmInput(value)
+  if (!parsed) {
+    return null
+  }
+
+  return toIsoDate(parsed.year ?? year, parsed.month, parsed.day)
+}
+
+export function firstDayOfYearIso(year: number): string {
+  return formatDateIsoParts(year, 1, 1)
+}
+
+export function lastDayOfYearIso(year: number): string {
+  return formatDateIsoParts(year, 12, 31)
+}
+
 export function parseDateIsoUtc(dateIso: string): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) {
     return null

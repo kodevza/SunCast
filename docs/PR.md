@@ -112,6 +112,7 @@ Keep it simple:
 * `main` = always releasable
 * short-lived feature branches only
 * no long-running integration branch unless vendor explicitly requires it
+* always rebase on `main` first, then create a new clean branch from that tip
 
 Branch naming:
 

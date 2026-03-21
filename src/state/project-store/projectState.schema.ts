@@ -32,11 +32,15 @@ function toProjectData(value: Record<string, unknown>): ProjectData | null {
     isRecord(sunProjectionRaw) &&
     typeof sunProjectionRaw.enabled === 'boolean' &&
     (sunProjectionRaw.datetimeIso === null || typeof sunProjectionRaw.datetimeIso === 'string') &&
-    (sunProjectionRaw.dailyDateIso === null || typeof sunProjectionRaw.dailyDateIso === 'string')
+    (sunProjectionRaw.dailyDateIso === null || typeof sunProjectionRaw.dailyDateIso === 'string') &&
+    (sunProjectionRaw.dateStartIso === null || typeof sunProjectionRaw.dateStartIso === 'string') &&
+    (sunProjectionRaw.dateEndIso === null || typeof sunProjectionRaw.dateEndIso === 'string')
       ? {
           enabled: sunProjectionRaw.enabled,
           datetimeIso: sunProjectionRaw.datetimeIso,
           dailyDateIso: sunProjectionRaw.dailyDateIso,
+          dateStartIso: sunProjectionRaw.dateStartIso,
+          dateEndIso: sunProjectionRaw.dateEndIso,
         }
       : undefined
   const shadingSettingsRaw = value.shadingSettings

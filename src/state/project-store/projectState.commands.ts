@@ -37,6 +37,8 @@ export interface ProjectCommands {
   setSunProjectionEnabled: (enabled: boolean) => void
   setSunProjectionDatetimeIso: (datetimeIso: string | null) => void
   setSunProjectionDailyDateIso: (dailyDateIso: string | null) => void
+  setSunProjectionDateStartIso: (dateStartIso: string | null) => void
+  setSunProjectionDateEndIso: (dateEndIso: string | null) => void
   setShadingEnabled: (enabled: boolean) => void
   setShadingGridResolutionM: (gridResolutionM: number) => boolean
   upsertImportedFootprints: (entries: ImportedFootprintEntry[]) => boolean
@@ -58,6 +60,10 @@ function withDispatch(dispatch: Dispatch<Action>) {
       dispatch({ type: 'SET_SUN_PROJECTION_DATETIME', datetimeIso }),
     setSunProjectionDailyDateIso: (dailyDateIso: string | null) =>
       dispatch({ type: 'SET_SUN_PROJECTION_DAILY_DATE', dailyDateIso }),
+    setSunProjectionDateStartIso: (dateStartIso: string | null) =>
+      dispatch({ type: 'SET_SUN_PROJECTION_DATE_START', dateStartIso }),
+    setSunProjectionDateEndIso: (dateEndIso: string | null) =>
+      dispatch({ type: 'SET_SUN_PROJECTION_DATE_END', dateEndIso }),
     setShadingEnabled: (enabled: boolean) => dispatch({ type: 'SET_SHADING_ENABLED', enabled }),
     resetState: () => dispatch({ type: 'RESET_STATE' }),
   }

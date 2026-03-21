@@ -52,6 +52,8 @@ export type Action =
   | { type: 'SET_SUN_PROJECTION_ENABLED'; enabled: boolean }
   | { type: 'SET_SUN_PROJECTION_DATETIME'; datetimeIso: string | null }
   | { type: 'SET_SUN_PROJECTION_DAILY_DATE'; dailyDateIso: string | null }
+  | { type: 'SET_SUN_PROJECTION_DATE_START'; dateStartIso: string | null }
+  | { type: 'SET_SUN_PROJECTION_DATE_END'; dateEndIso: string | null }
   
   | {
       type: 'ADD_OBSTACLE'
