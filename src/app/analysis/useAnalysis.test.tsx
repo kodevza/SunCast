@@ -163,7 +163,18 @@ describe('useAnalysis', () => {
       onSunDatetimeInputChange: vi.fn(),
     })
     mockUseLiveShading.mockReturnValue({
-      heatmapFeatures: [{ type: 'Feature', properties: { roofId: 'roofA', shade: 1, intensity: 0.2 }, geometry: { type: 'Polygon', coordinates: [] } }],
+      readyResult: {
+        status: 'OK',
+        statusMessage: '',
+        roofs: [],
+        diagnostics: {
+          roofsProcessed: 0,
+          roofsSkipped: 0,
+          obstaclesProcessed: 0,
+          sampleCount: 0,
+          obstacleCandidatesChecked: 0,
+        },
+      },
       computeState: 'READY',
       computeMode: 'final',
       resultStatus: 'OK',
@@ -204,7 +215,21 @@ describe('useAnalysis', () => {
     mockUseAnnualSimulation.mockReturnValue({
       state: 'READY',
       progress: { ratio: 1, sampledDays: 12, totalSampledDays: 12 },
-      result: { roofs: [], heatmapCells: [], meta: { sampledDayCount: 1, simulatedHalfYear: false, stepMinutes: 30, sampleWindowDays: 1, dateStartIso: '2026-01-01', dateEndIso: '2026-01-01' } },
+      result: {
+        roofs: [],
+        heatmapCells: [
+          {
+            roofId: 'roofA',
+            cellPolygon: [
+              [10, 10],
+              [11, 10],
+              [11, 11],
+            ],
+            litRatio: 0.5,
+          },
+        ],
+        meta: { sampledDayCount: 1, simulatedHalfYear: false, stepMinutes: 30, sampleWindowDays: 1, dateStartIso: '2026-01-01', dateEndIso: '2026-01-01' },
+      },
       heatmapFeatures: [{ type: 'Feature', properties: { roofId: 'roofA', shade: 0, intensity: 0.9 }, geometry: { type: 'Polygon', coordinates: [] } }],
       error: null,
       runSimulation: vi.fn(async () => undefined),
@@ -217,7 +242,17 @@ describe('useAnalysis', () => {
     })
 
     expect(hook.get().heatmap.activeMode).toBe('annual-sun-access')
-    expect(hook.get().heatmap.mapFeatures).toEqual(hook.get().annualSimulation.heatmapFeatures)
+    expect(hook.get().heatmap.mapCells).toEqual([
+      {
+        roofId: 'roofA',
+        cellPolygon: [
+          [10, 10],
+          [11, 10],
+          [11, 11],
+          [10, 10],
+        ],
+      },
+    ])
     expect(hook.get().heatmap.mapEnabled).toBe(true)
     expect(hook.get().heatmap.annualVisible).toBe(true)
     hook.unmount()

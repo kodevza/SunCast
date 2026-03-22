@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { computeRoofShadeGrid, type ComputeRoofShadeGridInput, type ComputeRoofShadeGridResult } from '../../geometry/shading'
 import type { RoofShadeDiagnosticsResults, ShadingRoofInput } from '../../geometry/shading/types'
 import { toShadingObstacleVolume } from '../../geometry/obstacles/obstacleModels'
 import type { ObstacleStateEntry } from '../../types/geometry'
 import { buildObstacleGeometryCacheKey, buildRoofGeometryCacheKey } from '../../shared/utils/shadingCacheKey'
-import type { RoofShadingComputeState, ShadeHeatmapFeature } from './analysis.types'
+import type { RoofShadingComputeState } from './analysis.types'
 
-export type { RoofShadingComputeState, ShadeHeatmapFeature } from './analysis.types'
+export type { RoofShadingComputeState } from './analysis.types'
 
 export interface RoofShadingResult {
-  heatmapFeatures: ShadeHeatmapFeature[]
+  readyResult: ComputeRoofShadeGridResult | null
   computeState: RoofShadingComputeState
   computeMode: 'final' | 'coarse'
   resultStatus: ComputeRoofShadeGridResult['status'] | null
@@ -26,6 +26,16 @@ interface RoofShadingRequest {
   usedGridResolutionM: number
 }
 
+interface RoofShadingState {
+  readyKey: string | null
+  readyResult: ComputeRoofShadeGridResult | null
+  computeMode: 'final' | 'coarse'
+  resultStatus: ComputeRoofShadeGridResult['status'] | null
+  statusMessage: string | null
+  diagnostics: RoofShadeDiagnosticsResults | null
+  usedGridResolutionM: number | null
+}
+
 export interface UseRoofShadingArgs {
   cacheRevision: number
   enabled: boolean
@@ -37,11 +47,11 @@ export interface UseRoofShadingArgs {
   interactionThrottleMs?: number
 }
 
-const SHADE_CACHE_LIMIT = 120
 const roofShadingResultCache = new Map<string, ComputeRoofShadeGridResult>()
 const DEFAULT_INTERACTION_THROTTLE_MS = 100
 const MIN_COARSE_GRID_RESOLUTION_M = 0.9
 const MAX_INTERACTION_SAMPLE_COUNT = 3500
+const SHADE_CACHE_LIMIT_RECENT = 4
 
 function createCacheRequestKey(request: RoofShadingRequest): string {
   const roofGeometryKey = buildRoofGeometryCacheKey(request.payload.roofs)
@@ -59,11 +69,9 @@ function createCacheRequestKey(request: RoofShadingRequest): string {
   ].join('::')
 }
 
-
-
 function cacheResult(key: string, result: ComputeRoofShadeGridResult): void {
   roofShadingResultCache.set(key, result)
-  if (roofShadingResultCache.size <= SHADE_CACHE_LIMIT) {
+  if (roofShadingResultCache.size <= SHADE_CACHE_LIMIT_RECENT) {
     return
   }
 
@@ -72,42 +80,6 @@ function cacheResult(key: string, result: ComputeRoofShadeGridResult): void {
     roofShadingResultCache.delete(oldestKey)
   }
 }
-
-
-
-function toHeatmapFeatures(result: ComputeRoofShadeGridResult): ShadeHeatmapFeature[] {
-  if (result.status !== 'OK') {
-    return []
-  }
-
-  return result.roofs.flatMap((roof) =>
-    roof.cells.map((cell) => {
-      const ring = cell.cellPolygon.map(([lon, lat]) => [lon, lat])
-      if (ring.length > 0) {
-        const [firstLon, firstLat] = ring[0]
-        const [lastLon, lastLat] = ring[ring.length - 1]
-        if (firstLon !== lastLon || firstLat !== lastLat) {
-          ring.push([firstLon, firstLat])
-        }
-      }
-
-      return {
-        type: 'Feature' as const,
-        properties: {
-          roofId: cell.roofId,
-          shade: cell.shadeFactor,
-          intensity: 1 - cell.shadeFactor,
-        },
-        geometry: {
-          type: 'Polygon' as const,
-          coordinates: [ring],
-        },
-      }
-    }),
-  )
-}
-
-
 
 function makeRequest({
   cacheRevision,
@@ -156,7 +128,7 @@ function makeRequest({
 }
 
 const IDLE_RESULT: RoofShadingResult = {
-  heatmapFeatures: [],
+  readyResult: null,
   computeState: 'IDLE',
   computeMode: 'final',
   resultStatus: null,
@@ -165,7 +137,15 @@ const IDLE_RESULT: RoofShadingResult = {
   usedGridResolutionM: null,
 }
 
-
+const IDLE_STATE: RoofShadingState = {
+  readyKey: null,
+  readyResult: null,
+  computeMode: 'final',
+  resultStatus: null,
+  statusMessage: null,
+  diagnostics: null,
+  usedGridResolutionM: null,
+}
 
 export function useRoofShading(args: UseRoofShadingArgs): RoofShadingResult {
   const { cacheRevision, enabled, datetimeIso, roofs, obstacles, gridResolutionM, interactionActive } = args
@@ -179,64 +159,82 @@ export function useRoofShading(args: UseRoofShadingArgs): RoofShadingResult {
     () => makeRequest({ cacheRevision, enabled, datetimeIso, roofs, obstacles, gridResolutionM, interactionActive }),
     [cacheRevision, datetimeIso, enabled, gridResolutionM, interactionActive, obstacles, roofs],
   )
-  const [throttledRequest, setThrottledRequest] = useState<RoofShadingRequest | null>(null)
+  const [store, setStore] = useState<RoofShadingState>(IDLE_STATE)
+  const computeTokenRef = useRef(0)
 
   useEffect(() => {
-    if (!interactionActive || !request) {
+    const computeToken = ++computeTokenRef.current
+    if (!request) {
       return
     }
 
+    const delayMs = interactionActive ? interactionThrottleMs : 0
     const timerId = window.setTimeout(() => {
-      setThrottledRequest(request)
-    }, interactionThrottleMs)
+      const cached = roofShadingResultCache.get(request.key)
+      const computed = cached ?? computeRoofShadeGrid(request.payload)
+      if (computeTokenRef.current !== computeToken) {
+        return
+      }
+
+      if (!cached) {
+        cacheResult(request.key, computed)
+      }
+
+      setStore({
+        readyKey: request.key,
+        readyResult: computed,
+        computeMode: request.computeMode,
+        resultStatus: computed.status,
+        statusMessage: computed.statusMessage,
+        diagnostics: computed.diagnostics,
+        usedGridResolutionM: request.usedGridResolutionM,
+      })
+    }, delayMs)
 
     return () => {
       window.clearTimeout(timerId)
     }
   }, [interactionActive, interactionThrottleMs, request])
 
-  const activeRequest = interactionActive ? throttledRequest : request
-
-  const computedResult = useMemo(() => {
-    if (!activeRequest) {
-      return null
-    }
-
-    const cached = roofShadingResultCache.get(activeRequest.key)
-    const computed = cached ?? computeRoofShadeGrid(activeRequest.payload)
-    if (!cached) {
-      cacheResult(activeRequest.key, computed)
-    }
-    return computed
-  }, [activeRequest])
-
-  const heatmapFeatures = useMemo(() => {
-    if (!computedResult) {
-      return []
-    }
-    return toHeatmapFeatures(computedResult)
-  }, [computedResult])
-
   if (!request) {
     return IDLE_RESULT
   }
 
-  if (!activeRequest || !computedResult) {
+  if (store.readyKey === null) {
     return {
       ...IDLE_RESULT,
-      computeState: 'SCHEDULED',
+      computeState: 'PENDING',
       computeMode: request.computeMode,
       usedGridResolutionM: request.usedGridResolutionM,
     }
   }
 
+  const output = {
+    readyResult: store.readyResult,
+    resultStatus: store.resultStatus,
+    statusMessage: store.statusMessage,
+    diagnostics: store.diagnostics,
+  }
+
+  if (store.readyKey !== request.key) {
+    return {
+      readyResult: output.readyResult,
+      computeState: 'STALE',
+      computeMode: store.computeMode,
+      resultStatus: output.resultStatus,
+      statusMessage: output.statusMessage,
+      diagnostics: output.diagnostics,
+      usedGridResolutionM: store.usedGridResolutionM,
+    }
+  }
+
   return {
-    heatmapFeatures,
+    readyResult: output.readyResult,
     computeState: 'READY',
-    computeMode: activeRequest.computeMode,
-    resultStatus: computedResult.status,
-    statusMessage: computedResult.statusMessage,
-    diagnostics: computedResult.diagnostics,
-    usedGridResolutionM: activeRequest.usedGridResolutionM,
+    computeMode: store.computeMode,
+    resultStatus: output.resultStatus,
+    statusMessage: output.statusMessage,
+    diagnostics: output.diagnostics,
+    usedGridResolutionM: store.usedGridResolutionM ?? request.usedGridResolutionM,
   }
 }

@@ -6,7 +6,9 @@ import type {
   ObstacleStateEntry,
   RoofMeshData,
 } from '../../../../types/geometry'
-import type { RoofShadingComputeState, ShadeHeatmapFeature } from '../../../analysis/analysis.types'
+import type { BinaryShadedCell, RoofShadingComputeState } from '../../../analysis/analysis.types'
+import type { ComputeRoofShadeGridResult } from '../../../../geometry/shading'
+import type { ActiveHeatmapMode } from '../../../analysis/analysis.types'
 import type { MapNavigationRuntime } from '../../place-search/useMapNavigationRuntime'
 
 export interface SunCastMapViewModel {
@@ -57,8 +59,10 @@ export interface SunCastMapViewModel {
     onGeometryDragStateChange: (dragging: boolean) => void
   }
   render: {
+    shadingMode: ActiveHeatmapMode
     shadingEnabled: boolean
-    shadingHeatmapFeatures: ShadeHeatmapFeature[]
+    shadingCells: BinaryShadedCell[]
+    shadingResult: ComputeRoofShadeGridResult | null
     shadingComputeState: RoofShadingComputeState
     roofMeshes: RoofMeshData[]
     obstacleMeshes: RoofMeshData[]

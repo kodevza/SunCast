@@ -5,7 +5,6 @@ export type AppErrorCode =
   | 'SHARE_PAYLOAD_INVALID'
   | 'GEOMETRY_BUILD_FAILED'
   | 'SOLVER_FAILED'
-  | 'HEATMAP_WORKER_UNAVAILABLE'
   | 'MAP_INIT_FAILED'
   | 'PLACE_SEARCH_FAILED'
   | 'SHARE_OPERATION_FAILED'
@@ -34,7 +33,6 @@ const APP_ERROR_POLICY: Record<AppErrorCode, AppErrorPolicy> = {
   SHARE_PAYLOAD_INVALID: { severity: 'warning', recoverable: true },
   GEOMETRY_BUILD_FAILED: { severity: 'error', recoverable: true },
   SOLVER_FAILED: { severity: 'error', recoverable: true },
-  HEATMAP_WORKER_UNAVAILABLE: { severity: 'warning', recoverable: true },
   MAP_INIT_FAILED: { severity: 'error', recoverable: true },
   PLACE_SEARCH_FAILED: { severity: 'warning', recoverable: true },
   SHARE_OPERATION_FAILED: { severity: 'warning', recoverable: true },

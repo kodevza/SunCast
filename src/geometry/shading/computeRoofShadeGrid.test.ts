@@ -59,9 +59,11 @@ describe('computeRoofShadeGrid', () => {
     expect(result.roofs).toHaveLength(1)
     expect(result.diagnostics.sampleCount).toBeGreaterThan(0)
 
-    const shadedCount = result.roofs[0].shadedCellCount
-    const litCount = result.roofs[0].litCellCount
-    expect(shadedCount + litCount).toBe(result.roofs[0].cells.length)
+    const roof = result.roofs[0]
+    const shadedCount = Array.from(roof.shadeFactors).filter((shadeFactor) => shadeFactor > 0).length
+    const litCount = roof.shadeFactors.length - shadedCount
+    expect(shadedCount + litCount).toBe(roof.shadeFactors.length)
+    expect(roof.cellPolygonLonLat.length).toBe(roof.shadeFactors.length * roof.cellPolygonPointCount * 2)
     expect(shadedCount).toBeGreaterThan(0)
   })
 
@@ -111,7 +113,7 @@ describe('computeRoofShadeGrid', () => {
 
     expect(result.status).toBe('OK')
     expect(result.roofs).toHaveLength(1)
-    expect(result.roofs[0].cells.length).toBeLessThanOrEqual(100)
+    expect(result.roofs[0].shadeFactors.length).toBeLessThanOrEqual(100)
     expect(result.diagnostics.sampleCount).toBeLessThanOrEqual(100)
   })
 })

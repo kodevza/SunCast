@@ -100,8 +100,10 @@ export function useMapViewController({
         onGeometryDragStateChange: geometryEditing.setIsGeometryDragActive,
       },
       render: {
+        shadingMode: analysis.heatmap.activeMode,
         shadingEnabled: analysis.heatmap.mapEnabled,
-        shadingHeatmapFeatures: analysis.heatmap.mapFeatures,
+        shadingCells: analysis.heatmap.mapCells,
+        shadingResult: analysis.liveShading.readyResult,
         shadingComputeState: analysis.heatmap.mapComputeState,
         roofMeshes: analysis.solvedRoofs.entries.map((entry) => entry.mesh),
         obstacleMeshes: obstacleMeshResults

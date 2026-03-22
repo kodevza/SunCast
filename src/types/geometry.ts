@@ -104,21 +104,6 @@ export interface RoofMeshData {
 
 export type ObstacleMeshData = RoofMeshData
 
-export interface RoofHeatmapFeature {
-  type: 'Feature'
-  properties: {
-    roofId: string
-    shade: 0 | 1
-    intensity: number
-  }
-  geometry: {
-    type: 'Polygon'
-    coordinates: number[][][]
-  }
-}
-
-export type RoofShadeHeatmapFeature = RoofHeatmapFeature
-
 export interface RoofMetrics {
   pitchDeg: number
   azimuthDeg: number

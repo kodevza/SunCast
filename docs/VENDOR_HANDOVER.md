@@ -5,7 +5,7 @@
 Stage 1 editor is production-like for deterministic single-plane roof modeling and shading workflows, with map-editor boundaries now split into:
 - `DrawTools` (draw workflow + shortcuts)
 - `MapView` (map runtime + interactions + basemap controls)
-- `MapObjects` (roof/obstacle/heatmap custom layer sync)
+- `MapObjects` (roof/obstacle/roof-projected binary shaded-cell sync)
 
 ## Acceptance Criteria
 
@@ -16,12 +16,12 @@ Stage 1 editor is production-like for deterministic single-plane roof modeling a
 5. Basemap can switch between satellite and streets without losing editor state.
 6. Attribution is visible for active basemap (OSM fixed wording; Esri plus provider metadata when available).
 7. Project can be reloaded with identical solved geometry and metrics.
-8. Annual shading simulation runs and produces roof heatmap + summary metrics.
+8. Annual shading simulation runs and produces roof shading summary metrics.
 
 ## Operational Notes
 
 - Geometry source data lives in project store (`footprints + constraints + obstacles + shading settings`).
-- Meshes and heatmaps are derived artifacts; never persist them as canonical state.
+- Meshes and shading overlays are derived artifacts; never persist them as canonical state.
 - Transport-level HTTP calls are isolated to `src/app/clients/*`.
 - Degraded mode behavior:
   - runtime crash -> `AppErrorBoundary` fallback panel
@@ -58,6 +58,7 @@ Stage 1 editor is production-like for deterministic single-plane roof modeling a
 - `src/app/features/map-editor/MapView/hooks/useMapInteractions.ts`: interaction coordinator.
 - `src/app/features/map-editor/MapView/useMapViewRuntime.ts`: shared map-view runtime state for orbit and map lifecycle.
 - `src/app/features/map-editor/MapObjects/hooks/useMapObjectsSync.ts`: custom-layer lifecycle and visibility sync.
+- `src/app/features/map-editor/MapObjects/layers/ProjectedBinaryShadeLayer.ts`: projected binary shaded-cell custom layer.
 - `src/geometry/shading/*`: deterministic sun/shade business logic and annual aggregation.
 - `src/state/project-store/projectState.reducer.ts`: canonical project-document transitions.
 

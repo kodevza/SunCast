@@ -5,9 +5,11 @@ import { useSolvedRoofEntries } from './useSolvedRoofEntries'
 import { useAnnualRoofSimulation } from './useAnnualRoofSimulation'
 import { useRoofShading } from './useRoofShading'
 import { useSunProjectionState } from './useSunProjectionState'
+import type { AnnualSunAccessResult } from '../../geometry/shading'
+import type { LngLat } from '../../types/geometry'
 import type { ObstacleStateEntry, ProjectSunProjectionSettings, ShadingSettings } from '../../types/geometry'
 import type { FootprintStateEntry } from '../../state/project-store/projectState.types'
-import type { AnalysisState } from './analysis.types'
+import type { AnalysisState, BinaryShadedCell } from './analysis.types'
 
 interface UseAnalysisArgs {
   stateRevision: number
@@ -23,6 +25,41 @@ interface UseAnalysisArgs {
   isGeometryDragActive: boolean
   setSunProjectionDatetimeIso: (datetimeIso: string | null) => void
   setSunProjectionDailyDateIso: (dailyDateIso: string | null) => void
+}
+
+function closeRing(ring: LngLat[]): LngLat[] {
+  if (ring.length === 0) {
+    return ring
+  }
+
+  const closedRing = [...ring]
+  const [firstLon, firstLat] = closedRing[0]
+  const [lastLon, lastLat] = closedRing[closedRing.length - 1]
+  if (firstLon !== lastLon || firstLat !== lastLat) {
+    closedRing.push([firstLon, firstLat])
+  }
+  return closedRing
+}
+
+function toBinaryShadedCellsFromAnnualResult(
+  result: AnnualSunAccessResult | null,
+): BinaryShadedCell[] {
+  if (!result) {
+    return []
+  }
+
+  return result.heatmapCells.flatMap((cell) => {
+    if (cell.litRatio >= 1) {
+      return []
+    }
+
+    return [
+      {
+        roofId: cell.roofId,
+        cellPolygon: closeRing(cell.cellPolygon),
+      },
+    ]
+  })
 }
 
 export function useAnalysis(args: UseAnalysisArgs) {
@@ -88,13 +125,13 @@ export function useAnalysis(args: UseAnalysisArgs) {
     annualSimulation.state === 'READY' &&
     annualSimulation.heatmapFeatures.length > 0
 
-  const heatmapFeaturesForMap =
-    activeHeatmapMode === 'annual-sun-access' ? annualSimulation.heatmapFeatures : shadingResult.heatmapFeatures
+  const mapCellsForMap =
+    activeHeatmapMode === 'annual-sun-access' ? toBinaryShadedCellsFromAnnualResult(annualSimulation.result) : []
 
   const heatmapComputeStateForMap =
     activeHeatmapMode === 'annual-sun-access'
       ? annualSimulation.state === 'RUNNING'
-        ? ('SCHEDULED' as const)
+        ? ('PENDING' as const)
         : annualSimulation.state === 'READY'
           ? ('READY' as const)
           : ('IDLE' as const)
@@ -107,7 +144,8 @@ export function useAnalysis(args: UseAnalysisArgs) {
         ? args.shadingSettings.enabled
         : false
 
-  const computeProcessingActive = shadingResult.computeState === 'SCHEDULED' || annualSimulation.state === 'RUNNING'
+  const computeProcessingActive =
+    shadingResult.computeState === 'PENDING' || shadingResult.computeState === 'STALE' || annualSimulation.state === 'RUNNING'
 
   const basePitchDeg = solved.activeSolved?.metrics.pitchDeg ?? null
   const solvedMetrics = useMemo(
@@ -136,14 +174,13 @@ export function useAnalysis(args: UseAnalysisArgs) {
       result: sunProjectionResult,
       onDatetimeInputChange: onSunDatetimeInputChange,
     },
-    liveShading: shadingResult,
     annualSimulation,
     heatmap: {
       activeMode: activeHeatmapMode,
       requestedMode: requestedHeatmapMode,
-      liveFeatures: shadingResult.heatmapFeatures,
+      liveCells: [],
       annualFeatures: annualSimulation.heatmapFeatures,
-      mapFeatures: heatmapFeaturesForMap,
+      mapCells: mapCellsForMap,
       mapComputeState: heatmapComputeStateForMap,
       mapEnabled: heatmapEnabledForMap,
       annualVisible: annualHeatmapVisible,
@@ -154,6 +191,15 @@ export function useAnalysis(args: UseAnalysisArgs) {
       shadingResultStatus: shadingResult.resultStatus,
       shadingStatusMessage: shadingResult.statusMessage,
       shadingDiagnostics: shadingResult.diagnostics,
+    },
+    liveShading: {
+      readyResult: shadingResult.readyResult,
+      computeState: shadingResult.computeState,
+      computeMode: shadingResult.computeMode,
+      resultStatus: shadingResult.resultStatus,
+      statusMessage: shadingResult.statusMessage,
+      diagnostics: shadingResult.diagnostics,
+      usedGridResolutionM: shadingResult.usedGridResolutionM,
     },
     productionComputationEnabled,
     setRequestedHeatmapMode,
