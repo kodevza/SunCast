@@ -1,9 +1,10 @@
 import type { ShadingRoofInput } from '../../geometry/shading'
 import type { RoofShadeDiagnosticsResults } from '../../geometry/shading'
 import type { ShadeComputationStatus } from '../../geometry/shading/types'
-import type { AnnualSunAccessResult } from '../../geometry/shading'
+import type { AnnualSunAccessResult, ComputeRoofShadeGridResult } from '../../geometry/shading'
 import type { SunProjectionResult } from '../../geometry/sun/sunProjection'
 import type { SolvedEntry } from './solvedRoof.types'
+import type { LngLat } from '../../types/geometry'
 
 export interface ShadeHeatmapFeature {
   type: 'Feature'
@@ -18,7 +19,12 @@ export interface ShadeHeatmapFeature {
   }
 }
 
-export type RoofShadingComputeState = 'IDLE' | 'SCHEDULED' | 'READY'
+export interface BinaryShadedCell {
+  roofId: string
+  cellPolygon: LngLat[]
+}
+
+export type RoofShadingComputeState = 'IDLE' | 'PENDING' | 'STALE' | 'READY'
 export type AnnualSimulationState = 'IDLE' | 'RUNNING' | 'READY' | 'ERROR'
 
 export interface AnnualSimulationProgress {
@@ -59,9 +65,9 @@ export interface AnalysisDiagnostics {
 export interface AnalysisHeatmapState {
   activeMode: ActiveHeatmapMode
   requestedMode: RequestedHeatmapMode
-  liveFeatures: ShadeHeatmapFeature[]
+  liveCells: BinaryShadedCell[]
   annualFeatures: ShadeHeatmapFeature[]
-  mapFeatures: ShadeHeatmapFeature[]
+  mapCells: BinaryShadedCell[]
   mapComputeState: RoofShadingComputeState
   mapEnabled: boolean
   annualVisible: boolean
@@ -84,7 +90,7 @@ export interface AnalysisState {
     onDatetimeInputChange: (datetimeIsoRaw: string) => void
   }
   liveShading: {
-    heatmapFeatures: ShadeHeatmapFeature[]
+    readyResult: ComputeRoofShadeGridResult | null
     computeState: RoofShadingComputeState
     computeMode: 'final' | 'coarse'
     resultStatus: ShadeComputationStatus | null

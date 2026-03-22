@@ -59,23 +59,11 @@ export interface SunDirection {
   z: number
 }
 
-export interface RoofShadeCell {
-  roofId: string
-  sample: {
-    x: number
-    y: number
-    z: number
-  }
-  shadeFactor: 0 | 1
-  cellPolygonLocal: Point2[]
-  cellPolygon: LngLat[]
-}
-
 export interface RoofShadeResult {
   roofId: string
-  shadedCellCount: number
-  litCellCount: number
-  cells: RoofShadeCell[]
+  shadeFactors: Uint8Array
+  cellPolygonPointCount: number
+  cellPolygonLonLat: Float64Array
 }
 
 export interface RoofShadeSnapshotResult {
@@ -131,10 +119,6 @@ export type ShadeComputationStatus =
 export interface ComputeRoofShadeGridResult {
   status: ShadeComputationStatus
   statusMessage: string
-  origin: LocalOrigin | null
-  sunAzimuthDeg: number | null
-  sunElevationDeg: number | null
-  sunDirection: SunDirection | null
   roofs: RoofShadeResult[]
   diagnostics: RoofShadeDiagnosticsResults
 }

@@ -158,7 +158,6 @@ Implemented high-value boundaries:
 - shared URL decode: `decodeSharePayloadResult(...)`
 - shared payload deserialize: `deserializeSharePayloadResult(...)`
 - obstacle mesh generation: `generateObstacleMeshResult(...)`
-- map heatmap worker failure reporting: `HEATMAP_WORKER_UNAVAILABLE`
 - ArcGIS attribution metadata fetch failure reporting (`map-view` / `arcgis-attribution`)
 - compute-progress reporting with shared lifecycle and bounded visibility
 
@@ -203,7 +202,7 @@ When processing fails:
 3. avoid silent recovery or hidden fallback behavior
 
 Examples:
-- Heatmap worker unavailable -> stop heatmap processing + `HEATMAP_WORKER_UNAVAILABLE` report.
+- Binary shaded-cell source data unavailable -> keep the map usable and render no shading polygons.
 - ArcGIS attribution metadata request fails -> keep basemap usable, display `Powered by Esri`, capture exception.
 
 ## 11. Testing Strategy For Error Handling
@@ -223,7 +222,7 @@ Recommended test areas:
 - storage parse/migration failure
 - shared URL decode/schema failure
 - mesh build invalid geometry
-- worker unavailable/dispatch failure
+- shaded-cell fill-layer source sync
 - provider API failures (place search/forecast/attribution metadata)
 - processing toast lifecycle: start, sticky, min/max visibility, dismiss key behavior
 

@@ -10,7 +10,7 @@ If this document conflicts with higher-priority contracts, follow:
 ## Invariants
 
 - Canonical persisted state is project inputs only: footprints, constraints, obstacles, and explicit sun/shading settings, including the annual shading date window.
-- Derived artifacts are never canonical persisted truth: solved planes, meshes, heatmap/grid outputs, map/view state, rendering buffers.
+- Derived artifacts are never canonical persisted truth: solved planes, meshes, heatmap/grid outputs, binary shaded-cell overlays, map/view state, rendering buffers.
 - Geometry computations run in local metric coordinates, not raw lon/lat.
 
 ## Module Boundaries
@@ -42,7 +42,7 @@ Responsibilities:
 Rules:
 - authoritative owner of canonical project inputs
 - fail-closed on unknown future schema versions
-- must not persist solved geometry/meshes/heatmap outputs
+- must not persist solved geometry/meshes/heatmap outputs or shaded-cell overlays
 - must not import `src/app/*`
 - runtime selection/session selectors do not belong here; they live with `src/app/editor-session/*`
 
@@ -212,17 +212,17 @@ Responsibilities:
 - interactions, orbit/sun camera sync, map navigation runtime sync
 
 Rules:
-- does not own roof/obstacle/heatmap custom-layer lifecycle
+- does not own roof/obstacle/binary shaded-cell layer lifecycle
 - does not implement domain geometry algorithms
 
 ### `src/app/features/map-editor/MapObjects/*` (Map object rendering boundary)
 
 Responsibilities:
-- custom 3D layers for roof meshes, obstacle meshes, roof heatmap overlay
+- custom 3D layers for roof meshes, obstacle meshes, and roof-projected binary shaded-cell overlay sync
 - visibility synchronization from presentation/analysis state
 
 Rules:
-- consumes derived meshes/heatmap features only
+- consumes derived meshes and shaded-cell overlays only
 - no ownership of canonical persisted state
 - no map interaction intent handling
 
@@ -294,13 +294,13 @@ Rules:
 ### `src/rendering/*` (Rendering primitives)
 
 Responsibilities:
-- reusable custom-layer and heatmap geometry rendering primitives
+- reusable custom-layer rendering primitives and shared world-geometry adapters
 - Three.js / MapLibre render-path code shared by map-object features
 
 Rules:
 - should consume derived render inputs only
 - must not own canonical state
-- may own shared world-geometry adapters, layer rebasing helpers, worker entry points, and WebGL renderer lifecycle code used by map-object features
+- may own shared world-geometry adapters, layer rebasing helpers, and WebGL renderer lifecycle code used by map-object features
 
 ### `src/shared/*` (Cross-cutting contracts/utilities)
 
@@ -354,7 +354,7 @@ Disallowed:
 - `geometry/*` importing React/MapLibre/browser APIs
 - UI/features/screens implementing solver or shading algorithms
 - rendering/map layers becoming canonical state owners
-- persistence/share storing derived meshes/planes/heatmap grids
+- persistence/share storing derived meshes/planes/shaded-cell outputs
 - features bypassing `app/clients/*` and inlining provider HTTP transport
 - `app/hooks/*` importing `app/screens/*`
 - direct `geometry/*` imports from `app/features/sun-tools/*` remain current-state exceptions only; do not spread that pattern further without an explicit boundary decision

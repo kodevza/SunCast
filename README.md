@@ -7,7 +7,7 @@ Live demo: [SunCast Demo](https://kodevza.github.io/SunCast/)
 ## Core Principles
 
 - geometry + constraints are canonical state
-- meshes/heatmaps are derived artifacts
+- meshes and shading overlays are derived artifacts
 - solvers run in local metric coordinates (not raw lon/lat)
 
 ## Main Capabilities
@@ -18,7 +18,7 @@ Live demo: [SunCast Demo](https://kodevza.github.io/SunCast/)
 - planar roof solve with pitch/azimuth metrics
 - orbit 3D mesh visualization
 - live roof shading preview
-- annual sun-access simulation and heatmap
+- annual sun-access simulation
 - basemap switch (`Satellite` / `Streets`)
 - visible basemap attribution control
 - place search (Photon)

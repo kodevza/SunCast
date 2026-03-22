@@ -45,14 +45,14 @@
 ## D8. Progressive Shading Computation During Interaction
 
 - Status: accepted
-- Decision: run lower-cost coarse shading while geometry is actively edited/dragged, then resolve to full-resolution shading when interaction settles; cache by deterministic input fingerprint.
-- Why: preserves UI responsiveness during edits while keeping final shading output deterministic for stable inputs.
+- Decision: run lower-cost coarse shading while geometry is actively edited/dragged, then resolve to full-resolution shading when interaction settles; cache by deterministic input fingerprint; keep the previous shaded result visible while async recompute is pending (`PENDING` / `STALE` / `READY` state flow).
+- Why: preserves UI responsiveness during edits while keeping final shading output deterministic for stable inputs and preventing render-time compute from blocking interaction.
 
 ## D9. Worker-First Roof Heatmap Overlay Build With Fail-Closed Degradation
 
-- Status: accepted
-- Decision: build roof heatmap overlay geometry in a Web Worker when available; on worker unavailability/failure/dispatch errors, stop heatmap processing and surface a typed recoverable app error.
-- Why: heavy triangulation/projection work should not block map interaction, and failure handling must be explicit and deterministic instead of silently switching execution modes.
+- Status: superseded
+- Decision: this worker-backed roof heatmap overlay path has been replaced by binary shaded-cell fill-layer sync in the map rendering pipeline.
+- Why: live roof shading no longer needs worker triangulation/projection or intensity styling.
 
 ## D10. Selective Legacy-Default Upgrade For Shading Grid Resolution
 
@@ -87,7 +87,7 @@
 ## D15. Layer-Relative Rebasing For Custom 3D Map Layers
 
 - Status: accepted
-- Decision: roof, obstacle, and heatmap custom layers render geometry in layer-relative coordinates and apply one per-layer anchor translation in the camera projection matrix.
+- Decision: roof, obstacle, and shaded-cell custom layers render geometry in layer-relative coordinates and apply one per-layer anchor translation in the camera projection matrix.
 - Why: prevents float32 precision loss when adding meter-scale deltas to large Mercator anchor values; without rebasing, small geometry can collapse/jitter/disappear at runtime.
 
 ## D16. Typed Operational Errors With Central Toast Notification Channel
@@ -99,8 +99,14 @@
 ## D17. MapObjects Owns Custom Layer Lifecycle (MapView Owns Map Runtime)
 
 - Status: accepted
-- Decision: `MapView` is responsible for base-map runtime, sources, interactions, and camera state; `MapObjects` exclusively owns custom roof/obstacle/heatmap layer creation, disposal, and geometry sync.
+- Decision: `MapView` is responsible for base-map runtime, sources, interactions, and camera state; `MapObjects` exclusively owns custom roof/obstacle/shaded-cell layer creation, disposal, and geometry sync.
 - Why: removes mixed responsibilities from `useMapInstance`, enforces map-runtime vs object-render boundary, and makes rendering lifecycle testable in isolation.
+
+## D20. Roof-Projected Binary Shaded-Cell Layer For Live Roof Shading
+
+- Status: accepted
+- Decision: live roof shading is rendered as binary shaded cells via a constant-style monochrome custom layer projected onto the roof surface, derived from `computeRoofShadeGrid` output and not from heatmap intensity styling.
+- Why: keeps the rendering path minimal, avoids heatmap-specific styling/worker complexity, and preserves deterministic geometry-driven shading output.
 
 ## D18. Single-Style Basemap Switching With Explicit Attribution Control
 

@@ -1,5 +1,5 @@
 import { computeSolarPosition } from '../sun/sunPosition'
-import { localMetersToLonLat } from '../projection/localMeters'
+import { localMetersToLonLat, type LocalOrigin } from '../projection/localMeters'
 import { computeShadeSnapshot } from './computeShadeSnapshot'
 import { prepareShadingScene } from './prepareShadingScene'
 import type { ComputeRoofShadeGridInput, ComputeRoofShadeGridResult } from './types'
@@ -16,6 +16,21 @@ function emptyDiagnostics() {
   }
 }
 
+function writeCellPolygonLonLat(
+  target: Float64Array,
+  targetOffset: number,
+  origin: LocalOrigin,
+  polygonLocal: ReadonlyArray<{ x: number; y: number }>,
+): void {
+  let writeIndex = targetOffset
+  for (const point of polygonLocal) {
+    const [lon, lat] = localMetersToLonLat(origin, point)
+    target[writeIndex] = lon
+    target[writeIndex + 1] = lat
+    writeIndex += 2
+  }
+}
+
 
 
 function toStatusResult(
@@ -26,10 +41,6 @@ function toStatusResult(
   return {
     status,
     statusMessage,
-    origin: partial?.origin ?? null,
-    sunAzimuthDeg: partial?.sunAzimuthDeg ?? null,
-    sunElevationDeg: partial?.sunElevationDeg ?? null,
-    sunDirection: partial?.sunDirection ?? null,
     roofs: partial?.roofs ?? [],
     diagnostics: partial?.diagnostics ?? emptyDiagnostics(),
   }
@@ -70,52 +81,42 @@ export function computeRoofShadeGrid(input: ComputeRoofShadeGridInput): ComputeR
 
   if (snapshot.status !== 'OK') {
     return toStatusResult(snapshot.status, snapshot.statusMessage, {
-      origin: scene.origin,
-      sunAzimuthDeg: snapshot.sunAzimuthDeg,
-      sunElevationDeg: snapshot.sunElevationDeg,
-      sunDirection: snapshot.sunDirection,
       diagnostics: snapshot.diagnostics,
     })
   }
 
-  const roofSnapshotById = new Map(snapshot.roofs.map((roof) => [roof.roofId, roof]))
+  const roofs: ComputeRoofShadeGridResult['roofs'] = scene.roofs.map((roof, roofIndex) => {
+    const roofSnapshot = snapshot.roofs[roofIndex]
+    const sampleCount = roof.samples.length
+    const cellPolygonPointCount = roof.samples[0]?.cellPolygonLocal.length ?? 0
+    const shadeFactors = new Uint8Array(sampleCount)
+    const cellPolygonLonLat = new Float64Array(sampleCount * cellPolygonPointCount * 2)
 
-  const roofs: ComputeRoofShadeGridResult['roofs'] = scene.roofs.map((roof) => {
-    const roofSnapshot = roofSnapshotById.get(roof.roofId)
-    if (!roofSnapshot) {
+    if (sampleCount === 0 || cellPolygonPointCount === 0) {
       return {
         roofId: roof.roofId,
-        shadedCellCount: 0,
-        litCellCount: roof.samples.length,
-        cells: roof.samples.map((sample) => ({
-          roofId: roof.roofId,
-          sample: { x: sample.x, y: sample.y, z: sample.z },
-          shadeFactor: 0,
-          cellPolygonLocal: sample.cellPolygonLocal,
-          cellPolygon: sample.cellPolygonLocal.map((point) => localMetersToLonLat(scene.origin, point)),
-        })),
+        shadeFactors,
+        cellPolygonPointCount,
+        cellPolygonLonLat,
       }
+    }
+
+    for (let index = 0; index < sampleCount; index += 1) {
+      const sample = roof.samples[index]
+      const shadeFactor = roofSnapshot?.shadeFactors[index] ?? 0
+      shadeFactors[index] = shadeFactor
+      writeCellPolygonLonLat(cellPolygonLonLat, index * cellPolygonPointCount * 2, scene.origin, sample.cellPolygonLocal)
     }
 
     return {
       roofId: roof.roofId,
-      shadedCellCount: roofSnapshot.shadedCellCount,
-      litCellCount: roofSnapshot.litCellCount,
-      cells: roof.samples.map((sample, index) => ({
-        roofId: roof.roofId,
-        sample: { x: sample.x, y: sample.y, z: sample.z },
-        shadeFactor: roofSnapshot.shadeFactors[index] ?? 0,
-        cellPolygonLocal: sample.cellPolygonLocal,
-        cellPolygon: sample.cellPolygonLocal.map((point) => localMetersToLonLat(scene.origin, point)),
-      })),
+      shadeFactors,
+      cellPolygonPointCount,
+      cellPolygonLonLat,
     }
   })
 
   return toStatusResult('OK', 'Shading grid computed', {
-    origin: scene.origin,
-    sunAzimuthDeg: snapshot.sunAzimuthDeg,
-    sunElevationDeg: snapshot.sunElevationDeg,
-    sunDirection: snapshot.sunDirection,
     roofs,
     diagnostics: snapshot.diagnostics,
   })

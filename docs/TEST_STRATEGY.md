@@ -37,7 +37,7 @@ Legacy e2e specs (`roof-orbit.spec.ts`, `uc-strategy.spec.ts`) are intentionally
    - “sun-behind-plane not counted as direct sun access” regressions
 3. Map object rendering math:
    - layer rebasing precision guard (`rendering/shared/layerRebasing.test.ts`)
-   - world mesh conversion and roof heatmap overlay projection tests
+   - world mesh conversion and projected binary shaded-cell overlay tests
 4. Client transport boundaries:
    - `src/app/clients/photonClient.test.ts`
    - `src/app/clients/openMeteoClient.test.ts`
@@ -48,7 +48,7 @@ Legacy e2e specs (`roof-orbit.spec.ts`, `uc-strategy.spec.ts`) are intentionally
 ## Determinism Rules
 
 - correctness tests for shading/annual simulation should prefer real engine paths and deterministic fixtures over broad mocks.
-- same input must yield same metrics (hours/ratios/heatmap intensities).
+- same input must yield same metrics (hours/ratios/shaded-cell output).
 - cache tests must verify identity reuse for unchanged fingerprints and invalidation on cache revision changes.
 
 ## Coverage Policy

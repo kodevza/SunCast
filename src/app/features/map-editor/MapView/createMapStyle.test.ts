@@ -31,10 +31,10 @@ describe('createMapStyle', () => {
     })
   })
 
-  it('does not register ground shading heatmap source or layer', () => {
+  it('does not register a flat shaded-cell fill layer', () => {
     const style = createMapStyle()
 
-    expect(style.sources['shading-heatmap']).toBeUndefined()
-    expect(style.layers.some((layer) => layer.type === 'heatmap')).toBe(false)
+    expect(style.layers.some((layer) => layer.id === 'roof-shaded-cells-fill')).toBe(false)
+    expect(style.sources['roof-shaded-cells']).toBeUndefined()
   })
 })

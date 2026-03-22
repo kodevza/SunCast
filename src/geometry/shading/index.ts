@@ -30,7 +30,6 @@ export type {
   PreparedShadingScene,
   PrepareShadingSceneInput,
   RoofSamplePoint,
-  RoofShadeCell,
   RoofShadeDiagnosticsResults,
   RoofShadeResult,
   RoofShadeSnapshotResult,

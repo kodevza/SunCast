@@ -1,6 +1,8 @@
 import type { RefObject } from 'react'
 import type maplibregl from 'maplibre-gl'
-import type { ObstacleMeshData, RoofHeatmapFeature, RoofMeshData } from '../../../../types/geometry'
+import type { ObstacleMeshData, RoofMeshData } from '../../../../types/geometry'
+import type { BinaryShadedCell } from '../../../analysis/analysis.types'
+import type { ComputeRoofShadeGridResult } from '../../../../geometry/shading'
 import { useMapObjectsSync } from './hooks/useMapObjectsSync'
 
 export interface MapObjectsModel {
@@ -8,11 +10,13 @@ export interface MapObjectsModel {
   mapLoaded: boolean
   roofMeshes: RoofMeshData[]
   obstacleMeshes: ObstacleMeshData[]
-  heatmapFeatures: RoofHeatmapFeature[]
+  shadingMode: 'live-shading' | 'annual-sun-access' | 'none'
+  shadingCells: BinaryShadedCell[]
+  shadingResult: ComputeRoofShadeGridResult | null
   orbitEnabled: boolean
   meshesVisible: boolean
   shadingEnabled: boolean
-  shadingComputeState: 'IDLE' | 'SCHEDULED' | 'READY'
+  shadingComputeState: 'IDLE' | 'PENDING' | 'STALE' | 'READY'
 }
 
 export function useMapObjects(model: MapObjectsModel): void {

@@ -1,20 +1,24 @@
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import type maplibregl from 'maplibre-gl'
-import type { ObstacleMeshData, RoofHeatmapFeature, RoofMeshData } from '../../../../../types/geometry'
-import { RoofHeatmapLayer } from '../../../../../rendering/roof-layer/RoofHeatmapLayer'
+import type { ObstacleMeshData, RoofMeshData } from '../../../../../types/geometry'
+import type { BinaryShadedCell } from '../../../../analysis/analysis.types'
+import type { ComputeRoofShadeGridResult } from '../../../../../geometry/shading'
 import { buildObstacleLayerGeometry, buildRoofLayerGeometry } from '../../../../../rendering/shared/layerGeometryAdapters'
 import { WorldMeshLayer } from '../layers/MapObjectMeshLayer'
+import { ProjectedBinaryShadeLayer } from '../layers/ProjectedBinaryShadeLayer'
 
 interface UseMapObjectsSyncArgs {
   mapRef: RefObject<maplibregl.Map | null>
   mapLoaded: boolean
   roofMeshes: RoofMeshData[]
   obstacleMeshes: ObstacleMeshData[]
-  heatmapFeatures: RoofHeatmapFeature[]
+  shadingMode: 'live-shading' | 'annual-sun-access' | 'none'
+  shadingCells: BinaryShadedCell[]
+  shadingResult: ComputeRoofShadeGridResult | null
   orbitEnabled: boolean
   meshesVisible: boolean
   shadingEnabled: boolean
-  shadingComputeState: 'IDLE' | 'SCHEDULED' | 'READY'
+  shadingComputeState: 'IDLE' | 'PENDING' | 'STALE' | 'READY'
 }
 
 export function useMapObjectsSync({
@@ -22,7 +26,9 @@ export function useMapObjectsSync({
   mapLoaded,
   roofMeshes,
   obstacleMeshes,
-  heatmapFeatures,
+  shadingMode,
+  shadingCells,
+  shadingResult,
   orbitEnabled,
   meshesVisible,
   shadingEnabled,
@@ -30,10 +36,10 @@ export function useMapObjectsSync({
 }: UseMapObjectsSyncArgs): void {
   const roofLayerRef = useRef<WorldMeshLayer | null>(null)
   const obstacleLayerRef = useRef<WorldMeshLayer | null>(null)
-  const heatmapLayerRef = useRef<RoofHeatmapLayer | null>(null)
+  const shadeLayerRef = useRef<ProjectedBinaryShadeLayer | null>(null)
   const roofGeometry = useMemo(() => buildRoofLayerGeometry(roofMeshes, 1), [roofMeshes])
   const obstacleGeometry = useMemo(() => buildObstacleLayerGeometry(obstacleMeshes, 1), [obstacleMeshes])
-  const heatmapVisible = orbitEnabled && shadingEnabled && shadingComputeState === 'READY'
+  const shadeLayerVisible = orbitEnabled && shadingEnabled && shadingComputeState !== 'PENDING' && shadingComputeState !== 'IDLE'
   const meshLayersVisible = orbitEnabled && meshesVisible
 
   useEffect(() => {
@@ -68,32 +74,32 @@ export function useMapObjectsSync({
         base: false,
       },
     )
-    const heatmapLayer = new RoofHeatmapLayer('roof-heatmap-layer')
+    const shadeLayer = new ProjectedBinaryShadeLayer('roof-shaded-cells-layer')
 
     map.addLayer(roofLayer)
-    map.addLayer(heatmapLayer)
     map.addLayer(obstacleLayer)
+    map.addLayer(shadeLayer)
     obstacleLayer.setZExaggeration(1)
     roofLayer.setZExaggeration(1)
-    heatmapLayer.setZExaggeration(1)
+    shadeLayer.setZExaggeration(1)
 
     roofLayerRef.current = roofLayer
     obstacleLayerRef.current = obstacleLayer
-    heatmapLayerRef.current = heatmapLayer
+    shadeLayerRef.current = shadeLayer
 
     return () => {
+      if (map.getLayer(shadeLayer.id)) {
+        map.removeLayer(shadeLayer.id)
+      }
       if (map.getLayer(obstacleLayer.id)) {
         map.removeLayer(obstacleLayer.id)
-      }
-      if (map.getLayer(heatmapLayer.id)) {
-        map.removeLayer(heatmapLayer.id)
       }
       if (map.getLayer(roofLayer.id)) {
         map.removeLayer(roofLayer.id)
       }
       roofLayerRef.current = null
       obstacleLayerRef.current = null
-      heatmapLayerRef.current = null
+      shadeLayerRef.current = null
     }
   }, [mapLoaded, mapRef])
 
@@ -115,15 +121,20 @@ export function useMapObjectsSync({
     if (!mapLoaded) {
       return
     }
-    heatmapLayerRef.current?.setRoofMeshes(roofMeshes)
-  }, [heatmapLayerRef, mapLoaded, roofMeshes])
+    shadeLayerRef.current?.setRoofMeshes(roofMeshes)
+    if (shadingMode === 'annual-sun-access') {
+      shadeLayerRef.current?.setShadedCells(shadingCells)
+    } else {
+      shadeLayerRef.current?.setShadeResult(shadingResult)
+    }
+  }, [mapLoaded, roofMeshes, shadingCells, shadingMode, shadingResult])
 
   useEffect(() => {
     if (!mapLoaded) {
       return
     }
-    heatmapLayerRef.current?.setHeatmapFeatures(heatmapFeatures)
-  }, [heatmapFeatures, heatmapLayerRef, mapLoaded])
+    shadeLayerRef.current?.setVisible(shadeLayerVisible)
+  }, [mapLoaded, shadeLayerVisible])
 
   useEffect(() => {
     if (!mapLoaded) {
@@ -131,6 +142,5 @@ export function useMapObjectsSync({
     }
     roofLayerRef.current?.setVisible(meshLayersVisible)
     obstacleLayerRef.current?.setVisible(meshLayersVisible)
-    heatmapLayerRef.current?.setVisible(heatmapVisible)
-  }, [heatmapVisible, mapLoaded, meshLayersVisible])
+  }, [mapLoaded, meshLayersVisible])
 }

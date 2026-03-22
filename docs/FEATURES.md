@@ -12,7 +12,7 @@
 - Visible attribution control (OSM fixed wording; Esri + dynamic provider metadata).
 - Draw workflow hints and keyboard shortcuts (`Backspace`/`Ctrl|Cmd+Z` undo, `Enter` finish).
 - Sun projection and daily/annual production charts.
-- Live roof-shading heatmap + annual sun-access simulation.
+- Live roof-shading preview + annual sun-access simulation.
 - Weather-forecast daily estimate (Open-Meteo).
 - Address/place search (Photon).
 - Shareable project payload in URL.
