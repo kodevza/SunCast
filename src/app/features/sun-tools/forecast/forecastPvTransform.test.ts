@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { aggregateForecastProfiles, createRoofForecastProfile, mergeSettledRoofForecasts } from './forecastPvTransform'
+import {
+  aggregateForecastProfiles,
+  calculateHourlyForecastEnergyKwh,
+  createRoofForecastProfile,
+  mergeSettledRoofForecasts,
+} from './forecastPvTransform'
 
 describe('forecastPvTransform', () => {
   it('filters out zero/non-positive/invalid irradiance points', () => {
@@ -52,5 +57,25 @@ describe('forecastPvTransform', () => {
 
   it('returns empty aggregation for zero points', () => {
     expect(aggregateForecastProfiles([[], []])).toEqual([])
+  })
+
+  it('calculates total daily energy from all hourly forecast points', () => {
+    expect(
+      calculateHourlyForecastEnergyKwh([
+        { minuteOfDay: 600, timeLabel: '10:00', estimatedKw: 1.25 },
+        { minuteOfDay: 660, timeLabel: '11:00', estimatedKw: 2.5 },
+        { minuteOfDay: 720, timeLabel: '12:00', estimatedKw: 0.75 },
+      ]),
+    ).toBeCloseTo(4.5, 9)
+  })
+
+  it('ignores invalid forecast power values when calculating daily energy', () => {
+    expect(
+      calculateHourlyForecastEnergyKwh([
+        { minuteOfDay: 600, timeLabel: '10:00', estimatedKw: 1 },
+        { minuteOfDay: 660, timeLabel: '11:00', estimatedKw: Number.NaN },
+        { minuteOfDay: 720, timeLabel: '12:00', estimatedKw: -2 },
+      ]),
+    ).toBe(1)
   })
 })

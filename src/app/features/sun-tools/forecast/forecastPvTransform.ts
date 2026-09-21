@@ -7,6 +7,18 @@ export interface ForecastPoint {
   estimatedKw: number
 }
 
+/** Open-Meteo returns one irradiance value for every hourly forecast interval. */
+const HOURLY_FORECAST_INTERVAL_HOURS = 1
+
+export function calculateHourlyForecastEnergyKwh(points: ForecastPoint[]): number {
+  return points.reduce((totalEnergyKwh, point) => {
+    if (!Number.isFinite(point.estimatedKw) || point.estimatedKw <= 0) {
+      return totalEnergyKwh
+    }
+    return totalEnergyKwh + point.estimatedKw * HOURLY_FORECAST_INTERVAL_HOURS
+  }, 0)
+}
+
 export function createRoofForecastProfile(
   samples: OpenMeteoTiltedIrradianceSample[],
   dateIso: string,

@@ -13,7 +13,7 @@
 - Draw workflow hints and keyboard shortcuts (`Backspace`/`Ctrl|Cmd+Z` undo, `Enter` finish).
 - Sun projection and daily/annual production charts.
 - Live roof-shading preview + annual sun-access simulation.
-- Weather-forecast daily estimate (Open-Meteo).
+- Weather-forecast daily estimate (Open-Meteo), including the total kWh for all selected roof polygons.
 - Address/place search (Photon).
 - Shareable project payload in URL.
 - Tutorial overlay and guided onboarding.

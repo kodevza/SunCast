@@ -13,6 +13,7 @@ import {
 import { useMemo } from 'react'
 import { Line } from 'react-chartjs-2'
 import { useForecastPv } from './useForecastPv'
+import { calculateHourlyForecastEnergyKwh } from './forecast/forecastPvTransform'
 import type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
@@ -107,6 +108,9 @@ export function ForecastPvPanel({
     }
     return forecastPoints.reduce((peak, point) => (point.estimatedKw > peak.estimatedKw ? point : peak), forecastPoints[0])
   }, [forecastPoints])
+
+  const forecastEnergyKwh = useMemo(() => calculateHourlyForecastEnergyKwh(forecastPoints), [forecastPoints])
+
   return (
     <section className="panel-section">
       <h3>Day Estimated (Weather Forecast, UTC)</h3>
@@ -127,6 +131,9 @@ export function ForecastPvPanel({
           </div>
           <p data-testid="sun-forecast-peak">
             Peak: {forecastPeak.estimatedKw.toFixed(2)} kW at {forecastPeak.timeLabel}
+          </p>
+          <p data-testid="sun-forecast-total-energy">
+            Total energy: {forecastEnergyKwh.toFixed(2)} kWh
           </p>
           <p data-testid="sun-forecast-points">Points: {forecastPoints.length}</p>
           <p data-testid="sun-forecast-date">Date (UTC): {selectedDateIso}</p>
