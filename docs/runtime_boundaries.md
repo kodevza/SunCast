@@ -31,6 +31,18 @@ Rules:
 - no side effects or persistence
 - shared deterministic helpers from `src/shared/utils/*` are currently used here for date/time and error/result primitives; keep those helpers UI-free
 
+### `src/core/*` (Shared production core)
+
+Responsibilities:
+- shared modelled and forecast production calculations plus production-report contracts
+- machine-readable assumptions corresponding to `docs/MEASUREMENTS.md`
+- Open-Meteo and PVGIS provider adapters consumable by both React and CLI
+
+Rules:
+- no React, MapLibre, rendering, storage, or canonical project-state ownership
+- provider failures are represented in derived reports and never persisted
+- UI owns request lifecycle, cancellation presentation, telemetry, and toasts
+
 ### `src/state/project-store/*` (Canonical project document + persistence)
 
 Responsibilities:

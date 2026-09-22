@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+gitleaks_bin="$(command -v gitleaks || true)"
+if test -z "$gitleaks_bin" && command -v go >/dev/null 2>&1; then
+  go_gitleaks="$(go env GOPATH)/bin/gitleaks"
+  if test -x "$go_gitleaks"; then
+    gitleaks_bin="$go_gitleaks"
+  fi
+fi
+
+if test -z "$gitleaks_bin"; then
+  printf '%s\n' '[pre-commit] gitleaks is required to scan staged changes for secrets.' >&2
+  printf '%s\n' 'Install it from https://github.com/gitleaks/gitleaks, then retry the commit.' >&2
+  exit 1
+fi
+
+printf '%s\n' '[pre-commit] scanning staged changes for secrets...'
+"$gitleaks_bin" git --pre-commit --redact --staged --verbose --config .gitleaks.toml
+
 printf '%s\n' '[pre-commit] running lint, tests, and build...'
 npm run precommit:check

@@ -58,6 +58,37 @@ npm run build
 npm run validate:repo
 ```
 
+## Production core and CLI
+
+`src/core` is the shared production module used by the React app and the CLI.
+It owns forecast aggregation, the Open-Meteo/PVGIS providers, and the
+machine-readable assumptions from `docs/MEASUREMENTS.md`; it does not own
+canonical project persistence or UI state.
+
+`suncast-cli` is published as a Node.js 20+ package. Its distribution bundles
+the production core, so installing it does not pull React, MapLibre, Three.js,
+or the application source tree. It exposes the core at `suncast-cli` (and
+`suncast-cli/core`) and installs the `suncast` executable.
+
+The CLI accepts a JSON file with `createdDateTime` (ISO timestamp with a
+timezone) and an array of solved roof inputs (`SelectedRoofSunInput` shape).
+It derives the forecast day in UTC from `createdDateTime`.
+
+```bash
+npx suncast-cli report ./forecast-input.json --format table
+npx suncast-cli report ./forecast-input.json --format json
+```
+
+In the web app, select solved roof polygons, then choose **Export CLI JSON** in
+the **Day Estimated (Weather Forecast, UTC)** panel.
+The browser downloads `suncast-forecast-YYYY-MM-DD.json`, ready for either
+command above. The export contains derived report input only; it does not alter
+the persisted SunCast project.
+
+For local development use `npm run cli -- …`; create the publishable artifact
+with `npm run build:package`, inspect it with `npm pack --dry-run`, then publish
+from an authenticated npm account after a license and owner have been chosen.
+
 Coverage-oriented e2e run:
 
 ```bash

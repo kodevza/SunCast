@@ -107,6 +107,26 @@ export default defineConfig([
     },
   },
   {
+    files: ['src/core/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: [
+              '../app/**',
+              '../../app/**',
+              '@/app/**',
+              '../cli/**',
+              '../../cli/**',
+              '@/cli/**',
+            ],
+            message: 'core must not depend on app or cli',
+          },
+        ],
+      }],
+    },
+  },
+  {
     files: ['src/app/presentation/**/*.{ts,tsx,js,jsx}'],
     rules: {
       'no-restricted-imports': ['error', {

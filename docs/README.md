@@ -8,6 +8,7 @@
 - `DECISIONS.md`
 - `ERROR_HANDLING.md`
 - `FEATURES.md`
+- `OBLICZENIA_PRODUKCJI.md`
 - `VENDOR_HANDOVER.md`
 - `runtime_boundaries.md`
 - `TEST_STRATEGY.md`

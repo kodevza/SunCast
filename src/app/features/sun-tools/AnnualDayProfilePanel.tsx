@@ -12,7 +12,7 @@ import {
 } from 'chart.js'
 import { useMemo } from 'react'
 import { Line } from 'react-chartjs-2'
-import { deriveAnnualDayProfile } from '../../analysis/deriveAnnualDayProfile'
+import { deriveAnnualDayProfile } from '../../../core'
 import { extractYearInTimeZone } from './sunDateTime'
 import type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
 

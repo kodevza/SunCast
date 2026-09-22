@@ -30,3 +30,4 @@ src.zip
 test-results
 .nyc_output
 coverage
+test.json

@@ -119,3 +119,9 @@
 - Status: accepted
 - Decision: Photon and Open-Meteo transport concerns (URL/query/build/request/status/raw JSON) live in dedicated clients; feature providers/hooks keep retry/cache/mapping/observability policy.
 - Why: centralizes endpoint ownership, removes duplicated low-level HTTP code, and keeps business logic separate from transport concerns.
+
+## D21. Publish a Bundled, Node-Only Production Core and CLI
+
+- Status: accepted
+- Decision: publish `suncast-cli` with a dependency-free bundled runtime core and a `suncast` executable. The package exposes the core as `suncast-cli`/`suncast-cli/core`; the CLI is a thin input/output adapter over the same core.
+- Why: makes production reporting reusable outside the browser application without distributing or installing the React/map/rendering stack, while retaining one tested implementation for the app and command line.

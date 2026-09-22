@@ -13,7 +13,8 @@ import {
 import { useMemo } from 'react'
 import { Line } from 'react-chartjs-2'
 import { useForecastPv } from './useForecastPv'
-import { calculateHourlyForecastEnergyKwh } from './forecast/forecastPvTransform'
+import { calculateHourlyForecastEnergyKwh, createForecastCliInput } from '../../../core'
+import { reportAppErrorCode, reportAppSuccess } from '../../../shared/errors'
 import type { SelectedRoofSunInput } from '../../../types/presentation-contracts'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
@@ -111,9 +112,37 @@ export function ForecastPvPanel({
 
   const forecastEnergyKwh = useMemo(() => calculateHourlyForecastEnergyKwh(forecastPoints), [forecastPoints])
 
+  const exportCliInput = () => {
+    try {
+      const cliInput = createForecastCliInput(selectedRoofs)
+      const content = JSON.stringify(cliInput, null, 2)
+      const url = URL.createObjectURL(new Blob([`${content}\n`], { type: 'application/json' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `suncast-forecast-${cliInput.createdDateTime.slice(0, 10)}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+      reportAppSuccess('CLI input JSON downloaded.', { area: 'cli-input-export', createdDateTime: cliInput.createdDateTime })
+    } catch (cause) {
+      reportAppErrorCode('FORECAST_FAILED', 'Could not export CLI input JSON.', {
+        cause,
+        context: { area: 'cli-input-export', reason: 'download-failed' },
+      })
+    }
+  }
+
   return (
     <section className="panel-section">
       <h3>Day Estimated (Weather Forecast, UTC)</h3>
+      <button
+        type="button"
+        onClick={exportCliInput}
+        disabled={selectedRoofs.length === 0}
+        title="Download input for: npx suncast-cli report <file>.json"
+        data-testid="export-cli-input-button"
+      >
+        Export CLI JSON
+      </button>
       {!selectedDateIso && <p>Select datetime above to load irradiance forecast.</p>}
       {!computationEnabled && <p>Production computation paused while editing geometry.</p>}
       {computationEnabled && selectedDateIso && !hasForecastInputs && (

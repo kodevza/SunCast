@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { fetchOpenMeteoTiltedIrradiance } from './forecast/openMeteoForecast'
-import { createRoofForecastProfile, mergeSettledRoofForecasts, type ForecastPoint } from './forecast/forecastPvTransform'
+import {
+  fetchOpenMeteoTiltedIrradiance,
+  getForecastProductionReport,
+  type ForecastPoint,
+} from '../../../core'
 import { extractDateIsoInTimeZone } from './sunDateTime'
 import { captureException, recordEvent } from '../../../shared/observability/observability'
 import { reportAppErrorCode, startGlobalProcessingToast, stopGlobalProcessingToast } from '../../../shared/errors'
@@ -57,50 +60,35 @@ export function useForecastPv({
       setForecastError(null)
     })
 
-    Promise.allSettled(
-      selectedRoofs.map(async (roof) => {
-        const samples = await fetchOpenMeteoTiltedIrradiance({
+    getForecastProductionReport({
+      dateIso: selectedDateIso,
+      roofs: selectedRoofs,
+      signal: abortController.signal,
+      fetchRoofIrradiance: (roof, dateIso, signal) =>
+        fetchOpenMeteoTiltedIrradiance({
           latDeg: roof.latDeg,
           lonDeg: roof.lonDeg,
           roofPitchDeg: roof.roofPitchDeg,
           roofAzimuthDeg: roof.roofAzimuthDeg,
           timeZone: FORECAST_TIME_ZONE,
-          dateIso: selectedDateIso,
-          signal: abortController.signal,
+          dateIso,
+          signal,
         })
-        return createRoofForecastProfile(samples, selectedDateIso, roof.kwp)
-      }),
-    )
-      .then((results) => {
-        const merged = mergeSettledRoofForecasts(results)
-        setForecastPoints(merged.points)
-
-        if (merged.succeededRoofCount === 0 && merged.failedRoofCount > 0) {
-          const message = 'Forecast unavailable for all selected polygons.'
+    })
+      .then((report) => {
+        setForecastPoints(report.points)
+        if (report.status === 'unavailable') {
+          const message = report.warnings[0] ?? 'Forecast unavailable for selected polygons.'
           setForecastError(message)
           if (lastReportedErrorRef.current !== message) {
             reportAppErrorCode('FORECAST_FAILED', message, {
-              context: { area: 'forecast-hook', failedRoofCount: merged.failedRoofCount, mode: 'all' },
+              context: { area: 'forecast-hook', mode: 'unavailable' },
             })
             lastReportedErrorRef.current = message
           }
-          recordEvent('forecast.unavailable_all', { failedRoofCount: merged.failedRoofCount })
+          recordEvent('forecast.unavailable', { selectedRoofCount: selectedRoofs.length })
           return
         }
-
-        if (merged.failedRoofCount > 0) {
-          const message = `Forecast unavailable for ${merged.failedRoofCount} selected polygon(s).`
-          setForecastError(message)
-          if (lastReportedErrorRef.current !== message) {
-            reportAppErrorCode('FORECAST_FAILED', message, {
-              context: { area: 'forecast-hook', failedRoofCount: merged.failedRoofCount, mode: 'partial', enableStateReset: true },
-            })
-            lastReportedErrorRef.current = message
-          }
-          recordEvent('forecast.unavailable_partial', { failedRoofCount: merged.failedRoofCount })
-          return
-        }
-
         setForecastError(null)
         lastReportedErrorRef.current = null
       })

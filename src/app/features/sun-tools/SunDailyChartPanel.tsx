@@ -16,7 +16,7 @@ import {
   formatTimestampHHmm,
   getSunriseSunset,
 } from '../../../geometry/sun/dailyEstimation'
-import { deriveDailyProductionProfile } from '../../analysis/deriveDailyProductionProfile'
+import { deriveDailyProductionProfile } from '../../../core'
 import type { RoofPlane } from '../../../types/geometry'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)

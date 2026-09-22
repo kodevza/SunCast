@@ -24,6 +24,20 @@ npm run build
 npm run validate:repo
 ```
 
+## Git hooks and secret scanning
+
+`npm install` activates the repository hooks by setting `core.hooksPath` to
+`.githooks`. Before the existing lint/test/build gate, pre-commit blocks staged
+secrets with [Gitleaks](https://github.com/gitleaks/gitleaks):
+
+```bash
+gitleaks git --pre-commit --redact --staged --verbose --config .gitleaks.toml
+```
+
+Gitleaks is deliberately a required local tool. Install it before committing;
+the hook fails closed when it is unavailable. Do not bypass it with
+`--no-verify`. The pre-push hook runs the production build.
+
 ## CI Workflows
 
 - `CI` (`.github/workflows/ci.yml`): lint + unit tests + build on PR and `main` pushes.
@@ -39,6 +53,26 @@ GitHub Pages deploy uses:
 - static artifact from `dist/`
 
 Manual deployment trigger is available via `workflow_dispatch`.
+
+## npm CLI release
+
+`suncast-cli` is an npm package that bundles its Node.js production core and
+the `suncast` executable. The bundle must remain free of React, MapLibre,
+Three.js, browser storage, and canonical project-state dependencies.
+
+Before publishing:
+
+```bash
+npm run lint
+npm run test
+npm run build
+npm run build:package
+npm pack --dry-run
+```
+
+Choose and add a license plus the npm owner before the first public release.
+From an account authorized for the package, run `npm publish`; this repository
+does not store npm credentials.
 
 ## Primary E2E Specs
 

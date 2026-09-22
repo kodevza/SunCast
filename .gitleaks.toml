@@ -1,0 +1,4 @@
+title = "SunCast secret scanning"
+
+[extend]
+useDefault = true

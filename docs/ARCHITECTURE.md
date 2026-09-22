@@ -26,6 +26,9 @@ Derived-only artifacts (never canonical persisted source data):
 ## Runtime Boundaries
 
 - `src/geometry/*`: pure deterministic geometry, solver, projection, sun math.
+- `src/core/*`: shared production module for React and CLI: modelled daily/monthly/annual production,
+  forecast aggregation, methodology/assumption contracts, and Open-Meteo/PVGIS providers. It has no
+  React, rendering, storage, or canonical project-state dependency.
 - `src/geometry/obstacles/*`: obstacle shape model + conversions for shading/mesh generation.
 - `src/geometry/shading/*`: deterministic shade snapshot/grid/annual sun-access computations.
 - `src/state/project-store/*`: reducer/commands/selectors/storage/share mapping for canonical project-document state. It does not import `app/*`.
@@ -73,7 +76,7 @@ Current and target direction:
 3. `analysis` derives solved roofs, selected roof inputs, sun-projection state, live shading, annual simulation, overlay mode, and diagnostics from document + session guards.
 4. Screen and feature controllers shape UI-facing contracts for sidebar/canvas/tutorial from document/session/analysis boundaries and wire runtime actions/effects.
 5. `MapView` owns map runtime + interactions while `MapObjects/hooks` synchronize typed derived outputs into MapLibre/Three layers (roof/obstacle meshes + roof-projected binary shaded-cell custom layer); `rendering/*` provides lower-level primitives used there.
-6. `app/clients` perform raw provider HTTP calls; feature modules apply retry/cache/mapping/observability policy.
+6. `core/providers` perform production-provider HTTP calls; feature modules own UI lifecycle and observability policy.
 7. `app/project-store/*`, `app/globalServices/*`, and `shared/utils/*` coordinate hash-share recovery, startup hydration, reset flow, and global toast side effects.
 8. Storage/share persist and hydrate canonical document data; active/selection ids are intentionally non-canonical in persisted payloads.
 
