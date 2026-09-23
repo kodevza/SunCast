@@ -65,7 +65,7 @@ It owns forecast aggregation, the Open-Meteo/PVGIS providers, and the
 machine-readable assumptions from `docs/MEASUREMENTS.md`; it does not own
 canonical project persistence or UI state.
 
-`suncast-cli` is published as a Node.js 20+ package. Its distribution bundles
+`suncast-cli` is a Node.js 20+ package prepared for npm publication. Its distribution bundles
 the production core, so installing it does not pull React, MapLibre, Three.js,
 or the application source tree. It exposes the core at `suncast-cli` (and
 `suncast-cli/core`) and installs the `suncast` executable.
@@ -85,9 +85,10 @@ The browser downloads `suncast-forecast-YYYY-MM-DD.json`, ready for either
 command above. The export contains derived report input only; it does not alter
 the persisted SunCast project.
 
-For local development use `npm run cli -- …`; create the publishable artifact
-with `npm run build:package`, inspect it with `npm pack --dry-run`, then publish
-from an authenticated npm account after a license and owner have been chosen.
+For local development use `npm run cli -- …`. Public installation with `npx
+suncast-cli` becomes available after the first npm release. The release workflow
+is triggered by a version tag (`v<package-version>`) after npm trusted publishing,
+a license, and an npm package owner have been configured; see `docs/RUNBOOK.md`.
 
 Coverage-oriented e2e run:
 

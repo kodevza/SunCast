@@ -43,6 +43,7 @@ the hook fails closed when it is unavailable. Do not bypass it with
 - `CI` (`.github/workflows/ci.yml`): lint + unit tests + build on PR and `main` pushes.
 - `Validation` (`.github/workflows/validation.yml`): docs/handover structure checks on PRs.
 - `Deploy to GitHub Pages` (`.github/workflows/deploy-pages.yml`): runs after successful `CI` on `main`.
+- `Publish npm package` (`.github/workflows/publish-npm.yml`): validates and publishes the CLI when a matching version tag is pushed.
 
 ## Deployment
 
@@ -70,9 +71,36 @@ npm run build:package
 npm pack --dry-run
 ```
 
-Choose and add a license plus the npm owner before the first public release.
-From an account authorized for the package, run `npm publish`; this repository
-does not store npm credentials.
+Before the first public release:
+
+1. Choose and commit a license, then add its SPDX identifier to `package.json`.
+2. Publish the first version manually from the intended npm owner account. npm
+   trusted publishing can only be attached to a package that already exists.
+3. In the new package's npm settings, configure **Trusted Publisher** for GitHub Actions:
+   repository `kodevza/SunCast`, workflow `publish-npm.yml`, environment omitted.
+4. Ensure the intended npm owner has permission to publish the package.
+
+The bootstrap publication requires interactive npm authentication and 2FA; do
+not add an npm write token to this repository. Run it only after the release
+workflow has been merged:
+
+```bash
+npm publish --access public
+```
+
+After trusted publishing is configured, every later release uses GitHub Actions
+OIDC. Bump `package.json` and `package-lock.json` to the next release version,
+then create and push its matching tag:
+
+```bash
+git tag v<package-version>
+git push origin v<package-version>
+```
+
+The workflow rejects a tag that does not exactly match `package.json`'s version,
+runs release validation, then executes `npm publish --access public`. npm creates
+the provenance attestation automatically for trusted publishing from this public
+GitHub repository.
 
 ## Primary E2E Specs
 

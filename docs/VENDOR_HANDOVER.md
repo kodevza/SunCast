@@ -67,6 +67,7 @@ Stage 1 editor is production-like for deterministic single-plane roof modeling a
 - CI gate: `.github/workflows/ci.yml`
 - Repository validation: `.github/workflows/validation.yml`
 - Deploy: `.github/workflows/deploy-pages.yml` (after CI success)
+- CLI npm release: `.github/workflows/publish-npm.yml` (matching `v<package-version>` tag; npm trusted publishing)
 
 ## Known Risks
 
