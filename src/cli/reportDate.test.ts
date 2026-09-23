@@ -9,8 +9,14 @@ describe('resolveReportDateIso', () => {
   })
 
   it('keeps an ISO date while deriving it from the local day across UTC midnight', () => {
-    const nowInWarsaw = new Date('2026-09-22T22:30:00.000Z')
-    expect(resolveReportDateIso([], nowInWarsaw)).toBe('2026-09-23')
+    const originalTimeZone = process.env.TZ
+    process.env.TZ = 'Europe/Warsaw'
+    try {
+      const nowInWarsaw = new Date('2026-09-22T22:30:00.000Z')
+      expect(resolveReportDateIso([], nowInWarsaw)).toBe('2026-09-23')
+    } finally {
+      process.env.TZ = originalTimeZone
+    }
   })
 
   it('uses an ISO date supplied with --date', () => {
