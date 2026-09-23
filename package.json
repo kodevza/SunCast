@@ -1,6 +1,6 @@
 {
   "name": "suncast-cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "CLI and dependency-free runtime core for SunCast solar-production reports.",
   "license": "Apache-2.0",
@@ -16,7 +16,7 @@
     "access": "public"
   },
   "bin": {
-    "suncast": "./dist/cli/suncast.js"
+    "suncast": "dist/cli/suncast.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

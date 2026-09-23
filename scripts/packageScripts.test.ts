@@ -11,4 +11,12 @@ describe('package scripts', () => {
     expect(packageJson.scripts?.['test:coverage:e2e']).toBeDefined()
     expect(packageJson.scripts?.['extract:feature-contracts']).toBeDefined()
   })
+
+  it('uses an npm-valid relative path for the suncast executable', async () => {
+    const packageJson = JSON.parse(await readFile('package.json', 'utf8')) as {
+      bin?: Record<string, string>
+    }
+
+    expect(packageJson.bin?.suncast).toBe('dist/cli/suncast.js')
+  })
 })
