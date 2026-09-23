@@ -5,27 +5,21 @@ import {
   getForecastProductionReport,
   type SelectedRoofSunInput,
 } from '../core'
+import { resolveReportDateIso } from './reportDate'
 
 interface CliInput {
-  createdDateTime: string
   roofs: SelectedRoofSunInput[]
 }
 
 function usage(): string {
-  return 'Usage: suncast report <input.json> [--format table|json]'
+  return 'Usage: suncast report <input.json> [--date YYYY-MM-DD] [--format table|json]'
 }
 
 function parseInput(value: unknown): CliInput {
   if (!value || typeof value !== 'object') throw new Error('Input must be a JSON object.')
   const candidate = value as Partial<CliInput>
-  if (typeof candidate.createdDateTime !== 'string' || !Array.isArray(candidate.roofs)) {
-    throw new Error('Input must contain createdDateTime and roofs array.')
-  }
-  const createdAt = new Date(candidate.createdDateTime)
-  if (Number.isNaN(createdAt.getTime()) || !/(Z|[+-]\d{2}:\d{2})$/i.test(candidate.createdDateTime)) {
-    throw new Error('createdDateTime must be an ISO datetime with a timezone.')
-  }
-  return { createdDateTime: candidate.createdDateTime, roofs: candidate.roofs as SelectedRoofSunInput[] }
+  if (!Array.isArray(candidate.roofs)) throw new Error('Input must contain a roofs array.')
+  return { roofs: candidate.roofs as SelectedRoofSunInput[] }
 }
 
 function toTable(report: Awaited<ReturnType<typeof getForecastProductionReport>>): string {
@@ -47,7 +41,7 @@ async function main(args: string[]): Promise<void> {
   const format = options.includes('--format') ? options[options.indexOf('--format') + 1] : 'table'
   if (format !== 'table' && format !== 'json') throw new Error('--format must be table or json.')
   const input = parseInput(JSON.parse(await readFile(inputPath, 'utf8')))
-  const dateIso = new Date(input.createdDateTime).toISOString().slice(0, 10)
+  const dateIso = resolveReportDateIso(options)
   const report = await getForecastProductionReport({
     dateIso,
     roofs: input.roofs,

@@ -15,8 +15,8 @@ function isIsoDateTimeWithTimezone(value: string): boolean {
 
 /**
  * Creates the public input contract accepted by `suncast report`.
- * `createdDateTime` records when the export was created; the CLI derives its
- * UTC forecast date from this timestamp.
+ * `createdDateTime` records when the export was created. It is metadata only:
+ * the CLI uses its current UTC date unless the user supplies `--date`.
  */
 export function createForecastCliInput(
   roofs: readonly SelectedRoofSunInput[],

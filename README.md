@@ -70,13 +70,16 @@ the production core, so installing it does not pull React, MapLibre, Three.js,
 or the application source tree. It exposes the core at `suncast-cli` (and
 `suncast-cli/core`) and installs the `suncast` executable.
 
-The CLI accepts a JSON file with `createdDateTime` (ISO timestamp with a
-timezone) and an array of solved roof inputs (`SelectedRoofSunInput` shape).
-It derives the forecast day in UTC from `createdDateTime`.
+The CLI accepts a JSON file with an array of solved roof inputs
+(`SelectedRoofSunInput` shape). It uses the current UTC date by default; pass
+`--date` with an ISO date (`YYYY-MM-DD`) to choose the forecast day explicitly.
+Any legacy `createdDateTime` field in an exported JSON file is treated as
+metadata and does not affect the report date.
 
 ```bash
 npx suncast-cli report ./forecast-input.json --format table
 npx suncast-cli report ./forecast-input.json --format json
+npx suncast-cli report ./forecast-input.json --date 2026-09-23 --format table
 ```
 
 In the web app, select solved roof polygons, then choose **Export CLI JSON** in
