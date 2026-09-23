@@ -71,8 +71,9 @@ or the application source tree. It exposes the core at `suncast-cli` (and
 `suncast-cli/core`) and installs the `suncast` executable.
 
 The CLI accepts a JSON file with an array of solved roof inputs
-(`SelectedRoofSunInput` shape). It uses the current UTC date by default; pass
+(`SelectedRoofSunInput` shape). It uses the current local date by default; pass
 `--date` with an ISO date (`YYYY-MM-DD`) to choose the forecast day explicitly.
+Forecast hours are returned and displayed in the local timezone of each roof.
 Any legacy `createdDateTime` field in an exported JSON file is treated as
 metadata and does not affect the report date.
 

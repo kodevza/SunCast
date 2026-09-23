@@ -24,11 +24,11 @@ function parseInput(value: unknown): CliInput {
 
 function toTable(report: Awaited<ReturnType<typeof getForecastProductionReport>>): string {
   const lines = [
-    `Forecast UTC — ${report.dateIso}`,
+    `Forecast (local time) — ${report.dateIso}`,
     `Capacity: ${report.totalSelectedKwp.toFixed(1)} kWp`,
     `Status: ${report.status}`,
     `Total energy: ${report.totalEnergyKwh === null ? 'n/a' : `${report.totalEnergyKwh.toFixed(2)} kWh`}`,
-    `Peak: ${report.peak ? `${report.peak.powerKw.toFixed(2)} kW at ${report.peak.timeLabel} UTC` : 'n/a'}`,
+    `Peak: ${report.peak ? `${report.peak.powerKw.toFixed(2)} kW at ${report.peak.timeLabel} local time` : 'n/a'}`,
   ]
   if (report.warnings.length > 0) lines.push('', 'Warnings:', ...report.warnings.map((warning) => `- ${warning}`))
   lines.push('', 'Assumptions:', ...report.assumptions.map((item) => `- ${item.text}`))
@@ -47,7 +47,7 @@ async function main(args: string[]): Promise<void> {
     roofs: input.roofs,
     fetchRoofIrradiance: (roof, dateIso, signal) => fetchOpenMeteoTiltedIrradiance({
       latDeg: roof.latDeg, lonDeg: roof.lonDeg, roofPitchDeg: roof.roofPitchDeg,
-      roofAzimuthDeg: roof.roofAzimuthDeg, timeZone: 'UTC', dateIso, signal,
+      roofAzimuthDeg: roof.roofAzimuthDeg, timeZone: 'auto', dateIso, signal,
     }),
   })
   process.stdout.write(`${format === 'json' ? JSON.stringify(report, null, 2) : toTable(report)}\n`)

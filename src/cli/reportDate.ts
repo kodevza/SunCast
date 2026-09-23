@@ -8,7 +8,12 @@ function isIsoDate(value: string): boolean {
 
 export function resolveReportDateIso(options: string[], now = new Date()): string {
   const dateOptionIndex = options.indexOf('--date')
-  if (dateOptionIndex === -1) return now.toISOString().slice(0, 10)
+  if (dateOptionIndex === -1) {
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
 
   const dateIso = options[dateOptionIndex + 1]
   if (!dateIso || !isIsoDate(dateIso)) {
