@@ -48,6 +48,7 @@ describe('useSidebarControllerModel', () => {
     const setConstraintLimitError = vi.fn()
     const setTutorialEditedKwpByFootprint = vi.fn()
     const selectOnlyFootprint = vi.fn()
+    const toggleFootprintSelection = vi.fn()
     const selectOnlyObstacle = vi.fn()
     const toggleObstacleSelection = vi.fn()
     const setActiveFootprintKwp = vi.fn().mockReturnValue(true)
@@ -137,6 +138,7 @@ describe('useSidebarControllerModel', () => {
         ],
         selectedFootprintIds: ['roof-a'],
         selectOnlyFootprint,
+        toggleFootprintSelection,
         selectOnlyObstacle,
         setActiveFootprintKwp,
         setActivePitchAdjustmentPercent,
@@ -206,10 +208,16 @@ describe('useSidebarControllerModel', () => {
     expect(setConstraintLimitError).toHaveBeenCalledTimes(1)
 
     act(() => {
+      hook.get().footprintPanel.onSelectFootprint('roof-a', true)
+    })
+    expect(toggleFootprintSelection).toHaveBeenCalledWith('roof-a')
+    expect(clearSelectionState).toHaveBeenCalledTimes(1)
+
+    act(() => {
       hook.get().obstaclePanel.onSelectObstacle('obstacle-a', true)
     })
     expect(toggleObstacleSelection).toHaveBeenCalledWith('obstacle-a')
-    expect(clearSelectionState).toHaveBeenCalledTimes(1)
+    expect(clearSelectionState).toHaveBeenCalledTimes(2)
 
     act(() => {
       hook.get().footprintPanel.onDeleteActiveFootprint()

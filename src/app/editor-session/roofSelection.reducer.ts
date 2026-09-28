@@ -27,6 +27,14 @@ export function roofSelectionReducer(state: EditorSessionState, action: EditorAc
         selectedFootprintIds: [...state.selectedFootprintIds, action.footprintId],
         activeFootprintId: action.footprintId,
       }
+    case 'SELECT_ALL_FOOTPRINTS':
+      return {
+        ...state,
+        selectedFootprintIds: action.footprintIds,
+        activeFootprintId: action.footprintIds.includes(state.activeFootprintId ?? '')
+          ? state.activeFootprintId
+          : action.footprintIds[0] ?? null,
+      }
     case 'CLEAR_FOOTPRINT_SELECTION':
       return {
         ...state,

@@ -67,10 +67,10 @@ describe('editorSessionReducer', () => {
     expect(state.selectedFootprintIds).toEqual([])
   })
 
-  it('ignores select-all at the session reducer boundary', () => {
-    const state = applySessionReducer(withFootprints(baseState), { type: 'SELECT_ALL_FOOTPRINTS' })
+  it('selects every footprint supplied by the session command', () => {
+    const state = applySessionReducer(withFootprints(baseState), { type: 'SELECT_ALL_FOOTPRINTS', footprintIds: ['a', 'b'] })
 
-    expect(state.selectedFootprintIds).toEqual(['a'])
+    expect(state.selectedFootprintIds).toEqual(['a', 'b'])
     expect(state.activeFootprintId).toBe('a')
   })
 

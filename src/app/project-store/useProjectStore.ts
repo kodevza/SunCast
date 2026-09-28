@@ -145,7 +145,7 @@ export function useProjectStore() {
     const activeObstacle = getActiveObstacle(state)
     const selectedObstacleEntries = getSelectedObstacleEntries(state)
     const projectCommands = createProjectCommands(dispatch, () => state)
-    const sessionCommands = createEditorSessionCommands(dispatch)
+    const sessionCommands = createEditorSessionCommands(dispatch, () => Object.keys(state.footprints))
     const storeCommands = createProjectStoreCommands({
       dispatch,
       getState: () => state,

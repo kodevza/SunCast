@@ -33,7 +33,7 @@ export type EditorAction =
   | { type: 'SET_ACTIVE_FOOTPRINT'; footprintId: string }
   | { type: 'SELECT_ONLY_FOOTPRINT'; footprintId: string }
   | { type: 'TOGGLE_FOOTPRINT_SELECTION'; footprintId: string }
-  | { type: 'SELECT_ALL_FOOTPRINTS' }
+  | { type: 'SELECT_ALL_FOOTPRINTS'; footprintIds: string[] }
   | { type: 'CLEAR_FOOTPRINT_SELECTION' }
   | { type: 'ADD_FOOTPRINT' }
   | { type: 'SET_ACTIVE_OBSTACLE'; obstacleId: string }

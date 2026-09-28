@@ -18,7 +18,7 @@ export function useSelectionCommands({ project, geometrySelection }: UseSelectio
     () => ({
       selectFootprint: (footprintId: string, multiSelect: boolean) => {
         if (multiSelect) {
-          console.error("not implemented");
+          project.toggleFootprintSelection(footprintId)
         } else {
           project.selectOnlyFootprint(footprintId)
         }

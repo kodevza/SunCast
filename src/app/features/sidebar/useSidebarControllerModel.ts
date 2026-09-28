@@ -47,6 +47,7 @@ export interface SidebarFeatureContract {
     obstacles: ObstacleStateEntry[]
     selectedFootprintIds: string[]
     selectOnlyFootprint: (footprintId: string) => void
+    toggleFootprintSelection: (footprintId: string) => void
     selectOnlyObstacle: (obstacleId: string) => void
     setActiveFootprintKwp: (kwp: number) => boolean
     setActivePitchAdjustmentPercent: (pitchAdjustmentPercent: number) => boolean
@@ -99,7 +100,7 @@ export function useSidebarControllerModel({
       activeFootprintKwp: project.activeFootprint?.kwp ?? null,
       onSelectFootprint: (footprintId: string, multiSelect: boolean) => {
         if (multiSelect) {
-          console.error('not implemented')
+          project.toggleFootprintSelection(footprintId)
         } else {
           project.selectOnlyFootprint(footprintId)
         }

@@ -249,6 +249,37 @@ describe('useProjectStore startup hydration', () => {
     hook.unmount()
   })
 
+  it('toggles a second footprint into the selected roofs without clearing the first', async () => {
+    const stored = createState('a')
+    stored.footprints.b = {
+      footprint: {
+        id: 'b',
+        vertices: [
+          [3, 3],
+          [4, 3],
+          [4, 4],
+        ],
+        kwp: 5,
+      },
+      constraints: { vertexHeights: [] },
+      pitchAdjustmentPercent: 0,
+    }
+    mockReadSharedStateFromHashResult.mockResolvedValue({ ok: false, error: { code: 'SHARE_PAYLOAD_INVALID', message: 'Invalid shared URL payload.' } })
+    mockReadStorage.mockReturnValue({ ok: true, value: stored })
+
+    const hook = renderStore()
+    await hook.waitForHydrate()
+
+    act(() => {
+      hook.get().selectOnlyFootprint('a')
+      hook.get().toggleFootprintSelection('b')
+    })
+
+    expect(hook.get().selectedFootprintIds).toEqual(['a', 'b'])
+    expect(hook.get().activeFootprint?.id).toBe('b')
+    hook.unmount()
+  })
+
   it('persists canonical document state with null active ids', async () => {
     const shared = createState('shared')
     shared.footprints.another = {

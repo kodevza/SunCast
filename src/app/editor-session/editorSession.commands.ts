@@ -8,6 +8,7 @@ export interface EditorSessionCommands {
   undoDraftPoint: () => void
   setActiveFootprint: (footprintId: string) => void
   selectOnlyFootprint: (footprintId: string) => void
+  toggleFootprintSelection: (footprintId: string) => void
   selectAllFootprints: () => void
   clearFootprintSelection: () => void
   startObstacleDrawing: () => void
@@ -22,6 +23,7 @@ export interface EditorSessionCommands {
 
 export function createEditorSessionCommands(
   dispatch: Dispatch<EditorAction>,
+  getFootprintIds: () => string[] = () => [],
 ): EditorSessionCommands {
   return {
     startDrawing: () => dispatch({ type: 'START_DRAW' }),
@@ -34,7 +36,10 @@ export function createEditorSessionCommands(
     selectOnlyFootprint: (footprintId: string) => {
       dispatch({ type: 'SELECT_ONLY_FOOTPRINT', footprintId })
     },
-    selectAllFootprints: () => dispatch({ type: 'SELECT_ALL_FOOTPRINTS' }),
+    toggleFootprintSelection: (footprintId: string) => {
+      dispatch({ type: 'TOGGLE_FOOTPRINT_SELECTION', footprintId })
+    },
+    selectAllFootprints: () => dispatch({ type: 'SELECT_ALL_FOOTPRINTS', footprintIds: getFootprintIds() }),
     clearFootprintSelection: () => dispatch({ type: 'CLEAR_FOOTPRINT_SELECTION' }),
     startObstacleDrawing: () => dispatch({ type: 'START_OBSTACLE_DRAW' }),
     cancelObstacleDrawing: () => dispatch({ type: 'CANCEL_OBSTACLE_DRAW' }),
