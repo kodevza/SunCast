@@ -51,6 +51,7 @@ GitHub Pages deploy uses:
 
 - Node 20
 - `VITE_BASE_PATH=/<repo-name>/`
+- `VITE_BUILD_SHA` set to the exact source commit used for the deployment; the first map-loading overlay displays its short hash.
 - static artifact from `dist/`
 
 Manual deployment trigger is available via `workflow_dispatch`.

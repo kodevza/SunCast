@@ -34,6 +34,7 @@ export function MapView({ model, onInitialized }: MapViewProps) {
   const effectiveConstrainedDrawLengthM = isDrawing ? constrainedDrawLengthM : null
   const canUseSunPerspective = view.orbitEnabled && view.sunProjectionResult !== null
   const effectiveSunPerspectiveEnabled = canUseSunPerspective && sunPerspectiveEnabled
+  const buildCommit = import.meta.env.VITE_BUILD_SHA?.slice(0, 7) || 'local'
 
   const parseDrawLengthInput = useCallback(() => {
     const trimmed = drawLengthInput.trim()
@@ -219,6 +220,12 @@ export function MapView({ model, onInitialized }: MapViewProps) {
   return (
     <div className="map-root-wrap">
       <div ref={containerRef} className="map-root" data-testid="map-canvas" />
+      {!mapLoaded && (
+        <div className="map-loading-overlay" role="status">
+          <span>Loading map…</span>
+          <span className="map-loading-build">Build {buildCommit}</span>
+        </div>
+      )}
       <MapOverlayControls
         basemapMode={basemapMode}
         onBasemapModeChange={setBasemapMode}

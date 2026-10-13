@@ -562,6 +562,26 @@ button:disabled {
   height: 100%;
 }
 
+.map-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  justify-items: center;
+  background: rgba(18, 21, 22, 0.88);
+  color: #e8edf0;
+  font-weight: 600;
+}
+
+.map-loading-build {
+  color: #99acb3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
 .map-error-overlay {
   position: absolute;
   top: 68px;

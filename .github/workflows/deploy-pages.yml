@@ -38,6 +38,7 @@ jobs:
       - name: Build
         env:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_BUILD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: npm run build
 
       - name: Setup Pages
