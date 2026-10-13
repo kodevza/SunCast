@@ -15,6 +15,7 @@
 - Live roof-shading preview + annual sun-access simulation.
 - Weather-forecast daily estimate (Open-Meteo), including the total kWh for all selected roof polygons.
 - Browser export of selected solved roofs as `suncast-cli` forecast-input JSON.
+- CLI PVGIS daily-average estimate for a selected month, annual total, and JSON monthly kWh distribution; optional `--year` selects a PVGIS climate-data year.
 - Address/place search (Photon).
 - Shareable project payload in URL.
 - Tutorial overlay and guided onboarding.

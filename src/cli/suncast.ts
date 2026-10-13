@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises'
 import {
-  fetchOpenMeteoTiltedIrradiance,
-  getForecastProductionReport,
+  getPvgisProductionReport,
   type SelectedRoofSunInput,
 } from '../core'
 import { resolveReportDateIso } from './reportDate'
+import { resolveReportYear } from './reportYear'
 
 interface CliInput {
   roofs: SelectedRoofSunInput[]
 }
 
 function usage(): string {
-  return 'Usage: suncast report <input.json> [--date YYYY-MM-DD] [--format table|json]'
+  return 'Usage: suncast report <input.json> [--date YYYY-MM-DD] [--year YYYY] [--format table|json]'
 }
 
 function parseInput(value: unknown): CliInput {
@@ -22,16 +22,19 @@ function parseInput(value: unknown): CliInput {
   return { roofs: candidate.roofs as SelectedRoofSunInput[] }
 }
 
-function toTable(report: Awaited<ReturnType<typeof getForecastProductionReport>>): string {
+function toTable(report: Awaited<ReturnType<typeof getPvgisProductionReport>>): string {
   const lines = [
-    `Forecast (local time) — ${report.dateIso}`,
+    `PVGIS exact-day simulation — ${report.dateIso}`,
+    `PVGIS climate-data year: ${report.year ?? 'default multi-year reference period'}`,
     `Capacity: ${report.totalSelectedKwp.toFixed(1)} kWp`,
     `Status: ${report.status}`,
-    `Total energy: ${report.totalEnergyKwh === null ? 'n/a' : `${report.totalEnergyKwh.toFixed(2)} kWh`}`,
-    `Peak: ${report.peak ? `${report.peak.powerKw.toFixed(2)} kW at ${report.peak.timeLabel} local time` : 'n/a'}`,
+    `Daily energy: ${report.dailyEnergyKwh === null ? 'n/a' : `${report.dailyEnergyKwh.toFixed(2)} kWh`}`,
+    `Annual energy: ${report.annualEnergyKwh === null ? 'n/a' : `${report.annualEnergyKwh.toFixed(2)} kWh`}`,
+    '',
+    'Monthly distribution (kWh):',
+    ...report.monthlyEnergyKwh.map(({ month, energyKwh }) => `- ${String(month).padStart(2, '0')}: ${energyKwh.toFixed(2)}`),
   ]
   if (report.warnings.length > 0) lines.push('', 'Warnings:', ...report.warnings.map((warning) => `- ${warning}`))
-  lines.push('', 'Assumptions:', ...report.assumptions.map((item) => `- ${item.text}`))
   return lines.join('\n')
 }
 
@@ -42,14 +45,8 @@ async function main(args: string[]): Promise<void> {
   if (format !== 'table' && format !== 'json') throw new Error('--format must be table or json.')
   const input = parseInput(JSON.parse(await readFile(inputPath, 'utf8')))
   const dateIso = resolveReportDateIso(options)
-  const report = await getForecastProductionReport({
-    dateIso,
-    roofs: input.roofs,
-    fetchRoofIrradiance: (roof, dateIso, signal) => fetchOpenMeteoTiltedIrradiance({
-      latDeg: roof.latDeg, lonDeg: roof.lonDeg, roofPitchDeg: roof.roofPitchDeg,
-      roofAzimuthDeg: roof.roofAzimuthDeg, timeZone: 'auto', dateIso, signal,
-    }),
-  })
+  const year = resolveReportYear(options)
+  const report = await getPvgisProductionReport({ dateIso, year, roofs: input.roofs })
   process.stdout.write(`${format === 'json' ? JSON.stringify(report, null, 2) : toTable(report)}\n`)
   if (report.status === 'unavailable') process.exitCode = 2
 }

@@ -79,6 +79,17 @@ npm run coverage:e2e
 npm run test
 ```
 
+### Local PVGIS integration check
+
+`test.json` is deliberately ignored because it can contain user roof locations.
+When it is present locally, the following opt-in check performs live PVGIS
+requests and verifies the exact conversion from that export to `PVcalc` and
+`seriescalc` query parameters. It is skipped in CI and normal test runs.
+
+```bash
+RUN_PVGIS_LIVE_INTEGRATION=true npm test -- src/core/providers/pvgis.local.integration.test.ts
+```
+
 ## CI Order
 
 1. `npm run lint`

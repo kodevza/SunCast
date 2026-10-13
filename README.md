@@ -71,16 +71,18 @@ or the application source tree. It exposes the core at `suncast-cli` (and
 `suncast-cli/core`) and installs the `suncast` executable.
 
 The CLI accepts a JSON file with an array of solved roof inputs
-(`SelectedRoofSunInput` shape). It uses the current local date by default; pass
-`--date` with an ISO date (`YYYY-MM-DD`) to choose the forecast day explicitly.
-Forecast hours are returned and displayed in the local timezone of each roof.
+(`SelectedRoofSunInput` shape). It uses PVGIS and reports an exact-day energy
+estimate from PVGIS hourly records for `--date`, together with a 12-month kWh
+distribution and annual total. It uses the current local date by default. Pass
+`--year YYYY` to restrict the monthly/annual PVGIS climate data to that calendar
+year; without it PVGIS uses its default multi-year reference period.
 Any legacy `createdDateTime` field in an exported JSON file is treated as
 metadata and does not affect the report date.
 
 ```bash
 npx suncast-cli report ./forecast-input.json --format table
 npx suncast-cli report ./forecast-input.json --format json
-npx suncast-cli report ./forecast-input.json --date 2026-09-23 --format table
+npx suncast-cli report ./forecast-input.json --date 2023-09-23 --year 2023 --format json
 ```
 
 In the web app, select solved roof polygons, then choose **Export CLI JSON** in
