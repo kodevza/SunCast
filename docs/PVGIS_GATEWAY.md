@@ -50,15 +50,13 @@ put an authenticated backend in front of PVGIS instead.
 4. Add the GitHub Actions configuration:
    - secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
    - repository variables: `AZURE_RESOURCE_GROUP`, `APIM_PUBLISHER_EMAIL`
-5. Run **Deploy PVGIS gateway**. Copy its `pvgisGatewayUrl` output into the
-   repository variable `PVGIS_GATEWAY_URL` (for example
-   `https://suncast-pvgis-apim-prod.azure-api.net/api/v5_3`). This is a public URL,
-   not a secret.
-6. Re-run **Deploy to GitHub Pages** so Vite embeds that URL into the browser
-   build.
+5. Run **Deploy PVGIS gateway**. After it succeeds, **Deploy to GitHub Pages**
+   runs automatically. Its build derives the public gateway URL from the
+   `serviceName` in `main.bicepparam` and embeds it through
+   `VITE_PVGIS_GATEWAY_URL`.
 
 The browser client fails closed with a visible feature-level PVGIS error if
-`PVGIS_GATEWAY_URL` is missing or malformed; it never falls back to direct
+`VITE_PVGIS_GATEWAY_URL` is missing or malformed; it never falls back to direct
 PVGIS calls.
 
 ## Deploy and verify
@@ -86,8 +84,8 @@ application’s PVGIS chart works after the Pages deployment.
 
 ## Rollback
 
-To stop browser use immediately, clear `PVGIS_GATEWAY_URL` and deploy Pages;
-the PVGIS panel degrades gracefully. To revert gateway configuration, revert
+To stop browser use immediately, disable the Pages deployment or revert the
+gateway integration and deploy Pages. To revert gateway configuration, revert
 the infrastructure commit and rerun the gateway workflow. The previous Front
 Door profile, if already deployed, must be deleted separately after the APIM
 gateway works; otherwise its fixed fee continues. The workflow does not delete

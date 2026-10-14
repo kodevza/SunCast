@@ -75,10 +75,10 @@ only API Management resources and does not assign roles, so no broader
 subscription access or `Owner`/`User Access Administrator` is necessary.
 
 Set the non-secret repository variable `APIM_PUBLISHER_EMAIL` to the address
-required for the API Management publisher. The Pages build reads the non-secret
-repository variable `PVGIS_GATEWAY_URL`.
-After the first gateway deployment, set it to the Bicep output
-`pvgisGatewayUrl` and rerun the Pages workflow. Do not use a client secret:
+required for the API Management publisher. Pages derives
+`VITE_PVGIS_GATEWAY_URL` from the Bicep `serviceName` parameter
+at build time. A successful gateway deployment triggers the Pages workflow.
+Do not use a client secret:
 the gateway workflow has only `contents: read` and `id-token: write`, and uses
 Azure OIDC.
 
