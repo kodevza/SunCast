@@ -12,6 +12,7 @@
 - `VENDOR_HANDOVER.md`
 - `runtime_boundaries.md`
 - `TEST_STRATEGY.md`
+- `PVGIS_GATEWAY.md`
 - `product/UC*`
 
 ## Iteration / Historical Docs

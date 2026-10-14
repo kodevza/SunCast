@@ -22,6 +22,16 @@ describe('core PVGIS provider', () => {
     expect(new URL(String(requestedUrl)).searchParams.get('startyear')).toBe('2023')
   })
 
+  it('uses a caller-supplied API gateway base URL', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ outputs: { monthly: { fixed: [] }, totals: { fixed: { E_y: 1 } } } }), { status: 200 }))
+    await fetchPvgisFixedAnnualYield(
+      { latDeg: 52.2, lonDeg: 21, kwp: 1, roofPitchDeg: 35, roofAzimuthDeg: 180 },
+      { fetchImpl, apiBaseUrl: 'https://suncast-pvgis-apim.azure-api.net/api/v5_3/' },
+    )
+    const requestedUrl = (fetchImpl.mock.calls as unknown as Array<[URL]>)[0]?.[0]
+    expect(String(requestedUrl)).toMatch(/^https:\/\/suncast-pvgis-apim\.azure-api\.net\/api\/v5_3\/PVcalc\?/)
+  })
+
   it('sums hourly PV power for the requested calendar day', async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ outputs: { hourly: [
       { time: '20230621:0010', P: 500 }, { time: '20230621:0110', P: 1500 }, { time: '20230622:0010', P: 999 },

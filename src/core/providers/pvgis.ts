@@ -24,8 +24,7 @@ export interface PvgisRoofEstimateResult {
   response: PvgisPvcalcResponse
 }
 
-const PVGIS_V53_PVCALC_URL = 'https://re.jrc.ec.europa.eu/api/v5_3/PVcalc'
-const PVGIS_V53_SERIESCALC_URL = 'https://re.jrc.ec.europa.eu/api/v5_3/seriescalc'
+const DEFAULT_PVGIS_API_BASE_URL = 'https://re.jrc.ec.europa.eu/api/v5_3'
 
 function toPvgisAspectDeg(azimuthFromNorthDeg: number): number {
   const normalized = ((azimuthFromNorthDeg % 360) + 360) % 360
@@ -57,9 +56,9 @@ export function extractPvgisFixedDailyYieldByMonth(response: PvgisPvcalcResponse
 
 export async function fetchPvgisFixedAnnualYield(
   { latDeg, lonDeg, kwp, roofPitchDeg, roofAzimuthDeg, lossPercent = 14, year, signal }: PvgisRoofEstimateInput,
-  { fetchImpl = fetch }: FetchDependency = {},
+  { fetchImpl = fetch, apiBaseUrl = DEFAULT_PVGIS_API_BASE_URL }: PvgisFetchDependency = {},
 ): Promise<PvgisRoofEstimateResult> {
-  const url = new URL(PVGIS_V53_PVCALC_URL)
+  const url = pvgisApiUrl(apiBaseUrl, 'PVcalc')
   url.searchParams.set('lat', latDeg.toFixed(6))
   url.searchParams.set('lon', lonDeg.toFixed(6))
   url.searchParams.set('peakpower', kwp.toFixed(3))
@@ -84,8 +83,14 @@ export async function fetchPvgisFixedAnnualYield(
   }
 }
 
-interface FetchDependency {
+export interface PvgisFetchDependency {
   fetchImpl?: typeof fetch
+  /** API base URL ending in `/api/v5_3`; browser callers use the API Management gateway. */
+  apiBaseUrl?: string
+}
+
+function pvgisApiUrl(apiBaseUrl: string, operation: 'PVcalc' | 'seriescalc'): URL {
+  return new URL(`${apiBaseUrl.replace(/\/+$/, '')}/${operation}`)
 }
 
 interface PvgisSeriescalcResponse {
@@ -100,12 +105,12 @@ function toPvgisDatePrefix(dateIso: string): string | null {
 /** Returns kWh from PVGIS's actual hourly PV production records for one date. */
 export async function fetchPvgisDailyProduction(
   { latDeg, lonDeg, kwp, roofPitchDeg, roofAzimuthDeg, lossPercent = 14, dateIso, signal }: PvgisRoofEstimateInput & { dateIso: string },
-  { fetchImpl = fetch }: FetchDependency = {},
+  { fetchImpl = fetch, apiBaseUrl = DEFAULT_PVGIS_API_BASE_URL }: PvgisFetchDependency = {},
 ): Promise<number> {
   const datePrefix = toPvgisDatePrefix(dateIso)
   if (!datePrefix) throw new Error('PVGIS daily production requires an ISO date (YYYY-MM-DD).')
   const year = Number(datePrefix.slice(0, 4))
-  const url = new URL(PVGIS_V53_SERIESCALC_URL)
+  const url = pvgisApiUrl(apiBaseUrl, 'seriescalc')
   url.searchParams.set('lat', latDeg.toFixed(6))
   url.searchParams.set('lon', lonDeg.toFixed(6))
   url.searchParams.set('startyear', String(year))

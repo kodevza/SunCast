@@ -39,6 +39,7 @@ jobs:
         env:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
           VITE_BUILD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          VITE_PVGIS_GATEWAY_URL: ${{ vars.PVGIS_GATEWAY_URL }}
         run: npm run build
 
       - name: Setup Pages

@@ -1,0 +1,29 @@
+<policies>
+  <inbound>
+    <base />
+    <cors allow-credentials="false" terminate-unmatched-request="false">
+      <allowed-origins>
+        <origin>__ALLOWED_ORIGIN__</origin>
+      </allowed-origins>
+      <allowed-methods>
+        <method>GET</method>
+      </allowed-methods>
+      <allowed-headers>
+        <header>accept</header>
+        <header>content-type</header>
+      </allowed-headers>
+    </cors>
+    <check-header name="Origin" failed-check-httpcode="403" failed-check-error-message="Forbidden" ignore-case="false">
+      <value>__ALLOWED_ORIGIN__</value>
+    </check-header>
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+  </outbound>
+  <on-error>
+    <base />
+  </on-error>
+</policies>

@@ -41,6 +41,7 @@ Legacy e2e specs (`roof-orbit.spec.ts`, `uc-strategy.spec.ts`) are intentionally
 4. Client transport boundaries:
    - `src/app/clients/photonClient.test.ts`
    - `src/app/clients/openMeteoClient.test.ts`
+- `src/app/clients/pvgisClient.test.ts` (browser gateway configuration; no direct-provider fallback)
 5. Basemap + attribution boundaries:
    - `MapView/createMapStyle.test.ts`
    - `MapView/MapAttributionControl.test.ts`

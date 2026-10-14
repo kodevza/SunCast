@@ -125,3 +125,9 @@
 - Status: accepted
 - Decision: publish `suncast-cli` with a dependency-free bundled runtime core and a `suncast` executable. The package exposes the core as `suncast-cli`/`suncast-cli/core`; the CLI is a thin input/output adapter over the same core.
 - Why: makes production reporting reusable outside the browser application without distributing or installing the React/map/rendering stack, while retaining one tested implementation for the app and command line.
+
+## D22. Browser PVGIS Access Through Azure API Management Consumption
+
+- Status: accepted
+- Decision: browser PVGIS calls use a required API Management Consumption v5.3 gateway URL. The API exposes only GET PVcalc and seriescalc, applies CORS and an Origin check, and forwards over HTTPS. The Node CLI remains a direct PVGIS client. Consumption does not support per-IP rate limiting; cost and request monitoring are operational controls.
+- Why: keeps provider access at a deployable transport boundary without a fixed Front Door profile charge, avoids browser CORS coupling to PVGIS, and bounds the public gateway to required operations. Origin validation is explicitly treated as browser protection rather than authentication.

@@ -126,7 +126,8 @@ SunCastScreen
 - ArcGIS attribution metadata endpoint for dynamic provider-credit text.
 - Photon geocoding API for place search.
 - Open-Meteo irradiance forecast for weather-based chart.
-- PVGIS PVcalc API for PV production estimates from roof geometry inputs.
+- PVGIS PVcalc API for PV production estimates from roof geometry inputs. Browser requests use
+  Azure API Management Consumption (`docs/PVGIS_GATEWAY.md`); the Node CLI uses the provider directly.
 
 ## Reliability Model
 
