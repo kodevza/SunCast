@@ -21,7 +21,7 @@ export function resolvePvgisGatewayApiBaseUrl(value: string | undefined): string
   return url.toString().replace(/\/+$/, '')
 }
 
-export function fetchPvgisFixedAnnualYield(input: PvgisRoofEstimateInput) {
+export async function fetchPvgisFixedAnnualYield(input: PvgisRoofEstimateInput) {
   return fetchPvgisFixedAnnualYieldFromProvider(input, {
     apiBaseUrl: resolvePvgisGatewayApiBaseUrl(import.meta.env.VITE_PVGIS_GATEWAY_URL),
   })
