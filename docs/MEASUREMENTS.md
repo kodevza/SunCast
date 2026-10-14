@@ -5,7 +5,7 @@ Current capabilities:
 - Hourly production profile for selected roof areas.
 - Live shading preview for the selected sun date/time.
 - Annual sun-access simulation.
-- Monthly and annual PV-production estimates, including PVGIS data when available.
+- Browser monthly and annual PV-production estimates based on the local clear-sky model. The CLI monthly and annual report uses PVGIS climate data.
 What we cannot monitor yet:
 - Actual inverter production in real time.
 - Historical measured production.
